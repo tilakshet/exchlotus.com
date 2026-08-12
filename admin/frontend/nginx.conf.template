@@ -1,0 +1,47 @@
+# Standalone config for running admin/frontend as its own container behind
+# a separate TLS-terminating proxy/load balancer (see this app's Dockerfile
+# header comment) — plain HTTP only, no server_name matching, no cert
+# paths. docker-compose.prod.yml's default one-VPS wiring does NOT use this
+# file; it builds this app's static output into the shared frontend/ nginx
+# edge image instead (see frontend/nginx.conf.template's admin.${DOMAIN}
+# server blocks for that path).
+limit_req_zone $binary_remote_addr zone=admin_api_general:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=admin_api_auth:10m rate=5r/s;
+limit_req_status 429;
+
+server {
+    listen 80;
+
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location /admin-api/auth/ {
+        limit_req zone=admin_api_auth burst=10 nodelay;
+        proxy_pass http://admin-backend:4600;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /admin-api/ {
+        limit_req zone=admin_api_general burst=40 nodelay;
+        proxy_pass http://admin-backend:4600;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        try_files $uri /index.html;
+    }
+}

@@ -1,0 +1,82 @@
+import { useState } from "react"
+import { useCategories } from "@/hooks/useCategories"
+import { useGames } from "@/hooks/useGames"
+import { GameCard } from "@/features/games/GameCard"
+import { GameLaunchModal } from "@/features/games/GameLaunchModal"
+import type { Game } from "@/types/catalog"
+
+function CategoryRowSkeleton() {
+  return (
+    <div className="scrollbar-none flex gap-3 overflow-x-auto">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div key={i} className="w-48 shrink-0 overflow-hidden rounded-(--landing-radius-md) border border-(--landing-border)">
+          <div className="aspect-[4/3] animate-pulse bg-(--landing-bg-3)" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function CategoryRow({ code, name, onPlay }: { code: string; name: string; onPlay: (game: Game) => void }) {
+  // Quick-glance row — just the first page, this is a preview shelf, not the browsing surface.
+  const { data, isLoading } = useGames({ category: code, pageSize: 12 })
+  const games = data?.data
+
+  if (isLoading) {
+    return (
+      <div>
+        <h3 className="mb-3 text-lg font-bold text-(--landing-text-primary)">{name}</h3>
+        <CategoryRowSkeleton />
+      </div>
+    )
+  }
+
+  // Skip categories with nothing synced yet rather than showing an empty shelf.
+  if (!games || games.length === 0) return null
+
+  return (
+    <div>
+      <h3 className="mb-3 text-lg font-bold text-(--landing-text-primary)">{name}</h3>
+      <ul className="scrollbar-none flex gap-3 overflow-x-auto pb-1">
+        {games.map((game) => (
+          <li key={game.id} className="w-48 shrink-0">
+            <GameCard game={game} onPlay={onPlay} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * Quick-glance horizontal rows, one per real backend category — the
+ * "Trending / Live Casino / Casino" preview pattern, but built from
+ * useCategories()/useGames() instead of hardcoded picks. This is the whole
+ * game-browsing surface on the landing page — there's no separate "full
+ * catalog" grid/search view anymore (dropped in favor of category rows
+ * everywhere, including on /dashboard — see features/games/CategoryGameRows.tsx,
+ * the dashboard-styled equivalent of this component).
+ */
+export function CategoryGameRows() {
+  const { data: categories, isLoading, isError } = useCategories()
+  const [launchingGame, setLaunchingGame] = useState<Game | null>(null)
+
+  if (isError) return null
+
+  return (
+    <div className="flex flex-col gap-8">
+      {isLoading && (
+        <>
+          <CategoryRowSkeleton />
+          <CategoryRowSkeleton />
+        </>
+      )}
+      {!isLoading &&
+        categories?.map((category) => (
+          <CategoryRow key={category.id} code={category.code} name={category.name} onPlay={setLaunchingGame} />
+        ))}
+
+      {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+    </div>
+  )
+}

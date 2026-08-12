@@ -1,0 +1,96 @@
+name: exchlotus-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: exchlotus_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+      POSTGRES_DB: exchlotus_dev
+    volumes:
+      - exchlotus_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exchlotus_app -d exchlotus_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - exchlotus_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - backend/.env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Separate app, separate auth/RBAC, separate deployable — but shares this
+  # same PostgreSQL as source of truth (see admin/backend/README and the
+  # architecture report this was built from). No published ports: only the
+  # frontend edge (nginx) and other containers on this compose network can
+  # reach it, never the public internet directly.
+  admin-backend:
+    build:
+      context: .
+      dockerfile: admin/backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - admin/backend/.env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
+  # This single nginx edge serves BOTH domain.com (player app) and
+  # admin.domain.com (admin app) — see frontend/Dockerfile's header comment
+  # for why they share one image/container in this one-VPS setup, and
+  # admin/frontend/Dockerfile for the fully-independent alternative.
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+        VITE_ADMIN_API_BASE_URL: ""
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env.production}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certbot_conf:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    depends_on:
+      - backend
+      - admin-backend
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+
+volumes:
+  exchlotus_pgdata:
+  exchlotus_redisdata:
+  certbot_conf:
+  certbot_www:

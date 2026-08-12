@@ -1,0 +1,13 @@
+# Both frontend/Dockerfile and admin/backend/Dockerfile now build with the
+# repo root as context (they each need files from more than one top-level
+# folder — see their own header comments) — this keeps that upload small
+# and keeps secrets/build output out of every image's build context.
+**/node_modules
+**/dist
+**/.tanstack
+**/src/generated
+.git
+**/.env
+**/.env.local
+**/.env.production
+**/*.log

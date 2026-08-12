@@ -1,0 +1,313 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+/// Second generator, same schema/migration history — admin/backend is a
+/// separately installed (own node_modules, own Dockerfile) app and needs its
+/// own generated client artifact. This is the only thing duplicated; the
+/// schema/migrations themselves stay single-source in this file so the two
+/// apps can never drift apart on what the database actually looks like.
+generator adminClient {
+  provider = "prisma-client-js"
+  output   = "../../admin/backend/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum LedgerEntryType {
+  BET
+  WIN
+  REFUND
+  ADJUSTMENT
+  DEPOSIT
+  WITHDRAWAL
+}
+
+/// Suspended players keep every existing row (wallet, ledger, tokens) —
+/// this is a status flag the admin panel flips, not a soft/hard delete.
+enum PlayerStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Player {
+  id         String   @id @default(uuid())
+  /// Matches `user_id` in webhook payloads — the partner-side account identifier.
+  externalId String   @unique
+  username   String
+  email      String?  @unique
+  /// Nullable: the spec's own seeded fixture player (externalId "12345")
+  /// predates app-level auth and has no login credentials of its own.
+  passwordHash String?
+  /// E.164-ish, digits with a leading "+". The identifier for both OTP
+  /// login and password login now — password accounts are created via
+  /// phone as well, there's no email+password path in the UI anymore.
+  phone      String?  @unique
+  /// Captured at OTP signup if a promo code was entered. No reward/bonus
+  /// engine consumes this yet — it's recorded, not yet acted on.
+  referredByCode String?
+  firstName  String?
+  lastName   String?
+  dateOfBirth DateTime?
+  currency   String   @default("INR")
+  /// Set only by the admin panel (users.suspend permission) — the player
+  /// backend itself never reads or writes this today.
+  status     PlayerStatus @default(ACTIVE)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  wallet        Wallet?
+  entries       LedgerEntry[]
+  refreshTokens RefreshToken[]
+
+  @@map("players")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  playerId  String
+  player    Player    @relation(fields: [playerId], references: [id])
+  /// Never store the raw token — only a hash of it, same principle as a password.
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([playerId])
+  @@map("refresh_tokens")
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  playerId  String   @unique
+  player    Player   @relation(fields: [playerId], references: [id])
+  /// The real, provider-reconciled playable balance — the only figure the
+  /// gaming webhook ever touches.
+  balance   Decimal  @db.Decimal(18, 2)
+  /// Bonus/locked tracking has no backing feature yet (no promotions/bonus
+  /// wagering engine exists) — these columns exist so the wallet API's
+  /// response shape is stable, but they are always 0 today. See backend
+  /// README "Not yet done".
+  bonusBalance  Decimal  @default(0) @db.Decimal(18, 2)
+  lockedBalance Decimal  @default(0) @db.Decimal(18, 2)
+  currency  String
+  updatedAt DateTime @updatedAt
+
+  @@map("wallets")
+}
+
+model LedgerEntry {
+  id            String          @id @default(uuid())
+  playerId      String
+  player        Player          @relation(fields: [playerId], references: [id])
+  type          LedgerEntryType
+  /// Provider's transaction_id (e.g. "bet_987654"). Not unique alone — spec
+  /// §6 notes a refund may reuse the original bet's transaction_id.
+  transactionId String
+  roundId       String
+  gameId        String
+  sessionId     String?
+  /// Signed: negative for debits (bet), positive for credits (win/refund).
+  amount       Decimal  @db.Decimal(18, 2)
+  balanceAfter Decimal  @db.Decimal(18, 2)
+  /// Set only when this entry was created by an admin-initiated manual
+  /// adjustment (admin/backend's wallets.adjust) — null for every
+  /// player/webhook-originated entry. No FK to AdminUser: the admin schema
+  /// is a separate concern and must stay readable/queryable even if an
+  /// admin account is later deleted (see AdminAuditLog for the durable,
+  /// FK'd record of who/why).
+  actorAdminId String?
+  createdAt    DateTime @default(now())
+
+  /// Idempotency key per spec §6: composite unique on (transaction_id, type),
+  /// not transaction_id alone. A duplicate insert here is how we detect a
+  /// replayed webhook call and skip re-applying the ledger action.
+  @@unique([transactionId, type])
+  /// Spec §6 "performance lookup index" for round-level queries.
+  @@index([playerId, roundId, type])
+  @@map("ledger_entries")
+}
+
+/// Backing store for "Login with OTP". No SMS gateway is connected — the
+/// code is generated and hashed here exactly like a password would be,
+/// but auth.service.ts returns it in the response outside production
+/// instead of sending it, so the flow is genuinely testable end-to-end
+/// without a real provider. Swapping in a real SMS gateway later only
+/// touches that one return statement, not this table or the verify logic.
+model OtpCode {
+  id         String    @id @default(uuid())
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+  @@map("otp_codes")
+}
+
+model Provider {
+  id       String   @id @default(uuid())
+  code     String   @unique
+  name     String
+  rtp      Float?
+  syncedAt DateTime @default(now())
+
+  games Game[]
+
+  @@map("providers")
+}
+
+/// The provider's game catalog (spec §3) carries no category/genre field —
+/// categories are our own organizational layer on top, assigned heuristically
+/// during catalog sync (see catalog.service.ts) rather than supplied by the
+/// provider. Not the provider's data model; ours.
+model Category {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  games Game[]
+
+  @@map("categories")
+}
+
+model Game {
+  id         String    @id @default(uuid())
+  /// Provider's game_id.
+  gameId     String    @unique
+  gameCode   String
+  gameName   String
+  providerId String
+  provider   Provider  @relation(fields: [providerId], references: [id])
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+  rtp        Float?
+  bannerUrl  String?
+  syncedAt   DateTime  @default(now())
+
+  @@map("games")
+}
+
+// ---------------------------------------------------------------------------
+// Admin platform (admin/backend, admin/frontend) — entirely separate identity
+// and authorization system from Player. An AdminUser is platform staff, never
+// a customer; nothing here is reachable from the player-facing backend or JWT.
+// See admin/backend/README.md for the auth/RBAC flow these models back.
+// ---------------------------------------------------------------------------
+
+enum AdminUserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model AdminUser {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  roleId       String
+  role         AdminRole       @relation(fields: [roleId], references: [id])
+  /// TOTP secret (base32), set once MFA enrollment completes. Null until then.
+  mfaSecret    String?
+  mfaEnabled   Boolean         @default(false)
+  status       AdminUserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  sessions  AdminSession[]
+  auditLogs AdminAuditLog[]
+
+  @@map("admin_users")
+}
+
+model AdminRole {
+  id          String                @id @default(uuid())
+  /// SUPER_ADMIN | MANAGER | FINANCE | KYC | SECURITY | RISK | SUPPORT | AUDITOR
+  /// (see admin/backend/prisma/seed — kept as a free-text unique key, not an
+  /// enum, so new roles can be added by Super Admin without a migration).
+  name        String                @unique
+  description String?
+  /// System roles (seeded ones above) can't be deleted from the admin UI —
+  /// only their permission set can be edited. Custom roles can be deleted.
+  isSystem    Boolean               @default(false)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  admins      AdminUser[]
+  permissions AdminRolePermission[]
+
+  @@map("admin_roles")
+}
+
+model AdminPermission {
+  id          String                @id @default(uuid())
+  /// e.g. "wallets.adjust", "withdrawals.approve" — dot-namespaced, matches
+  /// the RBAC matrix. Seeded once; the set of valid codes is fixed by what
+  /// the admin backend's requirePermission() middleware calls actually check.
+  code        String                @unique
+  description String?
+
+  roles AdminRolePermission[]
+
+  @@map("admin_permissions")
+}
+
+model AdminRolePermission {
+  roleId       String
+  permissionId String
+  role         AdminRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   AdminPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("admin_role_permissions")
+}
+
+model AdminSession {
+  id          String    @id @default(uuid())
+  adminId     String
+  admin       AdminUser @relation(fields: [adminId], references: [id])
+  /// Opaque refresh token, hashed at rest — same pattern as Player.RefreshToken.
+  tokenHash   String    @unique
+  ipAddress   String
+  userAgent   String
+  /// False between password-verified and TOTP-verified during a login that
+  /// requires MFA — a session isn't usable for admin-api calls until true.
+  mfaVerified Boolean   @default(false)
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([adminId])
+  @@map("admin_sessions")
+}
+
+/// Append-only. Every mutating admin-api request writes exactly one row here
+/// in the same DB transaction as the business change it makes — see
+/// admin/backend/src/lib/audit.ts. Never updated or deleted by admin action.
+model AdminAuditLog {
+  id         String    @id @default(uuid())
+  adminId    String
+  admin      AdminUser @relation(fields: [adminId], references: [id])
+  /// e.g. "wallet.adjust", "user.suspend", "admin.role_changed"
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  reason     String?
+  ipAddress  String
+  requestId  String
+  createdAt  DateTime  @default(now())
+
+  @@index([entityType, entityId])
+  @@index([adminId, createdAt])
+  @@map("admin_audit_logs")
+}

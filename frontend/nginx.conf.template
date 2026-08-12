@@ -1,0 +1,157 @@
+# Edge-level flood protection, in front of the app's own Redis-backed
+# limiters (backend/src/lib/rate-limit.ts). This stops a request storm at
+# the proxy — before it spends a Node event-loop turn or a Redis round
+# trip — it isn't meant to replace the app's per-account 15-minute quotas.
+# $binary_remote_addr, not X-Forwarded-For: nginx sees the real client
+# socket directly here, it's the origin doing the forwarding, not a hop
+# behind one.
+limit_req_zone $binary_remote_addr zone=api_general:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=api_auth:10m rate=5r/s;
+limit_req_zone $binary_remote_addr zone=admin_api_general:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=admin_api_auth:10m rate=5r/s;
+limit_req_status 429;
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Provider settlement callbacks — deliberately unthrottled here too,
+    # mirroring the apiLimiter exemption in app.ts (a per-IP cap would drop
+    # legitimate callbacks from the gaming provider's own infrastructure).
+    location /api/gaming_webhook {
+        proxy_pass http://backend:4000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Must precede location /api/ — nginx matches the longest prefix, so
+    # this narrower block wins for auth routes regardless of file order,
+    # but keeping it above the general block here is the readable ordering.
+    location /api/auth/ {
+        limit_req zone=api_auth burst=10 nodelay;
+        proxy_pass http://backend:4000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ {
+        limit_req zone=api_general burst=40 nodelay;
+        proxy_pass http://backend:4000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /socket.io/ {
+        proxy_pass http://backend:4000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        try_files $uri /index.html;
+    }
+}
+
+# Admin platform (admin/frontend + admin/backend) — separate app, separate
+# auth, separate RBAC (see admin/backend/README) — served from this same
+# nginx edge for one-VPS deployments. Distinguished purely by server_name;
+# the static files come from a separate root (html-admin, built from
+# admin/frontend in this image's admin-builder stage) and API calls go to
+# admin-backend:4600, never backend:4000 — the two apps share nothing at
+# this layer except the container they happen to run in.
+server {
+    listen 80;
+    server_name admin.${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name admin.${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/admin.${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/admin.${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    # Never meant to be embedded or indexed — belt-and-braces alongside
+    # X-Frame-Options, and keeps it out of search results if ever crawlable.
+    add_header X-Robots-Tag "noindex, nofollow" always;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    root /usr/share/nginx/html-admin;
+    index index.html;
+
+    location /admin-api/auth/ {
+        limit_req zone=admin_api_auth burst=10 nodelay;
+        proxy_pass http://admin-backend:4600;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /admin-api/ {
+        limit_req zone=admin_api_general burst=40 nodelay;
+        proxy_pass http://admin-backend:4600;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        try_files $uri /index.html;
+    }
+}

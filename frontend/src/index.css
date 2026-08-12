@@ -1,0 +1,888 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* ---------------------------------------------------------------------
+ * Brand palette — premium gold + parrot green + white. This is the ONE
+ * source of hue for the whole product; every token layer below (wincart
+ * base, landing/login, dashboard-shell, account) is derived from these
+ * values, not from independent literals. To re-tune the brand, edit only
+ * this block.
+ *
+ * Usage split (per product direction): gold = primary actions, premium/
+ * reward moments, selected states. Parrot green = success, wallet balance,
+ * positive indicators — a vivid yellow-green (not the softer sage/mint
+ * this replaced), picked to read as distinctly "parrot" rather than a
+ * muted pastel. White/near-white = card + page surfaces. The raw mid-tone
+ * --brand-gold/--brand-green fail AA as text on white — use the *-dark
+ * variants for text, the base tones for fills/borders/icons.
+ * ------------------------------------------------------------------- */
+:root {
+    --brand-gold: #d4af37;
+    --brand-gold-bright: #e8c766;
+    --brand-gold-dark: #a67c00;
+    --brand-gold-light: #f7e7b2;
+    --brand-green: #58b947;
+    --brand-green-soft: #e6f5d9;
+    --brand-green-dark: #2e7d1f;
+    --brand-green-deep: #1b4d12;
+    --brand-white: #ffffff;
+    --brand-ink: #2b1d00;
+    --brand-text: #212529;
+    --brand-text-muted: #5b6b60;
+
+    /* Fixed (non-theme-toggling) dark showcase surface — used only for the
+     login page's floating-game-tile display panel, which relies on
+     mix-blend-mode: screen against a dark backdrop to render the tile
+     imagery at all. Swapping to a white backdrop in light mode would
+     blend the tiles to invisible, so this one panel intentionally stays a
+     rich dark green/gold "display case" regardless of theme, the way a
+     premium product might keep one showcase vitrine dark under bright
+     gallery lighting. */
+    --brand-showcase-bg-1: #0e1712;
+    --brand-showcase-bg-2: #1c2e24;
+}
+
+/* ---------------------------------------------------------------------
+ * Wincart-derived design tokens (site brand remains "exchlotus")
+ * Source: docs/design-system/wincart-ui-guidelines.md
+ * Do not add raw hex/px values elsewhere — extend this file instead.
+ *
+ * Classic light theme (explicit product decision, overriding the dark-shell
+ * reading in the guidelines doc §2.2 — see the note there). One context now,
+ * not two: white page, subtly-toned cards, dark text throughout.
+ * ------------------------------------------------------------------- */
+:root {
+    /* Typography — Inter first (linked in index.html with preconnect +
+     font-display:swap, so text renders in the system fallback immediately
+     and swaps to Inter once it arrives, never blocking paint). Everything
+     after it is the same system stack as before, so a blocked/slow font
+     request still degrades to a fast native font, not a broken layout. */
+    --wincart-font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+        Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    /* Bumped again — every step upsized another notch. The whole UI's actual
+     body/label text sits at text-xs/sm rather than text-md, so undersizing
+     any one step makes the real interface read small even when the scale
+     "looks" fine in isolation. */
+    --wincart-font-size-xs: 14px;
+    --wincart-font-size-sm: 16px;
+    --wincart-font-size-md: 18px;
+    --wincart-font-size-lg: 21px;
+    --wincart-font-size-xl: 25px;
+    --wincart-font-size-2xl: 30px;
+    --wincart-font-size-3xl: 37px;
+    --wincart-font-size-4xl: 46px;
+    --wincart-line-height-base: 1.5;
+
+    /* Color. The source palette has no dedicated "page white" token — only
+     border.strong (#ffffff) supplies pure white, so it's repurposed as the
+     page background here (same gap-handling pattern as reusing it for shell
+     text in the dark-shell version). surface.base (#000000) goes unused in
+     this theme; it has no role once nothing dark remains. text-secondary
+     is the brand's AA-safe gold-on-white (--brand-gold-dark, not the raw
+     mid-tone --brand-gold, which fails contrast as text). */
+    --wincart-color-text-primary: var(--brand-text);
+    --wincart-color-text-secondary: var(--brand-gold-dark);
+    --wincart-color-text-tertiary: #1b1b1b;
+    --wincart-color-border-strong: var(--brand-white);
+    --wincart-color-surface-base: #000000;
+    --wincart-color-surface-muted: #f2f2f2;
+    --wincart-color-surface-strong: #dddddd;
+
+    /* Spacing (closed 8-step scale, sub-pixel values preserved as extracted) */
+    --wincart-space-1: 3px;
+    --wincart-space-2: 3.41px;
+    --wincart-space-3: 5.24px;
+    --wincart-space-4: 6.29px;
+    --wincart-space-5: 8.38px;
+    --wincart-space-6: 10.48px;
+    --wincart-space-7: 12.58px;
+    --wincart-space-8: 14.67px;
+
+    /* Radius — step8 (27.25px) is a pill/badge radius, not a card-corner radius */
+    --wincart-radius-xs: 2.62px;
+    --wincart-radius-sm: 5.24px;
+    --wincart-radius-md: 6.29px;
+    --wincart-radius-lg: 8px;
+    --wincart-radius-xl: 8.38px;
+    --wincart-radius-2xl: 10.48px;
+    --wincart-radius-3xl: 12px;
+    --wincart-radius-4xl: 27.25px;
+
+    /* Shadow — 1/2 read as resting card elevation, 3/4 as hover/overlay elevation */
+    --wincart-shadow-1: rgba(0, 0, 0, 0.1) 0px 3.144px 10.48px 0px;
+    --wincart-shadow-2: rgba(0, 0, 0, 0.1) 0px 2px 8px 0px;
+    --wincart-shadow-3: rgba(0, 0, 0, 0.05) 0px 3.144px 8.384px 0px;
+    --wincart-shadow-4: rgba(0, 0, 0, 0.05) 0px 4px 30px 0px;
+
+    /* Motion */
+    --wincart-motion-instant: 150ms;
+    --wincart-motion-fast: 200ms;
+    --wincart-motion-normal: 250ms;
+    --wincart-motion-slow: 300ms;
+    --wincart-motion-slower: 400ms;
+    --wincart-motion-step6: 600ms;
+}
+
+/* ---------------------------------------------------------------------
+ * shadcn semantic variable mapping — one flat light theme.
+ * ------------------------------------------------------------------- */
+:root {
+    --background: var(--wincart-color-border-strong);
+    --foreground: var(--wincart-color-text-primary);
+
+    --card: var(--wincart-color-surface-muted);
+    --card-foreground: var(--wincart-color-text-primary);
+    --popover: var(--wincart-color-surface-muted);
+    --popover-foreground: var(--wincart-color-text-primary);
+
+    /* --brand-gold-dark on white clears AA at body size; the raw mid-tone
+     --brand-gold does not, which is why text-secondary uses the dark
+     variant. Don't lighten the background further, and don't use
+     text-secondary at body size on surface-muted/strong (guidelines §2.2 —
+     those measured contrast ratios were tuned for the previous palette and
+     should be re-verified in devtools before reuse there). */
+    --primary: var(--wincart-color-text-secondary);
+    --primary-foreground: var(--wincart-color-border-strong);
+
+    --secondary: var(--wincart-color-surface-strong);
+    --secondary-foreground: var(--wincart-color-text-tertiary);
+
+    --muted: var(--wincart-color-surface-strong);
+    --muted-foreground: color-mix(in srgb, var(--wincart-color-text-primary) 70%, transparent);
+
+    --accent: var(--wincart-color-text-secondary);
+    --accent-foreground: var(--wincart-color-border-strong);
+
+    /* No error/destructive token in the source palette (flagged guidelines §2.2/§7).
+     Destructive actions MUST also carry an icon + explicit text — do not rely
+     on this color alone. */
+    --destructive: var(--wincart-color-text-tertiary);
+    --destructive-foreground: var(--wincart-color-surface-muted);
+
+    /* Derived, not supplied: surface-strong directly on white measures ~1.36:1
+     (fails the 3:1 non-text minimum). This mix clears ~3.3:1 — verify in
+     devtools if the source palette changes (guidelines §2.2, §7.4). */
+    --border: color-mix(in srgb, var(--wincart-color-text-tertiary) 50%, var(--wincart-color-border-strong));
+    --input: var(--wincart-color-surface-strong);
+    --ring: var(--wincart-color-text-tertiary);
+
+    /* surface-strong directly on surface-muted (the shadcn default hover/muted
+     pairing) measures ~1.2:1 — imperceptible. This is a stronger, still-token-
+     derived tint for row/item hover states (Table, list rows). */
+    --hover-tint: color-mix(in srgb, var(--wincart-color-text-tertiary) 10%, transparent);
+
+    --radius: var(--wincart-radius-lg);
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-sans: var(--wincart-font-family);
+    --font-heading: var(--wincart-font-family);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-hover-tint: var(--hover-tint);
+
+    /* Fixed 8-step radius scale — not calc-derived from a single value, so no
+     utility class silently resolves to the step8/4xl pill radius. */
+    --radius-xs: var(--wincart-radius-xs);
+    --radius-sm: var(--wincart-radius-sm);
+    --radius-md: var(--wincart-radius-md);
+    --radius-lg: var(--wincart-radius-lg);
+    --radius-xl: var(--wincart-radius-xl);
+    --radius-2xl: var(--wincart-radius-2xl);
+    --radius-3xl: var(--wincart-radius-3xl);
+    --radius-4xl: var(--wincart-radius-4xl);
+
+    --shadow-token-1: var(--wincart-shadow-1);
+    --shadow-token-2: var(--wincart-shadow-2);
+    --shadow-token-3: var(--wincart-shadow-3);
+    --shadow-token-4: var(--wincart-shadow-4);
+
+    --text-xs: var(--wincart-font-size-xs);
+    --text-sm: var(--wincart-font-size-sm);
+    --text-md: var(--wincart-font-size-md);
+    --text-lg: var(--wincart-font-size-lg);
+    --text-xl: var(--wincart-font-size-xl);
+    --text-2xl: var(--wincart-font-size-2xl);
+    --text-3xl: var(--wincart-font-size-3xl);
+    --text-4xl: var(--wincart-font-size-4xl);
+
+    --spacing-1: var(--wincart-space-1);
+    --spacing-2: var(--wincart-space-2);
+    --spacing-3: var(--wincart-space-3);
+    --spacing-4: var(--wincart-space-4);
+    --spacing-5: var(--wincart-space-5);
+    --spacing-6: var(--wincart-space-6);
+    --spacing-7: var(--wincart-space-7);
+    --spacing-8: var(--wincart-space-8);
+
+    --animate-duration-instant: var(--wincart-motion-instant);
+    --animate-duration-fast: var(--wincart-motion-fast);
+    --animate-duration-normal: var(--wincart-motion-normal);
+    --animate-duration-slow: var(--wincart-motion-slow);
+    --animate-duration-slower: var(--wincart-motion-slower);
+    --animate-duration-step6: var(--wincart-motion-step6);
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+        font-size: var(--wincart-font-size-md);
+        line-height: var(--wincart-line-height-base);
+        color-scheme: light;
+    }
+
+    html {
+        @apply font-sans;
+    }
+
+    button:not(:disabled),
+    [role="button"]:not([aria-disabled="true"]),
+    a[href],
+    summary {
+        cursor: pointer;
+    }
+}
+
+/* Skip link (guidelines §3.1 density edge case / §4 A4). Its own bg/text
+   colors are independent of page theme, so this is unchanged from the
+   dark-shell version. */
+.skip-link {
+    position: absolute;
+    left: var(--wincart-space-4);
+    top: -100px;
+    z-index: 50;
+    background: var(--wincart-color-text-secondary);
+    color: var(--wincart-color-border-strong);
+    padding: var(--wincart-space-3) var(--wincart-space-5);
+    border-radius: var(--wincart-radius-sm);
+    font-size: var(--wincart-font-size-md);
+    transition: top var(--wincart-motion-instant) ease;
+}
+
+/* ---------------------------------------------------------------------
+ * Landing page tokens — a second, fully separate palette for the public
+ * marketing page only. Dark premium gaming theme, one accent (orange) —
+ * not the earlier flat cream system. Glassmorphism and glow are back, but
+ * intentionally rationed: glass on the nav-on-scroll and a few floating
+ * elements, glow on primary CTAs and the hero centerpiece, not smeared
+ * across every card. Scope every landing component under `.landing-theme`
+ * so none of this leaks into /dashboard.
+ * ------------------------------------------------------------------- */
+:root {
+    /* Brand: premium gold + parrot green — the dark-mode pairing of the same
+     identity used everywhere else (not a separate violet theme). Background
+     tones carry a subtle deep-green-charcoal undertone rather than flat
+     neutral black, so dark mode still reads as "gold coin on green felt,"
+     not generic dark UI. */
+    --landing-bg-1: #0e1712;
+    --landing-bg-2: #16241c;
+    --landing-bg-3: #1c2e24;
+
+    --landing-text-primary: #f5f7f5;
+    --landing-text-secondary: #b9c4bd;
+    --landing-text-muted: #7c8a82;
+
+    --landing-gold: var(--brand-gold-bright);
+    --landing-gold-fg: var(--brand-ink);
+    /* Bright gold already clears AA on this dark body — no separate deepened
+     variant needed here (unlike the light-mode body below). */
+    --landing-gold-text: var(--landing-gold);
+    --landing-emerald: var(--brand-green);
+    --landing-red: #f04444;
+
+    --landing-border: rgb(255 255 255 / 10%);
+    --landing-border-strong: rgb(255 255 255 / 20%);
+    --landing-hover-tint: rgb(255 255 255 / 6%);
+    --landing-glass: rgb(255 255 255 / 5%);
+
+    --landing-radius-sm: 8px;
+    --landing-radius-md: 14px;
+    --landing-radius-lg: 20px;
+    --landing-radius-xl: 24px;
+    --landing-radius-full: 999px;
+}
+
+/* ---------------------------------------------------------------------
+ * Light mode — same brand (same accent orange, same radii), inverted
+ * surfaces/text. Applied via `data-theme` on <html>, set by useTheme()
+ * (src/hooks/useTheme.ts) and synced to localStorage; index.html carries a
+ * blocking inline script that applies the stored value before first paint
+ * so there's no flash of the wrong theme. Covers both the landing tokens
+ * here and the dashboard-shell tokens further down, so login/landing and
+ * the authenticated dashboard switch together.
+ * ------------------------------------------------------------------- */
+:root[data-theme="light"] {
+    --landing-bg-1: #ffffff;
+    --landing-bg-2: var(--brand-green-soft);
+    --landing-bg-3: #ffffff;
+
+    --landing-text-primary: var(--brand-text);
+    --landing-text-secondary: #4b5a51;
+    --landing-text-muted: #7c8a82;
+
+    --landing-gold: var(--brand-gold);
+    --landing-gold-fg: var(--brand-ink);
+    /* Deepened for AA at text sizes on the light body — the raw mid-tone
+     --brand-gold doesn't clear it here (the bright variant does on the
+     dark body above). */
+    --landing-gold-text: var(--brand-gold-dark);
+    --landing-emerald: var(--brand-green-dark);
+    --landing-red: #c53030;
+
+    --landing-border: rgb(0 0 0 / 9%);
+    --landing-border-strong: rgb(0 0 0 / 18%);
+    --landing-hover-tint: rgb(0 0 0 / 5%);
+    --landing-glass: rgb(0 0 0 / 4%);
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+    color-scheme: light;
+}
+
+.landing-theme {
+    background: var(--landing-bg-1);
+    color: var(--landing-text-primary);
+    font-family: var(--wincart-font-family);
+}
+
+.exchlotus-logo {
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 18px rgb(0 0 0 / 22%));
+}
+
+:root[data-theme="light"] .exchlotus-logo {
+    mix-blend-mode: multiply;
+    filter: saturate(1.08) contrast(1.08) drop-shadow(0 8px 18px rgb(13 7 20 / 10%));
+}
+
+:root[data-theme="dark"] .exchlotus-logo {
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--landing-gold) 18%, transparent));
+}
+
+/* logo-dark.png's "EXCH" glyphs are near-white — the light theme's
+   `mix-blend-mode: multiply` above (tuned for logo.png's navy-on-white
+   asset merging into a white page) makes white pixels transmit the
+   backdrop unchanged, i.e. invisible against a dark surface. Surfaces
+   that force the dark logo variant regardless of the page's own light/
+   dark toggle (TopNavbar, DashboardFooter — permanently dark chrome) need
+   the "dark theme" treatment here even while `data-theme="light"`. */
+:root[data-theme="light"] .exchlotus-logo.exchlotus-logo--forced-dark {
+    mix-blend-mode: normal;
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--landing-gold) 18%, transparent));
+}
+
+/* Flat panel: the base of every card in the landing UI. Elevation reads
+   mainly from the bg-3/bg-1 contrast + border, not from a drop shadow
+   (shadows barely register on a near-black page) — a light one is kept
+   for larger surfaces (hero card, modals) where it does help. */
+.landing-card {
+    background: var(--landing-bg-3);
+    border: 1px solid var(--landing-border);
+    box-shadow: 0 8px 24px -12px rgb(0 0 0 / 14%);
+}
+
+.landing-card-hover {
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.landing-card-hover:hover,
+.landing-card-hover:focus-within {
+    border-color: var(--landing-border-strong);
+    box-shadow: 0 12px 32px -12px rgb(0 0 0 / 20%);
+}
+
+/* Glass — reserved for the nav-on-scroll and a handful of floating
+   elements (hero mini-cards). Not the default card treatment. */
+.landing-glass {
+    background: var(--landing-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--landing-border);
+}
+
+/* Glow — reserved for primary CTAs and the hero centerpiece. Kept subtle
+   (low mix %) so it reads as a soft premium sheen on a white/light surface
+   rather than a loud neon halo. */
+.landing-glow {
+    box-shadow: 0 0 36px -16px color-mix(in srgb, var(--landing-gold) 38%, transparent);
+}
+
+/* Shine sweep — one clean diagonal gleam on hover/focus, not a looping
+   shimmer (that reads as a loading-skeleton animation, not premium).
+   Reserved for the same primary-CTA tier as .landing-glow. Needs the
+   element to already establish a stacking context (rounded-full buttons
+   here already clip via their own border-radius + this rule's overflow). */
+.landing-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.landing-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 40%, rgb(255 255 255 / 50%) 50%, transparent 60%);
+  transform: translateX(-120%);
+  transition: transform 650ms ease;
+  pointer-events: none;
+}
+.landing-shine:hover::after,
+.landing-shine:focus-visible::after {
+  transform: translateX(120%);
+}
+
+.login-gaming-bg {
+    background:
+        radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--landing-gold) 28%, transparent), transparent 24%),
+        radial-gradient(circle at 82% 28%, color-mix(in srgb, var(--landing-emerald) 18%, transparent), transparent 22%),
+        radial-gradient(circle at 50% 88%, color-mix(in srgb, var(--landing-gold) 18%, transparent), transparent 30%),
+        linear-gradient(135deg, var(--landing-bg-1), var(--landing-bg-2) 48%, var(--landing-bg-1));
+}
+
+.login-gaming-bg::before,
+.login-gaming-bg::after {
+    content: "";
+    position: absolute;
+    inset: -25%;
+    pointer-events: none;
+}
+
+.login-gaming-bg::before {
+    /* Much lower opacity than the old dark-theme version — a bold gold grid
+     reads as premium texture on near-black but as clutter on white, so
+     this is tuned as a faint watermark instead. */
+    opacity: 0.09;
+    background-image:
+        linear-gradient(color-mix(in srgb, var(--landing-gold) 28%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--landing-gold) 22%, transparent) 1px, transparent 1px);
+    background-size: 72px 72px;
+    transform: perspective(700px) rotateX(62deg) translateY(8%);
+    transform-origin: center bottom;
+    animation: login-grid-drift 12s linear infinite;
+}
+
+.login-gaming-bg::after {
+    opacity: 0.28;
+    background:
+        radial-gradient(circle, color-mix(in srgb, var(--landing-gold) 78%, transparent) 0 2px, transparent 3px) 8% 20% / 160px 160px,
+        radial-gradient(circle, color-mix(in srgb, var(--landing-emerald) 60%, transparent) 0 1px, transparent 3px) 72% 28% / 190px 190px,
+        linear-gradient(115deg, transparent 38%, color-mix(in srgb, var(--landing-gold) 12%, transparent) 48%, transparent 58%);
+    filter: blur(0.2px);
+    animation: login-neon-sweep 9s ease-in-out infinite alternate;
+}
+
+.login-orbit {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.login-orbit-b {
+    overflow: hidden;
+}
+
+.login-game-tile {
+    position: absolute;
+    bottom: -170px;
+    left: var(--tile-left);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 176px;
+    min-height: 96px;
+    border-radius: var(--landing-radius-md);
+    border: 0;
+    background: color-mix(in srgb, var(--landing-bg-3) 62%, transparent);
+    color: var(--landing-text-primary);
+    box-shadow: 0 18px 42px -24px color-mix(in srgb, var(--landing-gold) 70%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    padding: 12px 14px;
+    opacity: 0;
+    transform: translate3d(-50%, 0, 0);
+    animation: login-game-rise var(--tile-duration, 22s) linear infinite;
+    animation-delay: var(--tile-delay, 0s);
+}
+
+.login-game-tile-image {
+    aspect-ratio: 3 / 4;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+.login-game-tile-image img {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+}
+
+.login-card-game-bg {
+    opacity: 0.95;
+    mix-blend-mode: screen;
+}
+
+.login-card-game-bg .login-gaming-bg::before,
+.login-card-game-bg .login-gaming-bg::after {
+    display: none;
+}
+
+.login-card-game-bg .login-game-tile {
+    bottom: -150px;
+    width: 132px;
+    --tile-opacity: 0.5;
+    box-shadow: 0 18px 38px -18px color-mix(in srgb, var(--landing-gold) 90%, transparent);
+}
+
+.login-card-game-bg .login-game-tile-image {
+    --tile-opacity: 0.48;
+}
+
+.login-card-game-bg .login-game-tile:not(.login-game-tile-image) {
+    --tile-opacity: 0.42;
+}
+
+.login-game-tile span {
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.login-game-tile small {
+    color: var(--landing-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+@keyframes login-grid-drift {
+    from {
+        background-position: 0 0, 0 0;
+    }
+
+    to {
+        background-position: 0 72px, 72px 0;
+    }
+}
+
+@keyframes login-neon-sweep {
+    from {
+        transform: translate3d(-3%, 1%, 0) scale(1);
+    }
+
+    to {
+        transform: translate3d(3%, -2%, 0) scale(1.05);
+    }
+}
+
+@keyframes login-layer-drift {
+    from {
+        transform: translate3d(-1.5%, 0, 0) scale(1);
+    }
+
+    to {
+        transform: translate3d(1.5%, -1%, 0) scale(1.02);
+    }
+}
+
+@keyframes login-game-rise {
+    0% {
+        opacity: 0;
+        transform: translate3d(-50%, 0, 0) scale(0.92);
+    }
+
+    10%,
+    82% {
+        opacity: var(--tile-opacity, 0.3);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate3d(-50%, calc(-100vh - 280px), 0) scale(1.04);
+    }
+}
+
+/* A real, always-visible horizontal scrollbar (not the hidden-track +
+   edge-fade pattern) for short pill/chip rows where the row itself is the
+   only visual cue that there's more content off-screen. */
+.landing-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--landing-gold) transparent;
+}
+
+.landing-scrollbar::-webkit-scrollbar {
+    height: 6px;
+}
+
+.landing-scrollbar::-webkit-scrollbar-track {
+    background: var(--landing-border);
+    border-radius: 999px;
+}
+
+.landing-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--landing-gold);
+    border-radius: 999px;
+}
+
+.landing-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--landing-gold-text);
+}
+
+@keyframes landing-marquee {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-50%);
+    }
+}
+
+.landing-marquee {
+    animation: landing-marquee 20s linear infinite;
+}
+
+.landing-marquee:hover,
+.landing-marquee:focus-within {
+    animation-play-state: paused;
+}
+
+@keyframes landing-marquee-x {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+.landing-marquee-x {
+    animation: landing-marquee-x 20s linear infinite;
+}
+
+.landing-marquee-x:hover,
+.landing-marquee-x:focus-within {
+    animation-play-state: paused;
+}
+
+@keyframes landing-float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.landing-float {
+    animation: landing-float 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .landing-marquee,
+    .landing-marquee-x,
+    .landing-float {
+        animation: none;
+    }
+}
+
+.skip-link:focus {
+    top: var(--wincart-space-4);
+}
+
+/* ---------------------------------------------------------------------
+ * Dashboard shell tokens — inspired by a competitor review (chaska99.com,
+ * marketing surface: clean/functional feel, warm accent, tighter radii,
+ * Roboto), NOT a literal clone — every hex below is exchlotus's own,
+ * chosen to fit the same direction while passing WCAG 2.2 AA on both
+ * themes (verified: all text/icon/focus-ring pairs ≥4.5:1, all UI-
+ * component pairs ≥3:1 — see docs/design-system/chaska99-ui-guidelines.md
+ * for the source review; that doc's own token set was for chaska99's
+ * *dashboard* surface and included an unfixed contrast failure, which is
+ * why these values differ from it as well as from the source site).
+ * Kept as a separate token set from the landing page's `--landing-*`
+ * tokens (not literal var() aliases) so the dashboard can diverge later
+ * without touching the marketing page. Every dashboard feature component
+ * (navbar/sidebar/betslip/wallet/games) reads these tokens directly
+ * rather than the generic shadcn primitives in components/ui, so this
+ * one block re-themes the whole authenticated app.
+ * ------------------------------------------------------------------- */
+:root {
+    --sb-font-family: "Roboto", "Inter", system-ui, -apple-system, "Segoe UI", "Helvetica Neue",
+        Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+    --sb-navbar-bg: #0b0b0d;
+    --sb-navbar-bg-raised: #17171b;
+    --sb-navbar-fg: #f5f5f5;
+    --sb-navbar-fg-muted: #a1a1aa;
+    --sb-navbar-border: rgb(255 255 255 / 10%);
+
+    /* Same gold as the landing page (--brand-gold-bright / --brand-ink),
+     not a separate dashboard-only hue, so the wallet chip/footer/sidebar
+     read as the same product as the public site. ~11.6:1 on content-bg,
+     comfortably above the amber-orange it replaces. */
+    --sb-accent-gold: var(--brand-gold-bright);
+    --sb-accent-gold-fg: var(--brand-ink);
+
+    --sb-content-bg: #0b0b0d;
+    --sb-content-alt: #17171b;
+    --sb-text-primary: #f5f5f5;
+    --sb-text-secondary: #a1a1aa;
+    --sb-border: rgb(255 255 255 / 10%);
+
+    --sb-radius-sm: 6px;
+    --sb-radius-md: 10px;
+    --sb-radius-lg: 16px;
+    --sb-radius-full: 999px;
+}
+
+:root[data-theme="light"] {
+    --sb-navbar-bg: #ffffff;
+    --sb-navbar-bg-raised: #ffffff;
+    --sb-navbar-fg: #18181b;
+    --sb-navbar-fg-muted: #52525b;
+    --sb-navbar-border: rgb(0 0 0 / 9%);
+
+    /* Same gold as the landing page's light theme (--brand-gold /
+     --brand-ink) — matches the dark-theme swap above, keeping the
+     dashboard and landing site on one palette in both themes. ~7.8:1
+     text contrast on the gold fill. */
+    --sb-accent-gold: var(--brand-gold);
+    --sb-accent-gold-fg: var(--brand-ink);
+
+    --sb-content-bg: #fffaf5;
+    --sb-content-alt: #fdf1e6;
+    --sb-text-primary: #18181b;
+    --sb-text-secondary: #52525b;
+    --sb-border: rgb(0 0 0 / 9%);
+}
+
+.dashboard-shell {
+    background: var(--sb-content-bg);
+    color: var(--sb-text-primary);
+    font-family: var(--sb-font-family);
+}
+
+/* Same real-scrollbar treatment as .landing-scrollbar, tokenized for the
+   dashboard-shell palette instead of the landing one. */
+.sb-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sb-accent-gold) transparent;
+}
+
+.sb-scrollbar::-webkit-scrollbar {
+    height: 6px;
+}
+
+.sb-scrollbar::-webkit-scrollbar-track {
+    background: var(--sb-border);
+    border-radius: 999px;
+}
+
+.sb-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--sb-accent-gold);
+    border-radius: 999px;
+}
+
+/* ---------------------------------------------------------------------
+ * Account section tokens — /dashboard/account/* (Deposit, Account
+ * overview, Withdraw, Loyalty, History, My Profile). Aliased onto the
+ * dashboard-shell (--sb-*) tokens rather than a standalone palette, so the
+ * section shares the navbar's exact background and inherits the dark/light
+ * toggle instead of fighting it. Two dedicated semantic pairs sit on top
+ * of the shared --acc-accent (gold, primary actions/rewards):
+ * --acc-success (green — positive amounts, wallet balance, credits) and
+ * --acc-pending (gold — informational/awaiting states), per the product's
+ * "gold = primary/premium, green = positive" split. --acc-input-* is now a
+ * light bordered field (not the old fixed-black brand element) — a black
+ * input box read as premium against the old dark casino theme, but clashes
+ * with the white/gold/green fintech surface this section now uses.
+ * ------------------------------------------------------------------- */
+:root {
+    --acc-bg: var(--sb-content-bg);
+    --acc-surface: var(--sb-content-alt);
+    --acc-border: var(--sb-border);
+    --acc-border-soft: var(--sb-border);
+
+    --acc-accent: var(--sb-accent-gold);
+    --acc-accent-fg: var(--sb-accent-gold-fg);
+    --acc-accent-soft: color-mix(in srgb, var(--sb-accent-gold) 45%, transparent);
+
+    --acc-success: var(--brand-green);
+    --acc-success-fg: var(--brand-green-deep);
+    --acc-success-bg: color-mix(in srgb, var(--brand-green) 16%, transparent);
+
+    --acc-pending: var(--sb-accent-gold);
+    --acc-pending-fg: var(--sb-accent-gold-fg);
+    --acc-pending-bg: color-mix(in srgb, var(--sb-accent-gold) 16%, transparent);
+
+    --acc-danger: #f04444;
+    --acc-danger-bg: color-mix(in srgb, #f04444 14%, transparent);
+
+    --acc-input-bg: var(--sb-content-bg);
+    --acc-input-fg: var(--sb-text-primary);
+    --acc-input-border: var(--sb-border);
+    --acc-input-placeholder: var(--sb-text-secondary);
+
+    --acc-text-primary: var(--sb-text-primary);
+    --acc-text-secondary: var(--sb-text-secondary);
+    --acc-star: var(--brand-gold-bright);
+    --acc-star-empty: rgb(255 255 255 / 25%);
+
+    --acc-radius-sm: var(--sb-radius-sm);
+    --acc-radius-md: var(--sb-radius-md);
+    --acc-radius-lg: var(--sb-radius-lg);
+    --acc-radius-full: var(--sb-radius-full);
+}
+
+:root[data-theme="light"] {
+    --acc-star: var(--brand-gold-dark);
+    --acc-star-empty: #d9d9d9;
+    --acc-success-fg: var(--brand-green-dark);
+    --acc-danger: #c53030;
+    --acc-danger-bg: color-mix(in srgb, #c53030 10%, transparent);
+}
+
+.account-shell {
+    background: var(--acc-bg);
+    color: var(--acc-text-primary);
+    font-family: var(--wincart-font-family);
+}
