@@ -27,7 +27,9 @@ export function friendlyErrorMessage(err: unknown): string {
       case 404:
         return "That couldn't be found."
       case 409:
-        return err.code === "EMAIL_TAKEN" ? "That email is already registered." : "This action was already completed."
+        if (err.code === "EMAIL_TAKEN") return "That email is already registered."
+        if (err.code === "PHONE_TAKEN") return "That phone number is already registered — try logging in instead."
+        return "This action was already completed."
       case 422:
         if (err.code === "INSUFFICIENT_BALANCE") return "Insufficient balance."
         if (err.code === "NO_PASSWORD_SET") return err.message

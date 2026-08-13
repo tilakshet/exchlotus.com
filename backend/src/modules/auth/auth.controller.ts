@@ -8,13 +8,14 @@ import { changePassword, login, logout, refresh, register, requestOtp, verifyOtp
 
 export const authRouter = Router()
 
+const phoneSchema = z.string().regex(/^\+[1-9]\d{7,14}$/, "Enter a valid phone number, e.g. +919876543210")
+
 const registerSchema = z.object({
   username: z.string().min(2).max(40),
-  email: z.string().email(),
+  phone: phoneSchema,
+  email: z.string().email().optional(),
   password: z.string().min(8).max(72), // bcrypt truncates beyond 72 bytes
 })
-
-const phoneSchema = z.string().regex(/^\+[1-9]\d{7,14}$/, "Enter a valid phone number, e.g. +919876543210")
 
 const loginSchema = z.object({
   phone: phoneSchema,
@@ -38,7 +39,7 @@ const otpVerifySchema = z.object({
 function sendAuthError(res: import("express").Response, err: unknown) {
   if (err instanceof AuthError) {
     const status =
-      err.code === "EMAIL_TAKEN"
+      err.code === "EMAIL_TAKEN" || err.code === "PHONE_TAKEN"
         ? 409
         : err.code === "OTP_RATE_LIMITED"
           ? 429
