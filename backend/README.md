@@ -22,13 +22,14 @@ actually needs that neither spec covers at all: user registration/login
 (JWT + refresh tokens), a wallet REST API, profile, game categories, and a
 Socket.IO server for real-time wallet updates.
 
-**The real v2 provider has not been called yet — by instruction.**
-`GAMING_PROVIDER_BASE_URL`/`GAMING_PROVIDER_API_KEY` in `.env` point at it,
-but every verification of this integration was run against
-`src/mocks/gaming-provider-mock.server.ts` instead, with
-`GAMING_PROVIDER_BASE_URL` overridden at the shell level for that one
-process only (`.env` itself was never edited by this). See "Provider
-integration — v2 endpoint set" below for what is and isn't confirmed.
+**The real v2 provider is live and reachable.** `GET /v1/catalog/providers`
+and `GET /v1/catalog/games` are confirmed against it — both return real
+data through our own `syncCatalog()` code path, not just a raw curl check
+(189 providers, ~15.1k games, upserted into Postgres with provider→category
+links intact). `POST /v1/sessions/launch` also responds with the documented
+`{ game_url, session }` shape, but the `game_url` it returns currently
+errors for every game tried — see "Provider integration — v2 endpoint set"
+below for exactly what's confirmed vs. still broken/unconfirmed.
 
 ## Stack
 
@@ -307,12 +308,17 @@ integration doc would normally include:
   demo data, not something to trust at real scale.
 - **Rate limiting / brute-force protection** on `/api/auth/login` and the
   webhook endpoint — neither exists yet.
-- **The v2 provider has never actually been called.** Everything in
-  "Provider integration — v2 endpoint set" above is verified against the
-  local mock only. The first real call to
-  `https://igaming-one-psi.vercel.app/api` will very likely surface field
-  names or response shapes that don't match `gaming-provider.types.ts` —
-  expect to fix that on contact, not be surprised by it.
+- **Session launch doesn't actually produce a playable game.** Confirmed
+  live against `https://igaming-one-psi.vercel.app/api` (2026-08-13):
+  `POST /v1/sessions/launch` returns `200` with the documented
+  `{ game_url, session }` shape for every game/provider tried, but
+  `game_url` itself resolves to `https://gator.drakon.casino/game-error` —
+  not a 4xx/5xx we could catch and retry, a "success" response pointing at
+  a broken game. Tried across two different providers (rubyplay, mancala)
+  in `fun` mode, same result both times. This is on the provider's side —
+  likely an account/agent activation step we don't have documented — not
+  something fixable from this codebase. Don't wire the frontend's "Play"
+  button to trust this response until it's resolved with the provider.
 - **Campaigns (free-spins) have no consumer.** The client methods exist
   and are mock-verified; there's no Prisma model, service, or REST route
   exposing this to the frontend yet.

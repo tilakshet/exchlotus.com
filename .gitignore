@@ -2,3 +2,8 @@
 .env.production
 deploy/certbot/conf/
 deploy/certbot/www/
+
+# Raw pg_dump exports used to seed a local DB — large, machine-specific,
+# never meant to be committed. The live DB is seeded via scp + psql
+# directly (see docs/deployment.md), not through git.
+backend/data/
