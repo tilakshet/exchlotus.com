@@ -36,6 +36,9 @@ export function friendlyErrorMessage(err: unknown): string {
         return "Please check the form for errors."
       case 429:
         return "Too many attempts — please wait a moment and try again."
+      case 502:
+        if (err.code === "GAME_UNAVAILABLE") return err.message
+        return "Something went wrong on our end. Please try again."
       case 500:
         return "Something went wrong on our end. Please try again."
       default:
