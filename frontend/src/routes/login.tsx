@@ -54,6 +54,22 @@ const signUpPhoneSchema = z.object({
     message: "You must agree to the Terms & Privacy Policy",
   }),
 });
+
+const passwordSignUpSchema = z
+  .object({
+    username: z.string().min(2, "Enter your name").max(40),
+    phone: phoneLocalSchema,
+    password: z.string().min(8, "At least 8 characters").max(72),
+    confirmPassword: z.string().min(1, "Confirm your password"),
+    agreeTerms: z.boolean().refine((v) => v === true, {
+      message: "You must agree to the Terms & Privacy Policy",
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+type PasswordSignUpValues = z.infer<typeof passwordSignUpSchema>;
 type SignUpPhoneValues = z.infer<typeof signUpPhoneSchema>;
 
 type View = "otp" | "password" | "register";
@@ -72,6 +88,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const gamesQuery = useGames();
   const [view, setView] = useState<View>(initialView ?? "otp");
+  const [signUpMethod, setSignUpMethod] = useState<"otp" | "password">("otp");
 
   function onSuccess() {
     navigate({ to: (redirect ?? "/dashboard") as "/dashboard" });
@@ -155,10 +172,54 @@ function LoginPage() {
             </p>
           )}
 
+          {view === "register" && (
+            <div
+              className="mt-6 inline-flex gap-1 rounded-(--landing-radius-full) p-1 text-sm"
+              style={{
+                background: "var(--landing-glass)",
+                border: "1px solid var(--landing-border)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setSignUpMethod("otp")}
+                aria-pressed={signUpMethod === "otp"}
+                className="rounded-(--landing-radius-full) px-5 py-2.5 font-bold transition-colors"
+                style={
+                  signUpMethod === "otp"
+                    ? {
+                        background: "var(--landing-gold)",
+                        color: "var(--landing-gold-fg)",
+                      }
+                    : { color: "var(--landing-text-secondary)" }
+                }
+              >
+                Sign Up with OTP
+              </button>
+              <button
+                type="button"
+                onClick={() => setSignUpMethod("password")}
+                aria-pressed={signUpMethod === "password"}
+                className="rounded-(--landing-radius-full) px-5 py-2.5 font-bold transition-colors"
+                style={
+                  signUpMethod === "password"
+                    ? {
+                        background: "var(--landing-gold)",
+                        color: "var(--landing-gold-fg)",
+                      }
+                    : { color: "var(--landing-text-secondary)" }
+                }
+              >
+                Sign Up with Password
+              </button>
+            </div>
+          )}
+
           <div className="mt-2 max-w-md">
             {view === "otp" && <OtpLoginForm onSuccess={onSuccess} />}
             {view === "password" && <PasswordLoginForm onSuccess={onSuccess} />}
-            {view === "register" && <SignUpForm onSuccess={onSuccess} />}
+            {view === "register" && signUpMethod === "otp" && <SignUpForm onSuccess={onSuccess} />}
+            {view === "register" && signUpMethod === "password" && <PasswordSignUpForm onSuccess={onSuccess} />}
           </div>
 
           <p
@@ -736,6 +797,166 @@ function PasswordLoginForm({ onSuccess }: { onSuccess: () => void }) {
         }}
       >
         {isSubmitting ? "Signing in…" : "Sign In"}
+      </button>
+    </form>
+  );
+}
+
+/**
+ * Alternative to SignUpForm's OTP flow — creates the account (and issues
+ * tokens) in one request via POST /api/auth/register, instead of waiting on
+ * a code with no SMS gateway to deliver it (auth.service.ts requestOtp).
+ * Still collects phone, same as OTP Sign Up — register() requires it so the
+ * resulting account can also use "Login with Password" afterward.
+ */
+function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
+  const { register: createAccount } = useAuth();
+  const [formError, setFormError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<PasswordSignUpValues>({
+    resolver: zodResolver(passwordSignUpSchema),
+    defaultValues: { agreeTerms: false },
+  });
+
+  async function onSubmit(values: PasswordSignUpValues) {
+    setFormError(null);
+    try {
+      await createAccount(values.username, `+91${values.phone}`, values.password);
+      onSuccess();
+    } catch (err) {
+      setFormError(friendlyErrorMessage(err instanceof ApiError ? err : err));
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="mt-6 flex flex-col gap-5"
+      noValidate
+    >
+      <FormError message={formError} />
+
+      <div>
+        <label
+          htmlFor="signup-password-username"
+          className="mb-1.5 block text-xs font-bold"
+          style={{ color: "var(--landing-text-secondary)" }}
+        >
+          Full Name*
+        </label>
+        <div
+          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          style={inputBoxStyle()}
+        >
+          <input
+            id="signup-password-username"
+            type="text"
+            placeholder="Your name"
+            aria-invalid={!!errors.username}
+            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
+            style={{ color: "var(--landing-text-primary)" }}
+            {...register("username")}
+          />
+        </div>
+        <FieldError message={errors.username?.message} />
+      </div>
+
+      <PhoneField
+        id="signup-password-phone"
+        register={register}
+        error={errors.phone?.message}
+      />
+
+      <div>
+        <label
+          htmlFor="signup-password-password"
+          className="mb-1.5 block text-xs font-bold"
+          style={{ color: "var(--landing-text-secondary)" }}
+        >
+          Password*
+        </label>
+        <div
+          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          style={inputBoxStyle()}
+        >
+          <Lock
+            className="size-4.5 shrink-0"
+            style={{ color: "var(--landing-text-muted)" }}
+            aria-hidden="true"
+          />
+          <input
+            id="signup-password-password"
+            type="password"
+            placeholder="••••••••"
+            aria-invalid={!!errors.password}
+            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
+            style={{ color: "var(--landing-text-primary)" }}
+            {...register("password")}
+          />
+        </div>
+        <FieldError message={errors.password?.message} />
+      </div>
+
+      <div>
+        <label
+          htmlFor="signup-password-confirm"
+          className="mb-1.5 block text-xs font-bold"
+          style={{ color: "var(--landing-text-secondary)" }}
+        >
+          Confirm Password*
+        </label>
+        <div
+          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          style={inputBoxStyle()}
+        >
+          <Lock
+            className="size-4.5 shrink-0"
+            style={{ color: "var(--landing-text-muted)" }}
+            aria-hidden="true"
+          />
+          <input
+            id="signup-password-confirm"
+            type="password"
+            placeholder="••••••••"
+            aria-invalid={!!errors.confirmPassword}
+            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
+            style={{ color: "var(--landing-text-primary)" }}
+            {...register("confirmPassword")}
+          />
+        </div>
+        <FieldError message={errors.confirmPassword?.message} />
+      </div>
+
+      <div>
+        <label
+          className="flex items-start gap-2.5 text-xs"
+          style={{ color: "var(--landing-text-secondary)" }}
+        >
+          <input
+            type="checkbox"
+            className="mt-0.5 size-8 shrink-0 accent-(--landing-gold)"
+            aria-invalid={!!errors.agreeTerms}
+            {...register("agreeTerms")}
+          />
+          I certify that I am 18 years old and I agree to the T&amp;Cs and
+          Privacy Policy
+        </label>
+        <FieldError message={errors.agreeTerms?.message} />
+      </div>
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="landing-glow mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
+        style={{
+          background: "var(--landing-gold)",
+          color: "var(--landing-gold-fg)",
+        }}
+      >
+        {isSubmitting ? "Creating account…" : "Create Account"}
       </button>
     </form>
   );

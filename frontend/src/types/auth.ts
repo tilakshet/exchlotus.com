@@ -1,8 +1,7 @@
 export interface AuthUser {
   username: string
-  /** Null for phone/OTP accounts, which have no email at all. */
+  /** Null for phone/OTP accounts, unless they also registered with a password (email is optional there too). */
   email?: string | null
-  /** Null for password/email accounts, which never collect a phone number. */
   phone?: string | null
   currency: string
 }
