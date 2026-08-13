@@ -11,6 +11,16 @@ RUN cd admin/backend && npm ci
 
 COPY backend/prisma ./backend/prisma
 COPY admin/backend/prisma.config.ts ./admin/backend/prisma.config.ts
+COPY admin/backend/prisma ./admin/backend/prisma
+# The prisma-client-js generator resolves `@prisma/client` by walking up
+# from the SCHEMA file's own directory (backend/prisma/), not from CWD —
+# and admin/backend/node_modules is a sibling of backend/, never an
+# ancestor of backend/prisma/, so that walk-up fails with "Could not
+# resolve @prisma/client" otherwise. Symlinking the package already
+# installed above into /repo's node_modules (an ancestor of
+# backend/prisma/) satisfies that resolution without a second, redundant
+# `npm ci` against backend/'s own package.json.
+RUN mkdir -p node_modules/@prisma && ln -s /repo/admin/backend/node_modules/@prisma/client node_modules/@prisma/client
 # Only the adminClient generator — the plain `client` generator's default
 # output resolves against backend/node_modules, which isn't present in
 # this build context (and isn't this image's concern; backend/Dockerfile
@@ -29,6 +39,11 @@ ENV NODE_ENV=production
 COPY --from=builder /repo/admin/backend/package.json /repo/admin/backend/package-lock.json ./
 COPY --from=builder /repo/admin/backend/node_modules ./node_modules
 COPY --from=builder /repo/admin/backend/dist ./dist
+# `npm run seed` (tsx prisma/seed.ts) is a one-off operator command, not
+# something the running server itself imports — but it still needs to
+# exist in this image to be exec'd via `docker compose exec admin-backend
+# npm run seed`, and nothing above copies admin/backend/prisma/ at all.
+COPY --from=builder /repo/admin/backend/prisma ./prisma
 # The generated Prisma client is plain JS/.d.ts, not compiled from .ts by
 # tsc — it has to be copied into dist/ by hand so the compiled
 # `require("../generated/prisma")` in dist/lib/prisma.js resolves at the
