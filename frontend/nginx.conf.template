@@ -68,6 +68,14 @@ server {
 
     location /api/ {
         limit_req zone=api_general burst=40 nodelay;
+        # POST /api/catalog/sync pages through the full provider catalog
+        # (~15k games, tens of sequential requests) — nginx's 60s default
+        # was cutting it off mid-sync with a 504 while the backend kept
+        # working, leaving partial/no data written. Everything else under
+        # /api/ finishes in well under this, so a longer ceiling here costs
+        # nothing for the fast paths.
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
         proxy_pass http://backend:4000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
