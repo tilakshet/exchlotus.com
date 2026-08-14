@@ -8,29 +8,25 @@ import { useAppDispatch, useAppSelector } from "@/store"
 import { notificationMarkedRead } from "@/store/notificationSlice"
 import { Logo } from "@/components/shared/Logo"
 import { UserAvatar } from "@/components/shared/UserAvatar"
+import { ThemeToggle } from "@/components/shared/ThemeToggle"
 import { CURRENT_LOYALTY_TIER } from "@/features/account/loyalty-tiers"
-import { MobileNav } from "@/components/dashboard-shell/MobileNav"
 
 /**
  * Top bar for the /dashboard shell — same `--landing-*` tokens/treatment as
  * LandingHeader (solid blurred bg, gold accents, landing-card dropdowns) so
- * the dashboard and public site read as one product, not two. Structure
- * stays dashboard-specific though: MobileNav's hamburger (page nav drawer)
- * on the left instead of LandingHeader's anchor-link pill row (those anchor
- * to landing-page sections that don't exist here), and the notification
- * bell stays — LandingHeader has none since it doesn't need one. On mobile,
- * wallet/profile controls live inside MobileNav's drawer instead of a
- * second separate slide-down panel — one accessible (Radix Dialog) mobile
- * menu, not two competing ones. Theme toggle lives in the Sidebar/MobileNav
- * drawer, not here (moved out of the navbar per earlier redesign).
+ * the dashboard and public site read as one product, not two. Wallet
+ * balance, notifications, and profile are always visible here on every
+ * breakpoint (mobile included) — primary page navigation instead lives in
+ * BottomNavBar.tsx below 1024px (see dashboard.tsx/dashboard.account.tsx),
+ * not a hamburger drawer. Theme toggle lives in Sidebar.tsx on desktop
+ * (≥1024px) and inside ProfileChip's dropdown for mobile — not standalone
+ * on the navbar, which stays free for wallet/notifications/profile only.
  */
 export function TopNavbar() {
     const { isAuthenticated } = useAuth()
 
     return (
         <header className="sticky top-0 z-40 flex flex-wrap items-center gap-4 border-b border-(--landing-border-strong) bg-(--landing-bg-1) px-4 py-3 text-(--landing-text-primary) shadow-[0_4px_28px_rgb(0_0_0/25%)] backdrop-blur-xl sm:px-6">
-            <MobileNav />
-
             <Link
                 to={isAuthenticated ? "/dashboard" : "/"}
                 className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
@@ -38,22 +34,16 @@ export function TopNavbar() {
                 <Logo heightClass="h-12 sm:h-16" />
             </Link>
 
-            <div className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-2.5">
                 {isAuthenticated ? (
-                    <div className="hidden items-center gap-2.5 lg:flex">
+                    <>
                         <WalletChip />
                         <NotificationBell />
                         <ProfileChip />
-                    </div>
+                    </>
                 ) : (
-                    <div className="hidden lg:block">
-                        <LoggedOutActions />
-                    </div>
+                    <LoggedOutActions />
                 )}
-
-                <div className="lg:hidden">
-                    {isAuthenticated ? <NotificationBell /> : <LoggedOutActions />}
-                </div>
             </div>
         </header>
     )
@@ -70,12 +60,10 @@ function LoggedOutActions() {
     )
 }
 
-export function WalletChip({ full }: { full?: boolean }) {
+export function WalletChip() {
     const { data: wallet, isLoading: walletLoading } = useWallet()
     return (
-        <div
-            className={`flex items-center gap-2 rounded-(--landing-radius-full) border border-(--landing-border) bg-(--landing-bg-2) py-1.5 pr-1.5 pl-3.5 text-sm font-semibold text-(--landing-text-primary) ${full ? "justify-between" : ""}`}
-        >
+        <div className="flex items-center gap-2 rounded-(--landing-radius-full) border border-(--landing-border) bg-(--landing-bg-2) py-1.5 pr-1.5 pl-3.5 text-sm font-semibold text-(--landing-text-primary)">
             <span className="flex items-center gap-2 sm:gap-2.5">
                 <Wallet
                     className="size-5.5 shrink-0 text-(--landing-emerald) sm:size-6.5"
@@ -151,7 +139,7 @@ export function NotificationBell() {
     )
 }
 
-export function ProfileChip({ full, onNavigate }: { full?: boolean; onNavigate?: () => void }) {
+export function ProfileChip() {
     const { user, logout } = useAuth()
     const navigate = useNavigate()
     if (!user) return null
@@ -159,31 +147,6 @@ export function ProfileChip({ full, onNavigate }: { full?: boolean; onNavigate?:
     async function handleLogout() {
         await logout()
         navigate({ to: "/" })
-    }
-
-    if (full) {
-        return (
-            <div className="flex flex-col gap-2">
-                <Link to="/dashboard/account" onClick={onNavigate} className="flex items-center gap-3 rounded-(--landing-radius-md) bg-(--landing-hover-tint) px-3 py-2.5 outline-none hover:bg-(--landing-glass)">
-                    <UserAvatar sizeClassName="size-10" background="var(--landing-gold)" color="var(--landing-gold-fg)" />
-                    <div>
-                        <p className="font-semibold text-(--landing-text-primary)">{user.username}</p>
-                        <p className="flex items-center gap-1 text-xs text-(--landing-text-secondary)">
-                            <Star className="size-3.5" fill="var(--landing-gold)" stroke="var(--landing-gold)" aria-hidden="true" />
-                            {CURRENT_LOYALTY_TIER.name} Tier
-                        </p>
-                    </div>
-                </Link>
-                <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="flex min-h-11 items-center gap-2 rounded-(--landing-radius-md) px-3 py-2.5 text-sm font-semibold text-(--landing-text-secondary) outline-none hover:bg-(--landing-hover-tint)"
-                >
-                    <LogOut className="size-4.5" aria-hidden="true" />
-                    Log out
-                </button>
-            </div>
-        )
     }
 
     return (
@@ -216,6 +179,13 @@ export function ProfileChip({ full, onNavigate }: { full?: boolean; onNavigate?:
                             My Account
                         </Link>
                     </DropdownMenuPrimitive.Item>
+
+                    {/* Mobile only — desktop keeps its one copy in Sidebar.tsx, showing both would be redundant. */}
+                    <div className="flex items-center justify-between gap-2 border-t border-(--landing-border) px-3 py-2 lg:hidden">
+                        <span className="text-(--landing-text-secondary)">Theme</span>
+                        <ThemeToggle />
+                    </div>
+
                     <DropdownMenuPrimitive.Item
                         onSelect={() => handleLogout()}
                         className="flex cursor-pointer items-center gap-2 rounded-(--landing-radius-sm) px-3 py-2 text-(--landing-text-secondary) outline-none data-highlighted:bg-(--landing-hover-tint)"

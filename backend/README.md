@@ -87,7 +87,7 @@ project architecture (see repo-root `CLAUDE.md`).
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| POST | `/api/auth/register` | — | `{ username, email, password }` → tokens. Not in the original spec — added because there was otherwise no way to create an account. |
+| POST | `/api/auth/register` | — | `{ username, phone, email?, password }` → tokens. Not in the original spec — added because there was otherwise no way to create an account. `phone` is required (not just `email`) so the resulting account can also use `/api/auth/login`, which looks players up by phone. |
 | POST | `/api/auth/login` | — | `{ email, password }` → `{ accessToken, refreshToken, expiresIn }` |
 | POST | `/api/auth/refresh` | — | `{ refreshToken }` → new token pair. Refresh tokens rotate — the old one is revoked the moment a new one is issued. |
 | POST | `/api/auth/logout` | — | `{ refreshToken }` → revokes it |

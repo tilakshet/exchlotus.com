@@ -27,6 +27,14 @@ const envSchema = z.object({
   /** Used only by prisma/seed.ts to provision the first SUPER_ADMIN. */
   ADMIN_BOOTSTRAP_EMAIL: z.string().email(),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8),
+
+  // Same PayIn/Payout aggregator as backend/ — only the payout side is
+  // called from here (withdrawals.service.ts, on admin approval). Same
+  // credentials as backend/.env.production's PAYMENT_GATEWAY_CLIENT_ID/
+  // SECRET_ID, entered separately since these are two separate deployables.
+  PAYMENT_GATEWAY_BASE_URL: z.string().url(),
+  PAYMENT_GATEWAY_CLIENT_ID: z.string().min(1),
+  PAYMENT_GATEWAY_SECRET_ID: z.string().min(1),
 })
 
 const parsed = envSchema.safeParse(process.env)

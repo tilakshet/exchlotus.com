@@ -39,11 +39,15 @@ ENV NODE_ENV=production
 COPY --from=builder /repo/admin/backend/package.json /repo/admin/backend/package-lock.json ./
 COPY --from=builder /repo/admin/backend/node_modules ./node_modules
 COPY --from=builder /repo/admin/backend/dist ./dist
-# `npm run seed` (tsx prisma/seed.ts) is a one-off operator command, not
-# something the running server itself imports — but it still needs to
-# exist in this image to be exec'd via `docker compose exec admin-backend
-# npm run seed`, and nothing above copies admin/backend/prisma/ at all.
+COPY --from=builder /repo/admin/backend/tsconfig.json ./tsconfig.json
+# `npm run seed` (tsx prisma/seed.ts) is a one-off operator command run via
+# `docker compose exec admin-backend npm run seed`, not something the
+# compiled server imports — but seed.ts imports straight from TypeScript
+# source (`../src/lib/env` etc., run live through tsx, never compiled by
+# tsc since prisma/ is outside src/), so both prisma/ AND src/ have to
+# exist in this image too, not just dist/.
 COPY --from=builder /repo/admin/backend/prisma ./prisma
+COPY --from=builder /repo/admin/backend/src ./src
 # The generated Prisma client is plain JS/.d.ts, not compiled from .ts by
 # tsc — it has to be copied into dist/ by hand so the compiled
 # `require("../generated/prisma")` in dist/lib/prisma.js resolves at the

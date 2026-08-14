@@ -1,42 +1,32 @@
-import { useCallback, useEffect, useState } from "react"
-import type { BankAccount } from "@/types/bank"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import * as bankAccountsApi from "@/api/bank-accounts.api"
 
-const STORAGE_KEY = "exchlotus.bankAccounts"
-
-function load(): BankAccount[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as BankAccount[]) : []
-  } catch {
-    return []
-  }
-}
+const bankAccountsQueryKey = ["bank-accounts"] as const
 
 /**
- * There's no payout-method backend endpoint (no bank verification, no
- * payment gateway) — this is local-only (per browser, not synced across
- * devices or used by the actual withdrawal API) until one exists. Saving
- * and selecting an account here is real (persists, survives reload,
- * removable), it's just not connected to any real payout rail, same as
- * the rest of the wallet in this build. Flagged rather than silently
- * pretending it's a verified backend-linked payout method.
+ * Real backend-linked payout methods now — used by withdrawals.service.ts
+ * on the admin side to actually send money. Was localStorage-only until the
+ * real payout gateway existed; see git history if you need that version.
  */
 export function useBankAccounts() {
-  const [accounts, setAccounts] = useState<BankAccount[]>(load)
+  const queryClient = useQueryClient()
+  const query = useQuery({ queryKey: bankAccountsQueryKey, queryFn: bankAccountsApi.listBankAccounts })
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts))
-  }, [accounts])
+  const addMutation = useMutation({
+    mutationFn: bankAccountsApi.addBankAccount,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: bankAccountsQueryKey }),
+  })
 
-  const addAccount = useCallback((input: Omit<BankAccount, "id" | "createdAt">) => {
-    const account: BankAccount = { ...input, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
-    setAccounts((prev) => [...prev, account])
-    return account
-  }, [])
+  const removeMutation = useMutation({
+    mutationFn: bankAccountsApi.removeBankAccount,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: bankAccountsQueryKey }),
+  })
 
-  const removeAccount = useCallback((id: string) => {
-    setAccounts((prev) => prev.filter((a) => a.id !== id))
-  }, [])
-
-  return { accounts, addAccount, removeAccount }
+  return {
+    accounts: query.data ?? [],
+    isLoading: query.isLoading,
+    addAccount: addMutation.mutateAsync,
+    isAdding: addMutation.isPending,
+    removeAccount: removeMutation.mutate,
+  }
 }

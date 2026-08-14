@@ -58,9 +58,12 @@ model Player {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  wallet        Wallet?
-  entries       LedgerEntry[]
-  refreshTokens RefreshToken[]
+  wallet             Wallet?
+  entries            LedgerEntry[]
+  refreshTokens      RefreshToken[]
+  bankAccounts       BankAccount[]
+  paymentOrders      PaymentOrder[]
+  withdrawalRequests WithdrawalRequest[]
 
   @@map("players")
 }
@@ -196,6 +199,92 @@ model Game {
   syncedAt   DateTime  @default(now())
 
   @@map("games")
+}
+
+// ---------------------------------------------------------------------------
+// Payments (deposits via PayIn, withdrawals via admin-approved Payout) — see
+// backend/src/modules/payments and backend/src/modules/bank-accounts.
+// ---------------------------------------------------------------------------
+
+/// A player's saved payout destination. Collected up front (not per-withdrawal)
+/// so the admin approval step in WithdrawalRequest has account/IFSC to send to.
+model BankAccount {
+  id                String   @id @default(uuid())
+  playerId          String
+  player            Player   @relation(fields: [playerId], references: [id])
+  accountHolderName String
+  bankName          String
+  accountNumber     String
+  ifsc              String
+  createdAt         DateTime @default(now())
+
+  withdrawalRequests WithdrawalRequest[]
+
+  @@index([playerId])
+  @@map("bank_accounts")
+}
+
+enum PaymentOrderStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  EXPIRED
+}
+
+/// One row per deposit attempt. `id` doubles as the `order_id` sent to/
+/// received from the gateway — no separate column to keep in sync with it.
+model PaymentOrder {
+  id           String             @id @default(uuid())
+  playerId     String
+  player       Player             @relation(fields: [playerId], references: [id])
+  amount       Decimal            @db.Decimal(18, 2)
+  status       PaymentOrderStatus @default(PENDING)
+  /// The gateway's own trx_id from its create-order response — for support/reconciliation lookups.
+  gatewayTrxId String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([playerId])
+  @@map("payment_orders")
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSING
+  PAID
+  FAILED
+}
+
+/// Created the instant a player requests a withdrawal (funds move into
+/// Wallet.lockedBalance at that point — see wallet.service.ts) but the real
+/// payout API call only happens when an admin approves it. No KYC/fraud
+/// review exists yet, so nothing pays out unattended.
+model WithdrawalRequest {
+  id               String           @id @default(uuid())
+  playerId         String
+  player           Player           @relation(fields: [playerId], references: [id])
+  bankAccountId    String
+  bankAccount      BankAccount      @relation(fields: [bankAccountId], references: [id])
+  amount           Decimal          @db.Decimal(18, 2)
+  status           WithdrawalStatus @default(PENDING)
+  /// trxid WE generate and send to the payout API — matched back against
+  /// the callback's cus_trx_id to identify which request it's updating.
+  gatewayTrxId     String?
+  gatewayUtr       String?
+  /// AdminUser.id from admin/backend's schema — no FK, same reasoning as
+  /// LedgerEntry.actorAdminId: this table must stay readable even if that
+  /// admin account is later deleted.
+  decidedByAdminId String?
+  /// Required on reject — shown to the player, kept for audit.
+  reason           String?
+  requestedAt      DateTime         @default(now())
+  decidedAt        DateTime?
+
+  @@index([playerId])
+  @@index([status])
+  @@map("withdrawal_requests")
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,12 @@
 import { apiRequest } from "./http"
 import type { AuthTokens } from "@/types/auth"
 
-export function registerAccount(input: { username: string; email: string; password: string }): Promise<AuthTokens> {
+export function registerAccount(input: {
+  username: string
+  phone: string
+  email?: string
+  password: string
+}): Promise<AuthTokens> {
   return apiRequest<AuthTokens>("/api/auth/register", { method: "POST", body: input, anonymous: true })
 }
 

@@ -28,6 +28,16 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(16),
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(30),
+
+  // Real-money payment gateway (PayIn deposits, Payout withdrawals) — see
+  // backend/src/modules/payments. Neither callback the gateway sends is
+  // signature-verified (undocumented by the provider); payments.service.ts
+  // binds strictly to a pending order/withdrawal WE created instead.
+  PAYMENT_GATEWAY_BASE_URL: z.string().url(),
+  PAYMENT_GATEWAY_CLIENT_ID: z.string().min(1),
+  PAYMENT_GATEWAY_SECRET_ID: z.string().min(1),
+  /** Used to build the per-transaction redirect_url sent to the PayIn API — where the player's browser returns to after paying. */
+  PAYMENT_CALLBACK_BASE_URL: z.string().url(),
 })
 
 const parsed = envSchema.safeParse(process.env)

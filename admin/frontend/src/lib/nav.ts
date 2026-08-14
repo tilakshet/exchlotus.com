@@ -55,6 +55,10 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [{ label: "Reports", to: "/reports", permission: "reports.view", icon: BarChart3 }],
   },
   {
+    label: "Finance",
+    items: [{ label: "Withdrawals", to: "/withdrawals", permission: "withdrawals.view", icon: Landmark }],
+  },
+  {
     label: "Administration",
     items: [
       { label: "Admins", to: "/admins", permission: "admins.view", icon: ShieldCheck },

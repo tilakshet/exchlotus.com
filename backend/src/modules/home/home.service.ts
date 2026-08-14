@@ -19,18 +19,29 @@ export interface HeroBannerDto {
  * need any upscaling. HeroSlide only ever renders backgroundImage +
  * ctaText + the Play action (see HeroSlide.tsx) — no other copy survives
  * to the UI, so that's all this DTO carries.
+ *
+ * gameIds are the real provider's own `id` (confirmed 2026-08-14 against
+ * the live catalog, matched by game name) — NOT the short numeric ids this
+ * list originally shipped with. Those were leftover from a pre-real-sync
+ * seed and only ever matched local's database because old rows never get
+ * deleted on resync (upsert only inserts/updates); production had already
+ * had its catalog truncated + resynced cleanly, so none of them ever
+ * existed there, silently skipping every slide (see the "skipping slide"
+ * warn log in buildHeroBanners below). No exact "Zeus of Olympus" match
+ * exists in the real catalog — substituted with the closest same-theme
+ * game ("Zeus") rather than dropping that slide.
  */
 const PINNED_BANNERS: { gameId: string; image: string; ctaText: string }[] = [
-  { gameId: "617", image: "/hero/coinflip.jpg", ctaText: "Flip Now" },
-  { gameId: "1072", image: "/hero/zeus-of-olympus.jpg", ctaText: "Play Now" },
-  { gameId: "56101", image: "/hero/zoomboy.jpg", ctaText: "Play Now" },
-  { gameId: "4541", image: "/hero/zoom-roulette.jpg", ctaText: "Spin Now" },
-  { gameId: "555", image: "/hero/zoodiac.jpg", ctaText: "Play Now" },
-  { gameId: "174", image: "/hero/zombie-siege.jpg", ctaText: "Survive Now" },
-  { gameId: "51133", image: "/hero/zombie-outbreak.jpg", ctaText: "Play Now" },
-  { gameId: "24154", image: "/hero/zombie-school-megaways.jpg", ctaText: "Play Now" },
-  { gameId: "15000", image: "/hero/aviator.jpg", ctaText: "Take Off" },
-  { gameId: "10980", image: "/hero/chicken-dash.jpg", ctaText: "Run Now" },
+  { gameId: "cmsge42ze0f56uz1d0grv0m2l", image: "/hero/coinflip.jpg", ctaText: "Flip Now" }, // Coin Flip
+  { gameId: "cmsgduljn05vwuz1dc2zbydm8", image: "/hero/zeus-of-olympus.jpg", ctaText: "Play Now" }, // Zeus
+  { gameId: "cmsge45hp0f7yuz1dmx56rmgi", image: "/hero/zoomboy.jpg", ctaText: "Play Now" }, // Zoomboy
+  { gameId: "cmsgdpq0e00u6uz1di192hicj", image: "/hero/zoom-roulette.jpg", ctaText: "Spin Now" }, // Zoom Roulette
+  { gameId: "cmsge3xgm0ezwuz1di66jpq71", image: "/hero/zoodiac.jpg", ctaText: "Play Now" }, // Zoodiac
+  { gameId: "cmsge5t9j0gqcuz1dd69v3s0e", image: "/hero/zombie-siege.jpg", ctaText: "Survive Now" }, // Zombie Siege
+  { gameId: "cmsgdzqgq0aw6uz1d87do58ar", image: "/hero/zombie-outbreak.jpg", ctaText: "Play Now" }, // Zombie Outbreak
+  { gameId: "cmsge54350g1muz1d3xs9hmcr", image: "/hero/zombie-school-megaways.jpg", ctaText: "Play Now" }, // Zombie School Megaways
+  { gameId: "cmsgedoms0mwwuz1dlk6texzt", image: "/hero/aviator.jpg", ctaText: "Take Off" }, // Aviator
+  { gameId: "cmsge5sg50gpguz1d3zqrwq6e", image: "/hero/chicken-dash.jpg", ctaText: "Run Now" }, // Chicken Dash
 ]
 
 export async function listHeroBanners(): Promise<HeroBannerDto[]> {

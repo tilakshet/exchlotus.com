@@ -23,10 +23,24 @@ async function issueTokens(player: { id: string; externalId: string; username: s
   return { accessToken, refreshToken: refresh.token, expiresIn }
 }
 
-export async function register(input: { username: string; email: string; password: string }): Promise<AuthTokens> {
-  const existing = await prisma.player.findUnique({ where: { email: input.email } })
-  if (existing) {
-    throw new AuthError("EMAIL_TAKEN", `Email ${input.email} is already registered`)
+export async function register(input: {
+  username: string
+  phone: string
+  email?: string
+  password: string
+}): Promise<AuthTokens> {
+  // Phone first — it's the identifier login()/requestOtp() key off, so an
+  // account created here has to collect it too or it would be permanently
+  // unable to sign back in via "Login with Password".
+  const existingPhone = await prisma.player.findUnique({ where: { phone: input.phone } })
+  if (existingPhone) {
+    throw new AuthError("PHONE_TAKEN", `Phone ${input.phone} is already registered`)
+  }
+  if (input.email) {
+    const existingEmail = await prisma.player.findUnique({ where: { email: input.email } })
+    if (existingEmail) {
+      throw new AuthError("EMAIL_TAKEN", `Email ${input.email} is already registered`)
+    }
   }
 
   const passwordHash = await hashPassword(input.password)
@@ -36,6 +50,7 @@ export async function register(input: { username: string; email: string; passwor
       // our own internal Player.id, generated fresh at signup.
       externalId: randomUUID(),
       username: input.username,
+      phone: input.phone,
       email: input.email,
       passwordHash,
       wallet: { create: { balance: 0, currency: "INR" } },
@@ -49,9 +64,9 @@ export async function register(input: { username: string; email: string; passwor
  * Phone-based, not email — the UI's "Login with Password" tab collects a
  * phone number now, matching Sign Up (also phone-first). Accounts created
  * purely through OTP verification have no passwordHash, so they can't use
- * this until a password is set somewhere for them (no such flow exists
- * yet — this only serves accounts that already have both phone+password,
- * e.g. the seeded fixture player, updated to have a phone).
+ * this until a password is set somewhere for them — register() above is
+ * one such place now (Sign Up with Password); the seeded fixture player is
+ * the other (a phone was added to it by hand for exactly this purpose).
  */
 export async function login(input: { phone: string; password: string }): Promise<AuthTokens> {
   const player = await prisma.player.findUnique({ where: { phone: input.phone } })

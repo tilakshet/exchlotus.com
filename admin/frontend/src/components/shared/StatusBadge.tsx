@@ -34,6 +34,15 @@ export const ADMIN_STATUS_CONFIG: Record<string, StatusConfig> = {
   DISABLED: { label: "Disabled", tone: "destructive", icon: XCircle },
 }
 
+export const WITHDRAWAL_STATUS_CONFIG: Record<string, StatusConfig> = {
+  PENDING: { label: "Pending review", tone: "warning", icon: Clock },
+  APPROVED: { label: "Approved", tone: "success", icon: CheckCircle2 },
+  PROCESSING: { label: "Processing", tone: "default", icon: Loader2 },
+  PAID: { label: "Paid", tone: "success", icon: CheckCircle2 },
+  REJECTED: { label: "Rejected", tone: "destructive", icon: XCircle },
+  FAILED: { label: "Failed", tone: "destructive", icon: XCircle },
+}
+
 export const MFA_STATUS_CONFIG: Record<string, StatusConfig> = {
   true: { label: "MFA enabled", tone: "success", icon: ShieldCheck },
   false: { label: "MFA not set up", tone: "warning", icon: ShieldAlert },
