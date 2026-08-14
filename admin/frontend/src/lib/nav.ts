@@ -1,7 +1,7 @@
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
-  BarChart3,
+  BarChart3, 
   Dices,
   Gamepad2,
   Gauge,
