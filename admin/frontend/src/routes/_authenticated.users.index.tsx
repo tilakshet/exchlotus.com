@@ -9,6 +9,7 @@ import { FilterBar, type ActiveFilter } from "@/components/shared/FilterBar"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { ErrorState } from "@/components/shared/ErrorState"
 import { StatusBadge, USER_STATUS_CONFIG } from "@/components/shared/StatusBadge"
+import { ExportButton } from "@/components/shared/ExportButton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { TableSkeletonRows } from "@/components/shared/TableSkeleton"
@@ -37,7 +38,11 @@ function UsersPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Users" description="Every registered player on the platform." />
+      <PageHeader
+        title="Users"
+        description="Every registered player on the platform."
+        actions={<ExportButton module="users" filters={{ search: debouncedSearch || undefined, status: status === "ALL" ? undefined : status }} />}
+      />
 
       <FilterBar
         activeFilters={activeFilters}

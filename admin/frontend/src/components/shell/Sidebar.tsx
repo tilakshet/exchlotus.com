@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router"
-import { ChevronsLeft, ChevronsRight, ShieldHalf } from "lucide-react"
+import { ChevronsLeft, ChevronsRight } from "lucide-react"
 import { NAV_GROUPS } from "@/lib/nav"
 import { useAdminAuth } from "@/hooks/useAdminAuth"
 import { useAppDispatch, useAppSelector } from "@/store"
@@ -25,7 +25,7 @@ export function Sidebar() {
       )}
     >
       <div className={cn("flex h-12 items-center gap-2 border-b border-sidebar-border px-4", collapsed && "justify-center px-0")}>
-        <ShieldHalf className="size-5 shrink-0 text-primary" aria-hidden="true" />
+        <img src="/lotus.png" alt="" className="size-5 shrink-0" aria-hidden="true" />
         {!collapsed && <span className="truncate text-sm font-semibold tracking-wide">Exchlotus Admin</span>}
       </div>
 

@@ -21,6 +21,9 @@ const envSchema = z.object({
 
   MFA_ISSUER: z.string().default("Exchlotus Admin"),
 
+  /** A manual wallet WITHDRAWAL adjustment at/above this amount surfaces in the notifications feed. */
+  LARGE_WITHDRAWAL_THRESHOLD: z.coerce.number().positive().default(50000),
+
   /** Used only by prisma/seed.ts to provision the first SUPER_ADMIN. */
   ADMIN_BOOTSTRAP_EMAIL: z.string().email(),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8),

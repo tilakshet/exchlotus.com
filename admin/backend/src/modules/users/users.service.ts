@@ -11,10 +11,8 @@ export interface ListUsersOptions {
   limit?: number
 }
 
-export async function listUsers(options: ListUsersOptions) {
-  const limit = Math.min(options.limit ?? 25, 100)
-
-  const where: Prisma.PlayerWhereInput = {
+function buildUsersWhere(options: Pick<ListUsersOptions, "search" | "status">): Prisma.PlayerWhereInput {
+  return {
     ...(options.status ? { status: options.status } : {}),
     ...(options.search
       ? {
@@ -27,6 +25,15 @@ export async function listUsers(options: ListUsersOptions) {
         }
       : {}),
   }
+}
+
+export function countUsers(options: Pick<ListUsersOptions, "search" | "status">) {
+  return prisma.player.count({ where: buildUsersWhere(options) })
+}
+
+export async function listUsers(options: ListUsersOptions) {
+  const limit = Math.min(options.limit ?? 25, 100)
+  const where = buildUsersWhere(options)
 
   const rows = await prisma.player.findMany({
     where,

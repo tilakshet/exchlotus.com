@@ -84,3 +84,42 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   return json as T
 }
+
+/**
+ * Authenticated file download — admin-api uses Bearer-token auth (no
+ * cookies), so a plain `<a href>`/`window.location` navigation can't carry
+ * the Authorization header. `fetch` + Blob is the correct (only) way to
+ * include it; every export endpoint caps rows server-side (see
+ * admin/backend/src/lib/export.ts MAX_EXPORT_ROWS), so buffering the
+ * response in memory here is bounded, not a large-file risk.
+ */
+export async function downloadFile(path: string, query?: RequestOptions["query"]): Promise<void> {
+  const accessToken = store.getState().adminAuth.accessToken
+  let res = await rawRequest(path, { query }, accessToken)
+
+  if (res.status === 401 && store.getState().adminAuth.refreshToken) {
+    refreshInFlight ??= performRefresh().finally(() => {
+      refreshInFlight = null
+    })
+    const newToken = await refreshInFlight
+    if (newToken) res = await rawRequest(path, { query }, newToken)
+  }
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => null)
+    throw new ApiError(res.status, json?.error ?? "UNKNOWN_ERROR", json?.message ?? res.statusText, json?.issues)
+  }
+
+  const blob = await res.blob()
+  const disposition = res.headers.get("Content-Disposition")
+  const filename = disposition?.match(/filename="?([^";]+)"?/)?.[1] ?? "export"
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}

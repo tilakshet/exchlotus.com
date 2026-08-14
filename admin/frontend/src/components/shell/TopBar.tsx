@@ -6,6 +6,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { NotificationBell } from "@/components/shell/NotificationBell"
 
 export function TopBar() {
   const { user, logout } = useAdminAuth()
@@ -20,9 +21,15 @@ export function TopBar() {
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4">
-      <div className="flex items-center gap-2">{user && <Badge variant="primary">{user.roleName.replaceAll("_", " ")}</Badge>}</div>
+      <div className="flex items-center gap-2">
+        {/* Sidebar (with its own lotus mark) is hidden below md, so the brand mark moves here to stay visible on mobile. */}
+        <img src="/lotus.png" alt="" className="size-5 md:hidden" aria-hidden="true" />
+        {user && <Badge variant="primary">{user.roleName.replaceAll("_", " ")}</Badge>}
+      </div>
 
       <div className="flex items-center gap-1">
+        <NotificationBell />
+
         <Button
           variant="ghost"
           size="icon"

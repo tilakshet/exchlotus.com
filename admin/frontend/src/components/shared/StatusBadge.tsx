@@ -1,4 +1,16 @@
-import { CheckCircle2, Circle, Clock, Loader2, ShieldAlert, ShieldCheck, XCircle } from "lucide-react"
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CheckCircle2,
+  Circle,
+  Dices,
+  RotateCcw,
+  ShieldAlert,
+  ShieldCheck,
+  Sliders,
+  Trophy,
+  XCircle,
+} from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { badgeVariants } from "@/components/ui/badge"
@@ -34,6 +46,15 @@ export const WITHDRAWAL_STATUS_CONFIG: Record<string, StatusConfig> = {
 export const MFA_STATUS_CONFIG: Record<string, StatusConfig> = {
   true: { label: "MFA enabled", tone: "success", icon: ShieldCheck },
   false: { label: "MFA not set up", tone: "warning", icon: ShieldAlert },
+}
+
+export const LEDGER_TYPE_CONFIG: Record<string, StatusConfig> = {
+  DEPOSIT: { label: "Deposit", tone: "success", icon: ArrowDownToLine },
+  WITHDRAWAL: { label: "Withdrawal", tone: "warning", icon: ArrowUpFromLine },
+  BET: { label: "Bet", tone: "default", icon: Dices },
+  WIN: { label: "Win", tone: "success", icon: Trophy },
+  REFUND: { label: "Refund", tone: "warning", icon: RotateCcw },
+  ADJUSTMENT: { label: "Adjustment", tone: "default", icon: Sliders },
 }
 
 /**

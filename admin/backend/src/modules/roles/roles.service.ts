@@ -58,7 +58,17 @@ export async function createRole(
   })
 }
 
-export async function updateRolePermissions(req: Request, actorAdminId: string, roleId: string, permissionCodes: string[]) {
+export async function updateRolePermissions(
+  req: Request,
+  actorAdminId: string,
+  actorRoleId: string,
+  roleId: string,
+  permissionCodes: string[]
+) {
+  if (roleId === actorRoleId) {
+    throw new AdminApiError("SELF_ROLE_EDIT", "You cannot edit the permissions of your own role — ask another admin with roles.manage to make this change")
+  }
+
   const role = await prisma.adminRole.findUnique({ where: { id: roleId }, include: permissionsInclude })
   if (!role) throw new AdminApiError("NOT_FOUND", "Role not found")
 

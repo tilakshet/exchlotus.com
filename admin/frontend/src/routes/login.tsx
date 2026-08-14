@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { KeyRound, Loader2, ShieldHalf } from "lucide-react"
+import { KeyRound, Loader2 } from "lucide-react"
 import { useAdminAuth } from "@/hooks/useAdminAuth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -60,8 +60,8 @@ function LoginPage() {
     <div className="flex h-screen w-screen items-center justify-center bg-background px-4 text-foreground">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="flex size-11 items-center justify-center rounded-xl bg-primary/15 text-primary">
-            <ShieldHalf className="size-6" aria-hidden="true" />
+          <span className="flex size-11 items-center justify-center rounded-xl bg-primary/15">
+            <img src="/lotus.png" alt="" className="size-7" aria-hidden="true" />
           </span>
           <p className="text-sm font-semibold tracking-wide text-foreground">Exchlotus Admin</p>
           <p className="text-xs text-muted-foreground">Platform Operations Control Center</p>

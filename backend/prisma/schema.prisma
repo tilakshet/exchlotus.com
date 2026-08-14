@@ -192,6 +192,10 @@ model Game {
   category   Category? @relation(fields: [categoryId], references: [id])
   rtp        Float?
   bannerUrl  String?
+  /// Admin-panel toggle (games.manage) — catalog.service.ts filters player-
+  /// facing reads to enabled:true and bumps the catalog cache version on
+  /// change, so a disabled game disappears from the player app promptly.
+  enabled    Boolean   @default(true)
   syncedAt   DateTime  @default(now())
 
   @@map("games")
@@ -296,20 +300,24 @@ enum AdminUserStatus {
 }
 
 model AdminUser {
-  id           String          @id @default(uuid())
-  email        String          @unique
-  passwordHash String
-  firstName    String
-  lastName     String
-  roleId       String
-  role         AdminRole       @relation(fields: [roleId], references: [id])
+  id                        String          @id @default(uuid())
+  email                     String          @unique
+  passwordHash              String
+  firstName                 String
+  lastName                  String
+  roleId                    String
+  role                      AdminRole       @relation(fields: [roleId], references: [id])
   /// TOTP secret (base32), set once MFA enrollment completes. Null until then.
-  mfaSecret    String?
-  mfaEnabled   Boolean         @default(false)
-  status       AdminUserStatus @default(ACTIVE)
-  lastLoginAt  DateTime?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  mfaSecret                 String?
+  mfaEnabled                Boolean         @default(false)
+  status                    AdminUserStatus @default(ACTIVE)
+  lastLoginAt               DateTime?
+  /// The notifications feed (admin/backend's notifications module) is
+  /// derived read-only from AdminAuditLog — this is the only state it
+  /// needs: "unread" = qualifying audit rows newer than this timestamp.
+  lastNotificationsViewedAt DateTime?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
 
   sessions  AdminSession[]
   auditLogs AdminAuditLog[]

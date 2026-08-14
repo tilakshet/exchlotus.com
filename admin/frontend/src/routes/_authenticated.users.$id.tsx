@@ -86,17 +86,33 @@ function AdjustBalanceForm({ id, currency }: { id: string; currency: string }) {
   const [type, setType] = useState<"DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT">("ADJUSTMENT")
   const [amount, setAmount] = useState("")
   const [reason, setReason] = useState("")
+  // One key per submission intent: reused across a pending call and any
+  // accidental retry of it, regenerated only once that intent resolves
+  // (success or a confirmed duplicate) so the next submit is a fresh one.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
 
   const mutation = useMutation({
-    mutationFn: () => adjustWallet(id, { type, amount: Number(amount), reason }),
+    mutationFn: () => adjustWallet(id, { type, amount: Number(amount), reason, idempotencyKey }),
     onSuccess: () => {
       setAmount("")
       setReason("")
+      setIdempotencyKey(crypto.randomUUID())
       queryClient.invalidateQueries({ queryKey: ["user", id] })
       queryClient.invalidateQueries({ queryKey: ["ledger", id] })
       toast({ title: "Wallet adjusted", description: `${type} · ${formatCurrency(Number(amount), currency)}`, variant: "success" })
     },
-    onError: (err) => toast({ title: "Adjustment failed", description: err instanceof ApiError ? err.message : undefined, variant: "destructive" }),
+    onError: (err) => {
+      if (err instanceof ApiError && err.code === "DUPLICATE_ADJUSTMENT") {
+        setAmount("")
+        setReason("")
+        setIdempotencyKey(crypto.randomUUID())
+        queryClient.invalidateQueries({ queryKey: ["user", id] })
+        queryClient.invalidateQueries({ queryKey: ["ledger", id] })
+        toast({ title: "Already applied", description: "This adjustment was already submitted — no changes were duplicated.", variant: "success" })
+        return
+      }
+      toast({ title: "Adjustment failed", description: err instanceof ApiError ? err.message : undefined, variant: "destructive" })
+    },
   })
 
   if (!hasPermission("wallets.adjust")) return null

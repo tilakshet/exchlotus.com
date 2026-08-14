@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto"
 import type { Request } from "express"
 import { Prisma } from "../../generated/prisma"
 import { prisma } from "../../lib/prisma"
@@ -57,10 +56,13 @@ export async function listLedger(playerId: string, options: { limit?: number; cu
  * written in the same transaction, so "balance changed but unattributed"
  * is not a reachable state.
  *
- * No client-supplied idempotency key yet (unlike the webhook path) — this
- * is a human clicking a confirmed button, not a machine retrying a call.
- * Revisit if the admin frontend needs double-submit protection beyond
- * disabling the button on click.
+ * `idempotencyKey` is caller-supplied (the frontend generates one per
+ * confirm-dialog open and reuses it across submit/retry) and used verbatim
+ * as the LedgerEntry.transactionId, so a double-submit hits the same
+ * [transactionId, type] uniqueness the player-side ledger already relies
+ * on for idempotency. The duplicate check happens after the wallet row
+ * lock is acquired, so it's race-free against concurrent submissions for
+ * the same player.
  */
 export async function adjustBalance(
   req: Request,
@@ -68,7 +70,8 @@ export async function adjustBalance(
   actorAdminId: string,
   type: "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT",
   amount: number,
-  reason: string
+  reason: string,
+  idempotencyKey: string
 ) {
   const player = await prisma.player.findUnique({ where: { id: playerId } })
   if (!player) throw new AdminApiError("NOT_FOUND", "Player not found")
@@ -82,6 +85,11 @@ export async function adjustBalance(
     const wallet = walletRows[0]
     if (!wallet) throw new AdminApiError("NOT_FOUND", "Wallet not provisioned for this player")
 
+    const duplicate = await tx.ledgerEntry.findUnique({
+      where: { transactionId_type: { transactionId: idempotencyKey, type } },
+    })
+    if (duplicate) throw new AdminApiError("DUPLICATE_ADJUSTMENT", "This adjustment was already submitted")
+
     const currentBalance = new Prisma.Decimal(wallet.balance)
     const newBalance = currentBalance.plus(signedAmount)
     if (newBalance.isNegative()) {
@@ -92,7 +100,7 @@ export async function adjustBalance(
       data: {
         playerId: player.id,
         type,
-        transactionId: randomUUID(),
+        transactionId: idempotencyKey,
         roundId: "admin-adjustment",
         gameId: "wallet",
         amount: signedAmount,
