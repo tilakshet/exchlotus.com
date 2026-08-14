@@ -23,7 +23,9 @@ export interface TransactionHistoryPage {
   nextCursor: string | null
 }
 
-export interface LedgerMutationResult {
+export interface WithdrawalRequestResult {
+  status: "PENDING"
+  withdrawalId: string
   balance: number
-  replayed: boolean
+  lockedBalance: number
 }

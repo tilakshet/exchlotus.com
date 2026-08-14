@@ -48,15 +48,15 @@ function Field({ id, label, children }: { id: string; label: string; children: R
 }
 
 /**
- * Real add/save/persist flow (localStorage-backed, see useBankAccounts) —
- * not a form that pretends to submit somewhere. There's no bank
- * verification or payout-gateway backend, so this is explicitly framed as
- * saving payout details for reference, not as a verified bank link.
+ * Real, backend-persisted payout destination — an admin sends withdrawals
+ * here via the real payout API once approved (see admin/backend
+ * withdrawals.service.ts), not a local-only save.
  */
 function AddBankPage() {
   const { addAccount } = useBankAccounts()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   const {
     register,
@@ -66,13 +66,19 @@ function AddBankPage() {
 
   async function onSubmit(values: BankValues) {
     setSaving(true)
-    addAccount({
-      accountHolderName: values.accountHolderName,
-      bankName: values.bankName,
-      accountNumber: values.accountNumber,
-      ifsc: values.ifsc.toUpperCase(),
-    })
-    navigate({ to: "/dashboard/account/withdraw" })
+    setFormError(null)
+    try {
+      await addAccount({
+        accountHolderName: values.accountHolderName,
+        bankName: values.bankName,
+        accountNumber: values.accountNumber,
+        ifsc: values.ifsc.toUpperCase(),
+      })
+      navigate({ to: "/dashboard/account/withdraw" })
+    } catch {
+      setFormError("Couldn't save this bank account — please check the details and try again.")
+      setSaving(false)
+    }
   }
 
   return (
@@ -162,8 +168,14 @@ function AddBankPage() {
 
           <p className="flex items-start gap-2 text-sm text-[color:var(--acc-text-secondary)]">
             <ShieldCheck className="mt-0.5 size-4.5 shrink-0" style={{ color: "var(--acc-accent)" }} aria-hidden="true" />
-            Saved on this device for your reference when withdrawing — there's no bank verification or payout gateway in this build, so withdrawals still credit your in-app balance directly rather than transferring to this account.
+            This is where withdrawal payouts are sent once an admin approves your request — double-check the details before saving.
           </p>
+
+          {formError && (
+            <p role="alert" className="text-sm text-red-600">
+              {formError}
+            </p>
+          )}
 
           <button
             type="submit"

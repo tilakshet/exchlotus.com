@@ -3,14 +3,19 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { CheckCircle2, CreditCard, IndianRupee, Percent, Ticket, Zap } from "lucide-react"
-import { useDeposit } from "@/hooks/useWallet"
+import { CreditCard, IndianRupee, Percent, QrCode, Ticket, Zap } from "lucide-react"
+import { useCreateDepositOrder } from "@/hooks/useWallet"
 import { ApiError, friendlyErrorMessage } from "@/api/api-error"
 import { ComingSoon } from "@/features/account/ComingSoon"
 import { StepHeading } from "@/features/account/StepHeading"
 import { formatInr } from "@/lib/utils"
 
+interface DepositSearch {
+  status?: "pending"
+}
+
 export const Route = createFileRoute("/dashboard/account/deposit")({
+  validateSearch: (search: Record<string, unknown>): DepositSearch => (search.status === "pending" ? { status: "pending" } : {}),
   component: DepositPage,
 })
 
@@ -29,9 +34,9 @@ type DepositInput = z.input<typeof depositSchema>
 type DepositValues = z.output<typeof depositSchema>
 
 function DepositPage() {
-  const deposit = useDeposit()
+  const { status } = Route.useSearch()
+  const deposit = useCreateDepositOrder()
   const [couponMessage, setCouponMessage] = useState<string | null>(null)
-  const [successBalance, setSuccessBalance] = useState<number | null>(null)
 
   const {
     register,
@@ -45,10 +50,12 @@ function DepositPage() {
   const totalPayable = numericAmount + PROCESSING_FEE
 
   async function onSubmit(values: DepositValues) {
-    setSuccessBalance(null)
     try {
-      const result = await deposit.mutateAsync(values.amount)
-      setSuccessBalance(result.balance)
+      const order = await deposit.mutateAsync(values.amount)
+      // The wallet only actually credits once the gateway's callback lands
+      // (backend payments.service.ts) — this redirect just hands the player
+      // off to pay, it isn't itself a success signal.
+      window.location.href = order.paymentUrl
     } catch {
       // Surfaced via deposit.isError/deposit.error below.
     }
@@ -56,6 +63,15 @@ function DepositPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {status === "pending" && (
+        <div
+          role="status"
+          className="rounded-[var(--acc-radius-lg)] px-6 py-4 text-base font-medium"
+          style={{ background: "var(--acc-accent-soft)", color: "var(--acc-text-primary)" }}
+        >
+          Payment received — your balance updates automatically as soon as it's confirmed, usually within a minute.
+        </div>
+      )}
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr] lg:items-start">
           <section className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
@@ -130,7 +146,10 @@ function DepositPage() {
 
           <section className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
             <StepHeading step={2} title="Payment Method" />
-            <ComingSoon message="Payment gateway isn't connected yet — deposits credit your balance directly (see backend README)." />
+            <p className="flex items-start gap-2.5 text-base text-[color:var(--acc-text-secondary)]">
+              <QrCode className="mt-0.5 size-5.5 shrink-0" style={{ color: "var(--acc-accent)" }} aria-hidden="true" strokeWidth={2.1} />
+              You'll be redirected to a secure payment page to scan a QR code and complete payment. Your balance updates automatically once it's confirmed.
+            </p>
           </section>
         </div>
 
@@ -160,12 +179,6 @@ function DepositPage() {
               {friendlyErrorMessage(deposit.error instanceof ApiError ? deposit.error : deposit.error)}
             </p>
           )}
-          {successBalance !== null && (
-            <p role="status" className="mt-4 flex items-center gap-2 text-base font-medium" style={{ color: "var(--acc-success-fg)" }}>
-              <CheckCircle2 className="size-5.5" aria-hidden="true" />
-              Deposit successful — new balance {formatInr(successBalance)}
-            </p>
-          )}
 
           <button
             type="submit"
@@ -174,7 +187,7 @@ function DepositPage() {
             style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
           >
             <CreditCard className="size-5.5" aria-hidden="true" strokeWidth={2.2} />
-            {deposit.isPending ? "Processing…" : "Proceed to Deposit"}
+            {deposit.isPending ? "Redirecting…" : "Proceed to Deposit"}
           </button>
         </section>
       </form>

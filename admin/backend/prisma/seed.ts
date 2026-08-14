@@ -20,17 +20,25 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
   {
     name: "FINANCE",
     description: "Wallet adjustments, deposits/withdrawals, ledger.",
-    permissions: ["dashboard.view", "users.view", "wallets.view", "wallets.adjust", "ledger.view"],
+    permissions: [
+      "dashboard.view",
+      "users.view",
+      "wallets.view",
+      "wallets.adjust",
+      "ledger.view",
+      "withdrawals.view",
+      "withdrawals.approve",
+    ],
   },
   {
     name: "SUPPORT",
     description: "Read-only user/wallet lookup for handling support tickets.",
-    permissions: ["dashboard.view", "users.view", "wallets.view", "ledger.view"],
+    permissions: ["dashboard.view", "users.view", "wallets.view", "ledger.view", "withdrawals.view"],
   },
   {
     name: "AUDITOR",
     description: "Read-only across users/wallets/ledger, plus the audit trail.",
-    permissions: ["dashboard.view", "users.view", "wallets.view", "ledger.view", "audit.view"],
+    permissions: ["dashboard.view", "users.view", "wallets.view", "ledger.view", "withdrawals.view", "audit.view"],
   },
 ]
 

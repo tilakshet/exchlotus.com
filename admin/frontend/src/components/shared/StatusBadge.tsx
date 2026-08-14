@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, ShieldAlert, ShieldCheck, XCircle } from "lucide-react"
+import { CheckCircle2, Circle, Clock, Loader2, ShieldAlert, ShieldCheck, XCircle } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { badgeVariants } from "@/components/ui/badge"
@@ -20,6 +20,15 @@ export const USER_STATUS_CONFIG: Record<string, StatusConfig> = {
 export const ADMIN_STATUS_CONFIG: Record<string, StatusConfig> = {
   ACTIVE: { label: "Active", tone: "success", icon: CheckCircle2 },
   DISABLED: { label: "Disabled", tone: "destructive", icon: XCircle },
+}
+
+export const WITHDRAWAL_STATUS_CONFIG: Record<string, StatusConfig> = {
+  PENDING: { label: "Pending review", tone: "warning", icon: Clock },
+  APPROVED: { label: "Approved", tone: "success", icon: CheckCircle2 },
+  PROCESSING: { label: "Processing", tone: "default", icon: Loader2 },
+  PAID: { label: "Paid", tone: "success", icon: CheckCircle2 },
+  REJECTED: { label: "Rejected", tone: "destructive", icon: XCircle },
+  FAILED: { label: "Failed", tone: "destructive", icon: XCircle },
 }
 
 export const MFA_STATUS_CONFIG: Record<string, StatusConfig> = {
