@@ -17,6 +17,15 @@ export const PERMISSION_CODES = [
   "roles.view",
   "roles.manage",
   "audit.view",
+  "games.view",
+  "games.manage",
+  "reports.view",
+  "notifications.view",
+  "monitoring.view",
+  "users.export",
+  "ledger.export",
+  "games.export",
+  "reports.export",
 ] as const
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number]

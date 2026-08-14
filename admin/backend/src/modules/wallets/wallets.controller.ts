@@ -37,6 +37,7 @@ const adjustSchema = z.object({
   type: z.enum(["DEPOSIT", "WITHDRAWAL", "ADJUSTMENT"]),
   amount: z.number().positive(),
   reason: z.string().min(3).max(500),
+  idempotencyKey: z.string().min(8).max(200),
 })
 
 walletsRouter.post("/:playerId/adjust", requirePermission("wallets.adjust"), async (req, res) => {
@@ -49,7 +50,8 @@ walletsRouter.post("/:playerId/adjust", requirePermission("wallets.adjust"), asy
       req.adminAuth!.id,
       parsed.data.type,
       parsed.data.amount,
-      parsed.data.reason
+      parsed.data.reason,
+      parsed.data.idempotencyKey
     )
     res.json(result)
   } catch (err) {

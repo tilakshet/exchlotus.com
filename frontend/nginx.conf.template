@@ -152,6 +152,12 @@ server {
 
     location /admin-api/ {
         limit_req zone=admin_api_general burst=40 nodelay;
+        # A large CSV/PDF export (admin/backend's ledger/users/games/reports
+        # export handlers) streams its response over a cursor-paginated
+        # query — nginx's 60s default was cutting large exports off
+        # mid-stream. Same override as /api/'s catalog-sync exception above.
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
         proxy_pass http://admin-backend:4600;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

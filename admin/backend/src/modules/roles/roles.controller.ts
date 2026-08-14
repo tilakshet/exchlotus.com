@@ -44,7 +44,15 @@ rolesRouter.patch("/:id/permissions", requirePermission("roles.manage"), async (
   const parsed = permissionsSchema.safeParse(req.body)
   if (!parsed.success) return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   try {
-    res.json(await updateRolePermissions(req, req.adminAuth!.id, param(req, "id"), parsed.data.permissionCodes))
+    res.json(
+      await updateRolePermissions(
+        req,
+        req.adminAuth!.id,
+        req.adminAuth!.roleId,
+        param(req, "id"),
+        parsed.data.permissionCodes
+      )
+    )
   } catch (err) {
     sendError(res, err)
   }

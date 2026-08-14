@@ -29,7 +29,10 @@ export function getLedger(playerId: string, params: { cursor?: string; limit?: n
   return apiRequest<{ items: LedgerItem[]; nextCursor: string | null }>(`/admin-api/wallets/${playerId}/ledger`, { query: params })
 }
 
-export function adjustWallet(playerId: string, input: { type: "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT"; amount: number; reason: string }) {
+export function adjustWallet(
+  playerId: string,
+  input: { type: "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT"; amount: number; reason: string; idempotencyKey: string }
+) {
   return apiRequest<{ balance: number; ledgerEntryId: string }>(`/admin-api/wallets/${playerId}/adjust`, {
     method: "POST",
     body: input,

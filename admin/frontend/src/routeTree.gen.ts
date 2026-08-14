@@ -15,8 +15,17 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedAdminsRouteImport } from './routes/_authenticated.admins'
 import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated.audit'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
+import { Route as AuthenticatedDepositsRouteImport } from './routes/_authenticated.deposits'
+import { Route as AuthenticatedGameActivityRouteImport } from './routes/_authenticated.game-activity'
+import { Route as AuthenticatedGamesRouteImport } from './routes/_authenticated.games'
+import { Route as AuthenticatedMonitoringRouteImport } from './routes/_authenticated.monitoring'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated.reports'
 import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated.roles'
+import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated.transactions'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated.users'
+import { Route as AuthenticatedWithdrawalsRouteImport } from './routes/_authenticated.withdrawals'
+import { Route as AuthenticatedGamesIndexRouteImport } from './routes/_authenticated.games.index'
+import { Route as AuthenticatedGamesIdRouteImport } from './routes/_authenticated.games.$id'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated.users.index'
 import { Route as AuthenticatedUsersIdRouteImport } from './routes/_authenticated.users.$id'
 
@@ -49,15 +58,63 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedDepositsRoute = AuthenticatedDepositsRouteImport.update({
+  id: '/deposits',
+  path: '/deposits',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedGameActivityRoute =
+  AuthenticatedGameActivityRouteImport.update({
+    id: '/game-activity',
+    path: '/game-activity',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedGamesRoute = AuthenticatedGamesRouteImport.update({
+  id: '/games',
+  path: '/games',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedMonitoringRoute = AuthenticatedMonitoringRouteImport.update({
+  id: '/monitoring',
+  path: '/monitoring',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedRolesRoute = AuthenticatedRolesRouteImport.update({
   id: '/roles',
   path: '/roles',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedTransactionsRoute =
+  AuthenticatedTransactionsRouteImport.update({
+    id: '/transactions',
+    path: '/transactions',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedWithdrawalsRoute =
+  AuthenticatedWithdrawalsRouteImport.update({
+    id: '/withdrawals',
+    path: '/withdrawals',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedGamesIndexRoute = AuthenticatedGamesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedGamesRoute,
+} as any)
+const AuthenticatedGamesIdRoute = AuthenticatedGamesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedGamesRoute,
 } as any)
 const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
   id: '/',
@@ -76,9 +133,18 @@ export interface FileRoutesByFullPath {
   '/admins': typeof AuthenticatedAdminsRoute
   '/audit': typeof AuthenticatedAuditRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/deposits': typeof AuthenticatedDepositsRoute
+  '/game-activity': typeof AuthenticatedGameActivityRoute
+  '/games': typeof AuthenticatedGamesRouteWithChildren
+  '/monitoring': typeof AuthenticatedMonitoringRoute
+  '/reports': typeof AuthenticatedReportsRoute
   '/roles': typeof AuthenticatedRolesRoute
+  '/transactions': typeof AuthenticatedTransactionsRoute
   '/users': typeof AuthenticatedUsersRouteWithChildren
+  '/withdrawals': typeof AuthenticatedWithdrawalsRoute
+  '/games/$id': typeof AuthenticatedGamesIdRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
+  '/games/': typeof AuthenticatedGamesIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRoutesByTo {
@@ -87,8 +153,16 @@ export interface FileRoutesByTo {
   '/admins': typeof AuthenticatedAdminsRoute
   '/audit': typeof AuthenticatedAuditRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/deposits': typeof AuthenticatedDepositsRoute
+  '/game-activity': typeof AuthenticatedGameActivityRoute
+  '/monitoring': typeof AuthenticatedMonitoringRoute
+  '/reports': typeof AuthenticatedReportsRoute
   '/roles': typeof AuthenticatedRolesRoute
+  '/transactions': typeof AuthenticatedTransactionsRoute
+  '/withdrawals': typeof AuthenticatedWithdrawalsRoute
+  '/games/$id': typeof AuthenticatedGamesIdRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
+  '/games': typeof AuthenticatedGamesIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRoutesById {
@@ -99,9 +173,18 @@ export interface FileRoutesById {
   '/_authenticated/admins': typeof AuthenticatedAdminsRoute
   '/_authenticated/audit': typeof AuthenticatedAuditRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/deposits': typeof AuthenticatedDepositsRoute
+  '/_authenticated/game-activity': typeof AuthenticatedGameActivityRoute
+  '/_authenticated/games': typeof AuthenticatedGamesRouteWithChildren
+  '/_authenticated/monitoring': typeof AuthenticatedMonitoringRoute
+  '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/roles': typeof AuthenticatedRolesRoute
+  '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
   '/_authenticated/users': typeof AuthenticatedUsersRouteWithChildren
+  '/_authenticated/withdrawals': typeof AuthenticatedWithdrawalsRoute
+  '/_authenticated/games/$id': typeof AuthenticatedGamesIdRoute
   '/_authenticated/users/$id': typeof AuthenticatedUsersIdRoute
+  '/_authenticated/games/': typeof AuthenticatedGamesIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRouteTypes {
@@ -112,9 +195,18 @@ export interface FileRouteTypes {
     | '/admins'
     | '/audit'
     | '/dashboard'
+    | '/deposits'
+    | '/game-activity'
+    | '/games'
+    | '/monitoring'
+    | '/reports'
     | '/roles'
+    | '/transactions'
     | '/users'
+    | '/withdrawals'
+    | '/games/$id'
     | '/users/$id'
+    | '/games/'
     | '/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -123,8 +215,16 @@ export interface FileRouteTypes {
     | '/admins'
     | '/audit'
     | '/dashboard'
+    | '/deposits'
+    | '/game-activity'
+    | '/monitoring'
+    | '/reports'
     | '/roles'
+    | '/transactions'
+    | '/withdrawals'
+    | '/games/$id'
     | '/users/$id'
+    | '/games'
     | '/users'
   id:
     | '__root__'
@@ -134,9 +234,18 @@ export interface FileRouteTypes {
     | '/_authenticated/admins'
     | '/_authenticated/audit'
     | '/_authenticated/dashboard'
+    | '/_authenticated/deposits'
+    | '/_authenticated/game-activity'
+    | '/_authenticated/games'
+    | '/_authenticated/monitoring'
+    | '/_authenticated/reports'
     | '/_authenticated/roles'
+    | '/_authenticated/transactions'
     | '/_authenticated/users'
+    | '/_authenticated/withdrawals'
+    | '/_authenticated/games/$id'
     | '/_authenticated/users/$id'
+    | '/_authenticated/games/'
     | '/_authenticated/users/'
   fileRoutesById: FileRoutesById
 }
@@ -190,11 +299,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/deposits': {
+      id: '/_authenticated/deposits'
+      path: '/deposits'
+      fullPath: '/deposits'
+      preLoaderRoute: typeof AuthenticatedDepositsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/game-activity': {
+      id: '/_authenticated/game-activity'
+      path: '/game-activity'
+      fullPath: '/game-activity'
+      preLoaderRoute: typeof AuthenticatedGameActivityRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/games': {
+      id: '/_authenticated/games'
+      path: '/games'
+      fullPath: '/games'
+      preLoaderRoute: typeof AuthenticatedGamesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/monitoring': {
+      id: '/_authenticated/monitoring'
+      path: '/monitoring'
+      fullPath: '/monitoring'
+      preLoaderRoute: typeof AuthenticatedMonitoringRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/roles': {
       id: '/_authenticated/roles'
       path: '/roles'
       fullPath: '/roles'
       preLoaderRoute: typeof AuthenticatedRolesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/transactions': {
+      id: '/_authenticated/transactions'
+      path: '/transactions'
+      fullPath: '/transactions'
+      preLoaderRoute: typeof AuthenticatedTransactionsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/users': {
@@ -203,6 +354,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/users'
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/withdrawals': {
+      id: '/_authenticated/withdrawals'
+      path: '/withdrawals'
+      fullPath: '/withdrawals'
+      preLoaderRoute: typeof AuthenticatedWithdrawalsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/games/': {
+      id: '/_authenticated/games/'
+      path: '/'
+      fullPath: '/games/'
+      preLoaderRoute: typeof AuthenticatedGamesIndexRouteImport
+      parentRoute: typeof AuthenticatedGamesRoute
+    }
+    '/_authenticated/games/$id': {
+      id: '/_authenticated/games/$id'
+      path: '/$id'
+      fullPath: '/games/$id'
+      preLoaderRoute: typeof AuthenticatedGamesIdRouteImport
+      parentRoute: typeof AuthenticatedGamesRoute
     }
     '/_authenticated/users/': {
       id: '/_authenticated/users/'
@@ -221,6 +393,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedGamesRouteChildren {
+  AuthenticatedGamesIdRoute: typeof AuthenticatedGamesIdRoute
+  AuthenticatedGamesIndexRoute: typeof AuthenticatedGamesIndexRoute
+}
+
+const AuthenticatedGamesRouteChildren: AuthenticatedGamesRouteChildren = {
+  AuthenticatedGamesIdRoute: AuthenticatedGamesIdRoute,
+  AuthenticatedGamesIndexRoute: AuthenticatedGamesIndexRoute,
+}
+
+const AuthenticatedGamesRouteWithChildren =
+  AuthenticatedGamesRoute._addFileChildren(AuthenticatedGamesRouteChildren)
+
 interface AuthenticatedUsersRouteChildren {
   AuthenticatedUsersIdRoute: typeof AuthenticatedUsersIdRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
@@ -238,16 +423,30 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminsRoute: typeof AuthenticatedAdminsRoute
   AuthenticatedAuditRoute: typeof AuthenticatedAuditRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDepositsRoute: typeof AuthenticatedDepositsRoute
+  AuthenticatedGameActivityRoute: typeof AuthenticatedGameActivityRoute
+  AuthenticatedGamesRoute: typeof AuthenticatedGamesRouteWithChildren
+  AuthenticatedMonitoringRoute: typeof AuthenticatedMonitoringRoute
+  AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedRolesRoute: typeof AuthenticatedRolesRoute
+  AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRouteWithChildren
+  AuthenticatedWithdrawalsRoute: typeof AuthenticatedWithdrawalsRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminsRoute: AuthenticatedAdminsRoute,
   AuthenticatedAuditRoute: AuthenticatedAuditRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDepositsRoute: AuthenticatedDepositsRoute,
+  AuthenticatedGameActivityRoute: AuthenticatedGameActivityRoute,
+  AuthenticatedGamesRoute: AuthenticatedGamesRouteWithChildren,
+  AuthenticatedMonitoringRoute: AuthenticatedMonitoringRoute,
+  AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedRolesRoute: AuthenticatedRolesRoute,
+  AuthenticatedTransactionsRoute: AuthenticatedTransactionsRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRouteWithChildren,
+  AuthenticatedWithdrawalsRoute: AuthenticatedWithdrawalsRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

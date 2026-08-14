@@ -13,6 +13,11 @@ import { walletsRouter } from "./modules/wallets/wallets.controller"
 import { adminsRouter } from "./modules/admins/admins.controller"
 import { rolesRouter } from "./modules/roles/roles.controller"
 import { auditRouter } from "./modules/audit/audit.controller"
+import { ledgerRouter } from "./modules/ledger/ledger.controller"
+import { monitoringRouter } from "./modules/monitoring/monitoring.controller"
+import { reportsRouter } from "./modules/reports/reports.controller"
+import { gamesRouter } from "./modules/games/games.controller"
+import { notificationsRouter } from "./modules/notifications/notifications.controller"
 
 export function createApp() {
   const app = express()
@@ -38,6 +43,11 @@ export function createApp() {
   app.use("/admin-api/admins", adminsRouter)
   app.use("/admin-api/roles", rolesRouter)
   app.use("/admin-api/audit", auditRouter)
+  app.use("/admin-api/ledger", ledgerRouter)
+  app.use("/admin-api/monitoring", monitoringRouter)
+  app.use("/admin-api/reports", reportsRouter)
+  app.use("/admin-api/games", gamesRouter)
+  app.use("/admin-api/notifications", notificationsRouter)
 
   app.use((req, res) => {
     res.status(404).json({ error: "NOT_FOUND", path: req.path })

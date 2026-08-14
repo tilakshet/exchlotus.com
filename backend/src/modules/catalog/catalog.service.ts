@@ -129,7 +129,7 @@ export async function listGames(filters: ListGamesFilters = {}): Promise<GamesPa
     // one-hit entries. Straight to Postgres.
     const data = filters.gameIds.length
       ? await prisma.game.findMany({
-          where: { gameId: { in: filters.gameIds } },
+          where: { gameId: { in: filters.gameIds }, enabled: true },
           include: { provider: true, category: true },
           orderBy: { gameName: "asc" },
         })
@@ -145,6 +145,7 @@ export async function listGames(filters: ListGamesFilters = {}): Promise<GamesPa
 
   return getOrSetCache(cacheKey, 60, async () => {
     const where = {
+      enabled: true,
       ...(filters.categoryCode ? { category: { code: filters.categoryCode } } : {}),
       ...(filters.providerCode ? { provider: { code: filters.providerCode } } : {}),
       ...(filters.search
@@ -179,7 +180,7 @@ export async function getGameByIdentifier(identifier: string) {
   const version = await getCatalogVersion()
   return getOrSetCache(`catalog:v${version}:game:${identifier}`, 300, () =>
     prisma.game.findFirst({
-      where: { OR: [{ gameId: identifier }, { gameCode: identifier }] },
+      where: { enabled: true, OR: [{ gameId: identifier }, { gameCode: identifier }] },
       include: { provider: true, category: true },
     })
   )

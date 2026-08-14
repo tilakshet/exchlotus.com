@@ -4,7 +4,8 @@ import { requireAdminAuth } from "../auth/admin-auth.middleware"
 import { requirePermission } from "../rbac/rbac.middleware"
 import { AdminApiError, statusForError } from "../../lib/api-error"
 import { param } from "../../lib/params"
-import { getUserDetail, listUsers, setUserStatus } from "./users.service"
+import { runCsvExport } from "../../lib/export"
+import { countUsers, getUserDetail, listUsers, setUserStatus } from "./users.service"
 
 export const usersRouter = Router()
 usersRouter.use(requireAdminAuth)
@@ -25,6 +26,23 @@ usersRouter.get("/", requirePermission("users.view"), async (req, res) => {
   const parsed = listQuerySchema.safeParse(req.query)
   if (!parsed.success) return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   res.json(await listUsers(parsed.data))
+})
+
+usersRouter.get("/export", requirePermission("users.export"), async (req, res) => {
+  const parsed = listQuerySchema.safeParse(req.query)
+  if (!parsed.success) return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
+  const filters = { search: parsed.data.search, status: parsed.data.status }
+
+  await runCsvExport(req, res, {
+    actorAdminId: req.adminAuth!.id,
+    module: "users",
+    filename: `users-export-${new Date().toISOString().slice(0, 10)}.csv`,
+    header: ["Player ID", "External ID", "Username", "Email", "Phone", "Status", "Balance", "Currency", "Joined"],
+    countRows: () => countUsers(filters),
+    fetchPage: (cursor, limit) => listUsers({ ...filters, cursor, limit }),
+    toRow: (item) => [item.id, item.externalId, item.username, item.email, item.phone, item.status, item.balance, item.currency, item.createdAt],
+    filtersForAudit: filters,
+  })
 })
 
 usersRouter.get("/:id", requirePermission("users.view"), async (req, res) => {

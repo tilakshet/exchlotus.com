@@ -38,6 +38,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # docker-entrypoint.sh runs `prisma migrate deploy` before starting the
+    # server, so /health only becomes reachable once migrations have
+    # actually finished — admin-backend depending on service_healthy
+    # (below) closes the race where it could otherwise start querying
+    # columns a still-running migration hasn't added yet. Plain `node -e`
+    # rather than curl/wget: the alpine base image has neither installed,
+    # and Node itself is always present.
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   # Separate app, separate auth/RBAC, separate deployable — but shares this
   # same PostgreSQL as source of truth (see admin/backend/README and the
@@ -57,7 +70,7 @@ services:
       redis:
         condition: service_healthy
       backend:
-        condition: service_started
+        condition: service_healthy
 
   # This single nginx edge serves BOTH domain.com (player app) and
   # admin.domain.com (admin app) — see frontend/Dockerfile's header comment

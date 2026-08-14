@@ -14,6 +14,8 @@ export type AdminApiErrorCode =
   | "NOT_FOUND"
   | "SYSTEM_ROLE_IMMUTABLE"
   | "INSUFFICIENT_BALANCE"
+  | "SELF_ROLE_EDIT"
+  | "DUPLICATE_ADJUSTMENT"
 
 export class AdminApiError extends Error {
   constructor(
@@ -41,6 +43,8 @@ const STATUS_BY_CODE: Record<AdminApiErrorCode, number> = {
   NOT_FOUND: 404,
   SYSTEM_ROLE_IMMUTABLE: 409,
   INSUFFICIENT_BALANCE: 422,
+  SELF_ROLE_EDIT: 403,
+  DUPLICATE_ADJUSTMENT: 409,
 }
 
 export function statusForError(err: AdminApiError): number {
