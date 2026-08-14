@@ -6,6 +6,7 @@ import {
   Gamepad2,
   Gauge,
   KeyRound,
+  Landmark,
   LayoutDashboard,
   ScrollText,
   ShieldCheck,
