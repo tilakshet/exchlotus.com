@@ -8,7 +8,7 @@ import { DASHBOARD_NAV_ITEMS } from "@/data/dashboardShell"
  * TopNavbar's actual rendered height (measured ~76px at desktop widths,
  * see dashboard.tsx's matching `lg:pl-56` content offset) so it sits
  * directly below the header with no gap or overlap. Mobile gets the same
- * items inside MobileNav's drawer instead — see MobileNav.tsx.
+ * items via BottomNavBar instead — see BottomNavBar.tsx and dashboard.tsx.
  */
 export function Sidebar() {
   return (
