@@ -144,7 +144,11 @@ function DepositPage() {
             </div>
           </section>
 
-          <section className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
+          {/* Payment Method (step 2) and the Payment Summary breakdown (step 3,
+              below) are desktop-only — mobile goes straight from the amount
+              (step 1) to the Deposit button, no intermediate steps to tap
+              through. The button itself, and any error, still show on mobile. */}
+          <section className="hidden rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6 lg:block">
             <StepHeading step={2} title="Payment Method" />
             <p className="flex items-start gap-2.5 text-base text-[color:var(--acc-text-secondary)]">
               <QrCode className="mt-0.5 size-5.5 shrink-0" style={{ color: "var(--acc-accent)" }} aria-hidden="true" strokeWidth={2.1} />
@@ -154,23 +158,25 @@ function DepositPage() {
         </div>
 
         <section className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
-          <StepHeading step={3} title="Payment Summary" />
-          <div className="flex flex-col gap-3 text-base">
-            <div className="flex items-center justify-between">
-              <span className="text-[color:var(--acc-text-secondary)]">Deposit Amount</span>
-              <span className="font-semibold text-[color:var(--acc-text-primary)]">{formatInr(numericAmount)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[color:var(--acc-text-secondary)]">Processing Fee</span>
-              <span className="font-semibold" style={{ color: "var(--acc-success-fg)" }}>
-                {PROCESSING_FEE === 0 ? "Free" : formatInr(PROCESSING_FEE)}
-              </span>
-            </div>
-            <div className="mt-1 flex items-center justify-between border-t border-[color:var(--acc-border-soft)] pt-3">
-              <span className="text-lg font-semibold text-[color:var(--acc-text-primary)]">Total Payable</span>
-              <span className="text-2xl font-bold" style={{ color: "var(--acc-accent)" }}>
-                {formatInr(totalPayable)}
-              </span>
+          <div className="hidden lg:block">
+            <StepHeading step={3} title="Payment Summary" />
+            <div className="flex flex-col gap-3 text-base">
+              <div className="flex items-center justify-between">
+                <span className="text-[color:var(--acc-text-secondary)]">Deposit Amount</span>
+                <span className="font-semibold text-[color:var(--acc-text-primary)]">{formatInr(numericAmount)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[color:var(--acc-text-secondary)]">Processing Fee</span>
+                <span className="font-semibold" style={{ color: "var(--acc-success-fg)" }}>
+                  {PROCESSING_FEE === 0 ? "Free" : formatInr(PROCESSING_FEE)}
+                </span>
+              </div>
+              <div className="mt-1 flex items-center justify-between border-t border-[color:var(--acc-border-soft)] pt-3">
+                <span className="text-lg font-semibold text-[color:var(--acc-text-primary)]">Total Payable</span>
+                <span className="text-2xl font-bold" style={{ color: "var(--acc-accent)" }}>
+                  {formatInr(totalPayable)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -192,8 +198,8 @@ function DepositPage() {
         </section>
       </form>
 
-      {/* Promotional — informational only, not tied to any bonus/reward backend yet. */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {/* Promotional — informational only, not tied to any bonus/reward backend yet. Desktop-only, keeps mobile focused on amount -> Deposit. */}
+      <section className="hidden lg:grid lg:grid-cols-2 lg:gap-4">
         <div className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-5 text-center">
           <p className="mb-1.5 text-base italic text-[color:var(--acc-text-secondary)]">Extra Bonus</p>
           <p className="flex items-center justify-center gap-2.5 text-xl font-bold italic text-[color:var(--acc-text-primary)]">

@@ -3,18 +3,24 @@ import { ArrowDownLeft, ArrowUpRight, Briefcase, Gift, History as HistoryIcon, L
 import { store } from "@/store"
 import { useAuth } from "@/hooks/useAuth"
 import { UserAvatar } from "@/components/shared/UserAvatar"
+import { BottomNavBar } from "@/components/dashboard-shell/BottomNavBar"
 import { CURRENT_LOYALTY_TIER } from "@/features/account/loyalty-tiers"
 
 /**
- * Layout for the whole /dashboard/account/* tree — left sidebar (avatar +
- * tier stars, Loyalty/Account/History/My Profile nav, Log Out) and a top
- * pill-tab bar (Account/Deposit/Withdraw). Uses the same `--sb-*`
- * dashboard-shell palette as the rest of /dashboard (via the `--acc-*`
- * aliases in index.css), so this reads as one product with the shell
- * above it rather than a visually separate section bolted on. The whole
- * tree is a full-width dashboard layout (sidebar + flexible main column,
- * capped at a generous max-width on very large screens) — no page inside
- * should re-narrow itself to a fixed small column.
+ * Layout for the whole /dashboard/account/* tree — on desktop, a left
+ * sidebar (avatar + tier stars, Loyalty/Account/History/My Profile nav,
+ * Log Out) plus a top pill-tab bar (Account/Deposit/Withdraw/Loyalty/
+ * History). Uses the same `--sb-*` dashboard-shell palette as the rest of
+ * /dashboard (via the `--acc-*` aliases in index.css), so this reads as
+ * one product with the shell above it rather than a visually separate
+ * section bolted on. The whole tree is a full-width dashboard layout
+ * (sidebar + flexible main column, capped at a generous max-width on very
+ * large screens) — no page inside should re-narrow itself to a fixed
+ * small column.
+ *
+ * Below `lg:`, both the sidebar and pill-tab bar are hidden in favor of
+ * this section's own BottomNavBar (topTabs + Profile) — see
+ * accountBottomNavItems below and BottomNavBar.tsx.
  *
  * Desktop is a true two-pane split, not just a page that happens to scroll
  * with a sticky sidebar: the row is height-bound to the visible viewport
@@ -58,6 +64,11 @@ const topTabs = [
   { to: "/dashboard/account/history", label: "History", icon: HistoryIcon, exact: false },
 ] as const
 
+// Mobile bottom bar for this section — topTabs plus Profile, which is
+// otherwise only reachable via the sidebar (hidden on mobile below, see
+// AccountLayout) — without this it would have no mobile entry point at all.
+const accountBottomNavItems = [...topTabs, { to: "/dashboard/account/profile", label: "Profile", icon: User, exact: false }]
+
 const pageHeadings: { match: string; exact: boolean; title: string; subtitle: string }[] = [
   { match: "/dashboard/account/add-bank", exact: false, title: "Add Bank Account", subtitle: "Save a payout method for withdrawals." },
   { match: "/dashboard/account/deposit", exact: false, title: "Deposit", subtitle: "Add money securely to your wallet." },
@@ -83,7 +94,11 @@ function AccountLayout() {
 
   return (
     <div className="account-shell flex w-full flex-col gap-6 lg:sticky lg:top-[8px] lg:h-[calc(100dvh-5.5rem)] lg:flex-row lg:items-stretch lg:gap-0 lg:overflow-hidden">
-      <aside className="flex w-full shrink-0 flex-col gap-4 lg:h-full lg:w-72 lg:overflow-y-auto lg:pr-4">
+      {/* Hidden on mobile — the account section's own BottomNavBar (rendered
+          below) covers the same ground (including Log Out via ProfileChip
+          on the navbar), so this doesn't need a stacked-above-content
+          mobile fallback the way it might otherwise. */}
+      <aside className="hidden lg:flex lg:h-full lg:w-72 lg:shrink-0 lg:flex-col lg:gap-4 lg:overflow-y-auto lg:pr-4">
         <div
           className="shrink-0 rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] p-5"
           style={{ background: "linear-gradient(135deg, var(--acc-accent-soft), var(--acc-surface) 70%)" }}
@@ -152,13 +167,14 @@ function AccountLayout() {
           side by side; the stacked mobile layout has no need for one. */}
       <div aria-hidden="true" className="hidden shrink-0 lg:block lg:w-px lg:self-stretch" style={{ background: "var(--acc-border)" }} />
 
-      <div className="min-w-0 flex-1 lg:h-full lg:overflow-y-auto lg:pr-2 lg:pl-6">
+      <div className="min-w-0 flex-1 pb-24 lg:h-full lg:overflow-y-auto lg:pr-2 lg:pb-0 lg:pl-6">
         <div className="mb-6">
           <h1 className="text-[28px] font-bold leading-tight text-[color:var(--acc-text-primary)] sm:text-[32px]">{heading.title}</h1>
           <p className="mt-1 text-base text-[color:var(--acc-text-secondary)]">{heading.subtitle}</p>
         </div>
 
-        <div role="tablist" aria-label="Account, Deposit, Withdraw, Loyalty, or History" className="mb-6 flex flex-wrap gap-2.5">
+        {/* Desktop only — mobile navigates this section via the BottomNavBar below instead. */}
+        <div role="tablist" aria-label="Account, Deposit, Withdraw, Loyalty, or History" className="mb-6 hidden flex-wrap gap-2.5 lg:flex">
           {topTabs.map(({ to, label, icon: Icon, exact }) => {
             const active = !!matchRoute({ to, fuzzy: !exact })
             return (
@@ -183,6 +199,8 @@ function AccountLayout() {
 
         <Outlet />
       </div>
+
+      <BottomNavBar items={accountBottomNavItems} />
     </div>
   )
 }

@@ -176,43 +176,49 @@ function WithdrawPage() {
               </Link>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setPayoutNote("Crypto payouts aren't available yet — bank transfer is the only payout method right now.")}
-              className="mt-3 flex items-center gap-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
-              style={{ color: "var(--acc-text-secondary)" }}
-            >
-              <Plus className="size-4.5" aria-hidden="true" />
-              Add Crypto Wallet instead
-            </button>
-            {payoutNote && (
-              <div className="mt-3">
-                <ComingSoon message={payoutNote} />
-              </div>
-            )}
+            {/* Non-functional stub (crypto payout doesn't exist) — desktop-only so mobile isn't cluttered with a dead end. */}
+            <div className="hidden lg:block">
+              <button
+                type="button"
+                onClick={() => setPayoutNote("Crypto payouts aren't available yet — bank transfer is the only payout method right now.")}
+                className="mt-3 flex items-center gap-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
+                style={{ color: "var(--acc-text-secondary)" }}
+              >
+                <Plus className="size-4.5" aria-hidden="true" />
+                Add Crypto Wallet instead
+              </button>
+              {payoutNote && (
+                <div className="mt-3">
+                  <ComingSoon message={payoutNote} />
+                </div>
+              )}
+            </div>
           </section>
 
           <section className="flex flex-col gap-6">
             <div className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
-              <StepHeading step={2} title="Withdrawal Summary" />
-              <div className="flex flex-col gap-3 text-base">
-                <div className="flex items-center justify-between">
-                  <span className="text-[color:var(--acc-text-secondary)]">Withdrawal Amount</span>
-                  <span className="font-semibold text-[color:var(--acc-text-primary)]">{formatInr(numericAmount)}</span>
+              {/* Summary breakdown is desktop-only — mobile goes straight from the amount/bank-account step to the Request Withdrawal button below. */}
+              <div className="hidden lg:block">
+                <StepHeading step={2} title="Withdrawal Summary" />
+                <div className="flex flex-col gap-3 text-base">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[color:var(--acc-text-secondary)]">Withdrawal Amount</span>
+                    <span className="font-semibold text-[color:var(--acc-text-primary)]">{formatInr(numericAmount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[color:var(--acc-text-secondary)]">Charges</span>
+                    <span className="font-semibold" style={{ color: "var(--acc-success-fg)" }}>
+                      {WITHDRAWAL_CHARGE === 0 ? "Free" : formatInr(WITHDRAWAL_CHARGE)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between border-t border-[color:var(--acc-border-soft)] pt-3">
+                    <span className="text-lg font-semibold text-[color:var(--acc-text-primary)]">Net Amount</span>
+                    <span className="text-2xl font-bold" style={{ color: "var(--acc-accent)" }}>
+                      {formatInr(netAmount)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-[color:var(--acc-text-secondary)]">Reviewed before payout to your selected bank account.</p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[color:var(--acc-text-secondary)]">Charges</span>
-                  <span className="font-semibold" style={{ color: "var(--acc-success-fg)" }}>
-                    {WITHDRAWAL_CHARGE === 0 ? "Free" : formatInr(WITHDRAWAL_CHARGE)}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center justify-between border-t border-[color:var(--acc-border-soft)] pt-3">
-                  <span className="text-lg font-semibold text-[color:var(--acc-text-primary)]">Net Amount</span>
-                  <span className="text-2xl font-bold" style={{ color: "var(--acc-accent)" }}>
-                    {formatInr(netAmount)}
-                  </span>
-                </div>
-                <p className="text-sm text-[color:var(--acc-text-secondary)]">Reviewed before payout to your selected bank account.</p>
               </div>
 
               {withdraw.isError && (
@@ -246,7 +252,7 @@ function WithdrawPage() {
         </div>
       </form>
 
-      <section>
+      <section className="hidden lg:block">
         <h3 className="mb-4 text-center text-xl font-bold" style={{ color: "var(--acc-accent)" }}>
           Frequently Asked Questions
         </h3>
