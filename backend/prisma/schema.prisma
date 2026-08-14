@@ -33,34 +33,37 @@ enum PlayerStatus {
 }
 
 model Player {
-  id         String   @id @default(uuid())
+  id             String       @id @default(uuid())
   /// Matches `user_id` in webhook payloads — the partner-side account identifier.
-  externalId String   @unique
-  username   String
-  email      String?  @unique
+  externalId     String       @unique
+  username       String
+  email          String?      @unique
   /// Nullable: the spec's own seeded fixture player (externalId "12345")
   /// predates app-level auth and has no login credentials of its own.
-  passwordHash String?
+  passwordHash   String?
   /// E.164-ish, digits with a leading "+". The identifier for both OTP
   /// login and password login now — password accounts are created via
   /// phone as well, there's no email+password path in the UI anymore.
-  phone      String?  @unique
+  phone          String?      @unique
   /// Captured at OTP signup if a promo code was entered. No reward/bonus
   /// engine consumes this yet — it's recorded, not yet acted on.
   referredByCode String?
-  firstName  String?
-  lastName   String?
-  dateOfBirth DateTime?
-  currency   String   @default("INR")
+  firstName      String?
+  lastName       String?
+  dateOfBirth    DateTime?
+  currency       String       @default("INR")
   /// Set only by the admin panel (users.suspend permission) — the player
   /// backend itself never reads or writes this today.
-  status     PlayerStatus @default(ACTIVE)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  status         PlayerStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
-  wallet        Wallet?
-  entries       LedgerEntry[]
-  refreshTokens RefreshToken[]
+  wallet             Wallet?
+  entries            LedgerEntry[]
+  refreshTokens      RefreshToken[]
+  bankAccounts       BankAccount[]
+  paymentOrders      PaymentOrder[]
+  withdrawalRequests WithdrawalRequest[]
 
   @@map("players")
 }
@@ -80,20 +83,20 @@ model RefreshToken {
 }
 
 model Wallet {
-  id        String   @id @default(uuid())
-  playerId  String   @unique
-  player    Player   @relation(fields: [playerId], references: [id])
+  id            String   @id @default(uuid())
+  playerId      String   @unique
+  player        Player   @relation(fields: [playerId], references: [id])
   /// The real, provider-reconciled playable balance — the only figure the
   /// gaming webhook ever touches.
-  balance   Decimal  @db.Decimal(18, 2)
+  balance       Decimal  @db.Decimal(18, 2)
   /// Bonus/locked tracking has no backing feature yet (no promotions/bonus
   /// wagering engine exists) — these columns exist so the wallet API's
   /// response shape is stable, but they are always 0 today. See backend
   /// README "Not yet done".
   bonusBalance  Decimal  @default(0) @db.Decimal(18, 2)
   lockedBalance Decimal  @default(0) @db.Decimal(18, 2)
-  currency  String
-  updatedAt DateTime @updatedAt
+  currency      String
+  updatedAt     DateTime @updatedAt
 
   @@map("wallets")
 }
@@ -110,16 +113,16 @@ model LedgerEntry {
   gameId        String
   sessionId     String?
   /// Signed: negative for debits (bet), positive for credits (win/refund).
-  amount       Decimal  @db.Decimal(18, 2)
-  balanceAfter Decimal  @db.Decimal(18, 2)
+  amount        Decimal         @db.Decimal(18, 2)
+  balanceAfter  Decimal         @db.Decimal(18, 2)
   /// Set only when this entry was created by an admin-initiated manual
   /// adjustment (admin/backend's wallets.adjust) — null for every
   /// player/webhook-originated entry. No FK to AdminUser: the admin schema
   /// is a separate concern and must stay readable/queryable even if an
   /// admin account is later deleted (see AdminAuditLog for the durable,
   /// FK'd record of who/why).
-  actorAdminId String?
-  createdAt    DateTime @default(now())
+  actorAdminId  String?
+  createdAt     DateTime        @default(now())
 
   /// Idempotency key per spec §6: composite unique on (transaction_id, type),
   /// not transaction_id alone. A duplicate insert here is how we detect a
@@ -195,6 +198,92 @@ model Game {
 }
 
 // ---------------------------------------------------------------------------
+// Payments (deposits via PayIn, withdrawals via admin-approved Payout) — see
+// backend/src/modules/payments and backend/src/modules/bank-accounts.
+// ---------------------------------------------------------------------------
+
+/// A player's saved payout destination. Collected up front (not per-withdrawal)
+/// so the admin approval step in WithdrawalRequest has account/IFSC to send to.
+model BankAccount {
+  id                String   @id @default(uuid())
+  playerId          String
+  player            Player   @relation(fields: [playerId], references: [id])
+  accountHolderName String
+  bankName          String
+  accountNumber     String
+  ifsc              String
+  createdAt         DateTime @default(now())
+
+  withdrawalRequests WithdrawalRequest[]
+
+  @@index([playerId])
+  @@map("bank_accounts")
+}
+
+enum PaymentOrderStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  EXPIRED
+}
+
+/// One row per deposit attempt. `id` doubles as the `order_id` sent to/
+/// received from the gateway — no separate column to keep in sync with it.
+model PaymentOrder {
+  id           String             @id @default(uuid())
+  playerId     String
+  player       Player             @relation(fields: [playerId], references: [id])
+  amount       Decimal            @db.Decimal(18, 2)
+  status       PaymentOrderStatus @default(PENDING)
+  /// The gateway's own trx_id from its create-order response — for support/reconciliation lookups.
+  gatewayTrxId String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([playerId])
+  @@map("payment_orders")
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSING
+  PAID
+  FAILED
+}
+
+/// Created the instant a player requests a withdrawal (funds move into
+/// Wallet.lockedBalance at that point — see wallet.service.ts) but the real
+/// payout API call only happens when an admin approves it. No KYC/fraud
+/// review exists yet, so nothing pays out unattended.
+model WithdrawalRequest {
+  id               String           @id @default(uuid())
+  playerId         String
+  player           Player           @relation(fields: [playerId], references: [id])
+  bankAccountId    String
+  bankAccount      BankAccount      @relation(fields: [bankAccountId], references: [id])
+  amount           Decimal          @db.Decimal(18, 2)
+  status           WithdrawalStatus @default(PENDING)
+  /// trxid WE generate and send to the payout API — matched back against
+  /// the callback's cus_trx_id to identify which request it's updating.
+  gatewayTrxId     String?
+  gatewayUtr       String?
+  /// AdminUser.id from admin/backend's schema — no FK, same reasoning as
+  /// LedgerEntry.actorAdminId: this table must stay readable even if that
+  /// admin account is later deleted.
+  decidedByAdminId String?
+  /// Required on reject — shown to the player, kept for audit.
+  reason           String?
+  requestedAt      DateTime         @default(now())
+  decidedAt        DateTime?
+
+  @@index([playerId])
+  @@index([status])
+  @@map("withdrawal_requests")
+}
+
+// ---------------------------------------------------------------------------
 // Admin platform (admin/backend, admin/frontend) — entirely separate identity
 // and authorization system from Player. An AdminUser is platform staff, never
 // a customer; nothing here is reachable from the player-facing backend or JWT.
@@ -229,17 +318,17 @@ model AdminUser {
 }
 
 model AdminRole {
-  id          String                @id @default(uuid())
+  id          String   @id @default(uuid())
   /// SUPER_ADMIN | MANAGER | FINANCE | KYC | SECURITY | RISK | SUPPORT | AUDITOR
   /// (see admin/backend/prisma/seed — kept as a free-text unique key, not an
   /// enum, so new roles can be added by Super Admin without a migration).
-  name        String                @unique
+  name        String   @unique
   description String?
   /// System roles (seeded ones above) can't be deleted from the admin UI —
   /// only their permission set can be edited. Custom roles can be deleted.
-  isSystem    Boolean               @default(false)
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   admins      AdminUser[]
   permissions AdminRolePermission[]
@@ -248,11 +337,11 @@ model AdminRole {
 }
 
 model AdminPermission {
-  id          String                @id @default(uuid())
+  id          String  @id @default(uuid())
   /// e.g. "wallets.adjust", "withdrawals.approve" — dot-namespaced, matches
   /// the RBAC matrix. Seeded once; the set of valid codes is fixed by what
   /// the admin backend's requirePermission() middleware calls actually check.
-  code        String                @unique
+  code        String  @unique
   description String?
 
   roles AdminRolePermission[]

@@ -19,6 +19,7 @@ import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated.
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated.users'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated.users.index'
 import { Route as AuthenticatedUsersIdRouteImport } from './routes/_authenticated.users.$id'
+import { Route as AuthenticatedWithdrawalsIndexRouteImport } from './routes/_authenticated.withdrawals.index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -69,6 +70,12 @@ const AuthenticatedUsersIdRoute = AuthenticatedUsersIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedUsersRoute,
 } as any)
+const AuthenticatedWithdrawalsIndexRoute =
+  AuthenticatedWithdrawalsIndexRouteImport.update({
+    id: '/withdrawals/',
+    path: '/withdrawals/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof AuthenticatedUsersRouteWithChildren
   '/users/$id': typeof AuthenticatedUsersIdRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
+  '/withdrawals/': typeof AuthenticatedWithdrawalsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
   '/roles': typeof AuthenticatedRolesRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
   '/users': typeof AuthenticatedUsersIndexRoute
+  '/withdrawals': typeof AuthenticatedWithdrawalsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -103,6 +112,7 @@ export interface FileRoutesById {
   '/_authenticated/users': typeof AuthenticatedUsersRouteWithChildren
   '/_authenticated/users/$id': typeof AuthenticatedUsersIdRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
+  '/_authenticated/withdrawals/': typeof AuthenticatedWithdrawalsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/users/$id'
     | '/users/'
+    | '/withdrawals/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/users/$id'
     | '/users'
+    | '/withdrawals'
   id:
     | '__root__'
     | '/'
@@ -138,6 +150,7 @@ export interface FileRouteTypes {
     | '/_authenticated/users'
     | '/_authenticated/users/$id'
     | '/_authenticated/users/'
+    | '/_authenticated/withdrawals/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersIdRouteImport
       parentRoute: typeof AuthenticatedUsersRoute
     }
+    '/_authenticated/withdrawals/': {
+      id: '/_authenticated/withdrawals/'
+      path: '/withdrawals'
+      fullPath: '/withdrawals/'
+      preLoaderRoute: typeof AuthenticatedWithdrawalsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -240,6 +260,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedRolesRoute: typeof AuthenticatedRolesRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRouteWithChildren
+  AuthenticatedWithdrawalsIndexRoute: typeof AuthenticatedWithdrawalsIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -248,6 +269,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedRolesRoute: AuthenticatedRolesRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRouteWithChildren,
+  AuthenticatedWithdrawalsIndexRoute: AuthenticatedWithdrawalsIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

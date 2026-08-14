@@ -12,6 +12,9 @@ import { authRouter } from "./modules/auth/auth.controller"
 import { walletRouter } from "./modules/wallet/wallet.controller"
 import { profileRouter } from "./modules/profile/profile.controller"
 import { homeRouter } from "./modules/home/home.controller"
+import { paymentsCallbackRouter } from "./modules/payments/payments-callback.controller"
+import { paymentsRouter } from "./modules/payments/payments.controller"
+import { bankAccountsRouter } from "./modules/bank-accounts/bank-accounts.controller"
 
 export function createApp() {
   const app = express()
@@ -38,6 +41,7 @@ export function createApp() {
   // this is inbound provider traffic (HMAC-verified, not user-facing), and
   // a 300/15min-per-IP cap would throttle legitimate settlement callbacks.
   app.use("/api", gamingWebhookRouter)
+  app.use("/api/payments", paymentsCallbackRouter)
   app.use("/api", apiLimiter)
 
   app.use(express.json())
@@ -47,6 +51,8 @@ export function createApp() {
   app.use("/api/catalog", catalogRouter)
   app.use("/api/game-session", gameSessionRouter)
   app.use("/api/home", homeRouter)
+  app.use("/api/payments", paymentsRouter)
+  app.use("/api/bank-accounts", bankAccountsRouter)
 
   app.use((req, res) => {
     res.status(404).json({ error: "NOT_FOUND", path: req.path })

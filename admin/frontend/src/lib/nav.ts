@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScrollText, ShieldCheck, Users as UsersIcon, KeyRound } from "lucide-react"
+import { LayoutDashboard, ScrollText, ShieldCheck, Users as UsersIcon, KeyRound, Landmark } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -27,6 +27,10 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Operations",
     items: [{ label: "Users", to: "/users", permission: "users.view", icon: UsersIcon }],
+  },
+  {
+    label: "Finance",
+    items: [{ label: "Withdrawals", to: "/withdrawals", permission: "withdrawals.view", icon: Landmark }],
   },
   {
     label: "Administration",

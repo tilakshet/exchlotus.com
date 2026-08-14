@@ -10,6 +10,7 @@ import { adminAuthRouter } from "./modules/auth/admin-auth.controller"
 import { dashboardRouter } from "./modules/dashboard/dashboard.controller"
 import { usersRouter } from "./modules/users/users.controller"
 import { walletsRouter } from "./modules/wallets/wallets.controller"
+import { withdrawalsRouter } from "./modules/withdrawals/withdrawals.controller"
 import { adminsRouter } from "./modules/admins/admins.controller"
 import { rolesRouter } from "./modules/roles/roles.controller"
 import { auditRouter } from "./modules/audit/audit.controller"
@@ -35,6 +36,7 @@ export function createApp() {
   app.use("/admin-api/dashboard", dashboardRouter)
   app.use("/admin-api/users", usersRouter)
   app.use("/admin-api/wallets", walletsRouter)
+  app.use("/admin-api/withdrawals", withdrawalsRouter)
   app.use("/admin-api/admins", adminsRouter)
   app.use("/admin-api/roles", rolesRouter)
   app.use("/admin-api/audit", auditRouter)
