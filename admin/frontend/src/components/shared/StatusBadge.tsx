@@ -7,7 +7,6 @@ import {
   Dices,
   Loader2,
   RotateCcw,
-  Loader2,
   ShieldAlert,
   ShieldCheck,
   Sliders,
