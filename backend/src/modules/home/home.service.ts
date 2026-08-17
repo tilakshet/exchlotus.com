@@ -6,42 +6,35 @@ export interface HeroBannerDto {
   id: string
   backgroundImage: string
   ctaText: string
-  gameSlug: string
+  linkType: "game" | "page"
+  gameSlug: string | null
+  path: string | null
 }
 
+type PinnedBanner =
+  | { kind: "game"; gameId: string; image: string; ctaText: string }
+  | { kind: "page"; path: string; image: string; ctaText: string }
+
 /**
- * Curated, not dynamic. This used to be "whichever 10 games were most
- * recently synced" with `Game.bannerUrl` (the provider's small catalog
- * thumbnail) stretched full-bleed — different games every sync, and
- * visibly blurry once upscaled to hero-banner size. These 10 are pinned by
- * gameId to real catalog entries, paired with hand-picked high-res art
- * (frontend/public/hero/*.jpg, sized for full-bleed display) that doesn't
- * need any upscaling. HeroSlide only ever renders backgroundImage +
- * ctaText + the Play action (see HeroSlide.tsx) — no other copy survives
- * to the UI, so that's all this DTO carries.
+ * Curated, not dynamic — see buildHeroBanners below for why. Two kinds of
+ * slide: "game" pins straight to a catalog game (resolved against the DB
+ * below, same as the old all-games version of this list), "page" is a
+ * marketing/promo banner that just navigates to an in-app page and never
+ * touches the catalog at all.
  *
- * gameIds are the real provider's own `id` (confirmed 2026-08-14 against
- * the live catalog, matched by game name) — NOT the short numeric ids this
- * list originally shipped with. Those were leftover from a pre-real-sync
- * seed and only ever matched local's database because old rows never get
- * deleted on resync (upsert only inserts/updates); production had already
- * had its catalog truncated + resynced cleanly, so none of them ever
- * existed there, silently skipping every slide (see the "skipping slide"
- * warn log in buildHeroBanners below). No exact "Zeus of Olympus" match
- * exists in the real catalog — substituted with the closest same-theme
- * game ("Zeus") rather than dropping that slide.
+ * Art lives in frontend/public/promotion_banner/*.png (swapped in
+ * 2026-08-17 from the old frontend/public/hero/*.jpg full-bleed game art —
+ * these are general promo banners, not per-game screenshots, hence the
+ * "page" link kind for most of them).
  */
-const PINNED_BANNERS: { gameId: string; image: string; ctaText: string }[] = [
-  { gameId: "cmsge42ze0f56uz1d0grv0m2l", image: "/hero/coinflip.jpg", ctaText: "Flip Now" }, // Coin Flip
-  { gameId: "cmsgduljn05vwuz1dc2zbydm8", image: "/hero/zeus-of-olympus.jpg", ctaText: "Play Now" }, // Zeus
-  { gameId: "cmsge45hp0f7yuz1dmx56rmgi", image: "/hero/zoomboy.jpg", ctaText: "Play Now" }, // Zoomboy
-  { gameId: "cmsgdpq0e00u6uz1di192hicj", image: "/hero/zoom-roulette.jpg", ctaText: "Spin Now" }, // Zoom Roulette
-  { gameId: "cmsge3xgm0ezwuz1di66jpq71", image: "/hero/zoodiac.jpg", ctaText: "Play Now" }, // Zoodiac
-  { gameId: "cmsge5t9j0gqcuz1dd69v3s0e", image: "/hero/zombie-siege.jpg", ctaText: "Survive Now" }, // Zombie Siege
-  { gameId: "cmsgdzqgq0aw6uz1d87do58ar", image: "/hero/zombie-outbreak.jpg", ctaText: "Play Now" }, // Zombie Outbreak
-  { gameId: "cmsge54350g1muz1d3xs9hmcr", image: "/hero/zombie-school-megaways.jpg", ctaText: "Play Now" }, // Zombie School Megaways
-  { gameId: "cmsgedoms0mwwuz1dlk6texzt", image: "/hero/aviator.jpg", ctaText: "Take Off" }, // Aviator
-  { gameId: "cmsge5sg50gpguz1d3zqrwq6e", image: "/hero/chicken-dash.jpg", ctaText: "Run Now" }, // Chicken Dash
+const PINNED_BANNERS: PinnedBanner[] = [
+  { kind: "game", gameId: "cmsgedoms0mwwuz1dlk6texzt", image: "/promotion_banner/aviator.png", ctaText: "Take Off" }, // Aviator
+  { kind: "page", path: "/dashboard/promotions", image: "/promotion_banner/welcome_bonus.png", ctaText: "Claim Bonus" },
+  { kind: "page", path: "/dashboard/promotions", image: "/promotion_banner/refer&earn.png", ctaText: "Refer & Earn" },
+  { kind: "page", path: "/dashboard/casino", image: "/promotion_banner/casinogames.png", ctaText: "Play Now" },
+  { kind: "page", path: "/dashboard/providers", image: "/promotion_banner/category.png", ctaText: "Explore" },
+  { kind: "page", path: "/dashboard/live-casino", image: "/promotion_banner/live_casino.png", ctaText: "Play Live" },
+  { kind: "page", path: "/dashboard/casino", image: "/promotion_banner/bigwin.png", ctaText: "Play Now" },
 ]
 
 export async function listHeroBanners(): Promise<HeroBannerDto[]> {
@@ -50,10 +43,14 @@ export async function listHeroBanners(): Promise<HeroBannerDto[]> {
 }
 
 async function buildHeroBanners(): Promise<HeroBannerDto[]> {
-  const games = await prisma.game.findMany({ where: { gameId: { in: PINNED_BANNERS.map((b) => b.gameId) } } })
+  const gameIds = PINNED_BANNERS.filter((b) => b.kind === "game").map((b) => b.gameId)
+  const games = await prisma.game.findMany({ where: { gameId: { in: gameIds } } })
   const byGameId = new Map(games.map((g) => [g.gameId, g]))
 
-  return PINNED_BANNERS.flatMap((pinned) => {
+  return PINNED_BANNERS.flatMap((pinned): HeroBannerDto[] => {
+    if (pinned.kind === "page") {
+      return [{ id: pinned.path, backgroundImage: pinned.image, ctaText: pinned.ctaText, linkType: "page", gameSlug: null, path: pinned.path }]
+    }
     const game = byGameId.get(pinned.gameId)
     if (!game) {
       // A pinned game can disappear on resync (provider deactivates it,
@@ -61,7 +58,7 @@ async function buildHeroBanners(): Promise<HeroBannerDto[]> {
       logger.warn({ gameId: pinned.gameId }, "Pinned hero banner game not found in catalog — skipping slide")
       return []
     }
-    return [{ id: pinned.gameId, backgroundImage: pinned.image, ctaText: pinned.ctaText, gameSlug: game.gameId }]
+    return [{ id: pinned.gameId, backgroundImage: pinned.image, ctaText: pinned.ctaText, linkType: "game", gameSlug: game.gameId, path: null }]
   })
 }
 
