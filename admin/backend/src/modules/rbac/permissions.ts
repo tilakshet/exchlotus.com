@@ -12,6 +12,8 @@ export const PERMISSION_CODES = [
   "wallets.view",
   "wallets.adjust",
   "ledger.view",
+  "withdrawals.view",
+  "withdrawals.approve",
   "admins.view",
   "admins.manage",
   "roles.view",

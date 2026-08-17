@@ -46,6 +46,8 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
       "notifications.view",
       "ledger.export",
       "reports.export",
+      "withdrawals.view",
+      "withdrawals.approve",
     ],
   },
   {

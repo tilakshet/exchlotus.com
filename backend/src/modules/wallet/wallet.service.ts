@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
+import { env } from "../../lib/env"
 import { prisma } from "../../lib/prisma"
 import { appEvents } from "../../lib/events"
 import { GamingApiError } from "../../lib/api-error"
@@ -154,25 +155,82 @@ export async function listTransactionHistory(
   }
 }
 
+export class WalletError extends Error {
+  constructor(
+    public readonly code: "BANK_ACCOUNT_NOT_FOUND",
+    message: string
+  ) {
+    super(message)
+  }
+}
+
 /**
- * Manual deposit/withdrawal — there is no real payment gateway integrated
- * yet (CLAUDE.md's Payment Architecture module doesn't exist), so this is
- * an instant, unconditional balance adjustment for development/demo
- * purposes only. Routes through the same idempotent ledger path as every
- * other wallet mutation, tagged DEPOSIT/WITHDRAWAL instead of BET/WIN/REFUND.
+ * Instant, unconditional balance credit — dev/test convenience only, hard
+ * disabled in production (same gating pattern as the OTP devCode shortcut
+ * in auth.service.ts). Real deposits go through
+ * payments.service.createDepositOrder + the PayIn callback instead.
  */
-export async function applyManualAdjustment(
-  playerExternalId: string,
-  type: "DEPOSIT" | "WITHDRAWAL",
-  amount: number
-): Promise<ApplyLedgerEntryResult> {
-  const signedAmount = type === "DEPOSIT" ? Math.abs(amount) : -Math.abs(amount)
+export async function applyManualDeposit(playerExternalId: string, amount: number): Promise<ApplyLedgerEntryResult> {
+  if (env.NODE_ENV === "production") {
+    throw new GamingApiError("INVALID_TRANSACTION", "Manual deposit is disabled in production — use the real payment gateway")
+  }
   return applyLedgerEntry({
     playerExternalId,
-    type,
+    type: "DEPOSIT",
     transactionId: randomUUID(),
     roundId: "manual",
     gameId: "wallet",
-    amount: signedAmount,
+    amount: Math.abs(amount),
+  })
+}
+
+/**
+ * Requests a withdrawal: reserves `amount` by moving it from `balance` into
+ * `lockedBalance` (same FOR UPDATE row-lock as applyLedgerEntry) and creates
+ * a PENDING WithdrawalRequest — no money actually leaves and no ledger entry
+ * is written yet. An admin approving it in admin/backend is what calls the
+ * real payout API and writes the WITHDRAWAL ledger entry; rejecting it
+ * releases the lock back to balance. See the payments plan for why: there's
+ * no KYC/fraud review today, so nothing pays out unattended.
+ */
+export async function requestWithdrawal(
+  playerExternalId: string,
+  bankAccountId: string,
+  amount: number
+): Promise<{ withdrawalId: string; balance: number; lockedBalance: number }> {
+  const player = await prisma.player.findUnique({ where: { externalId: playerExternalId } })
+  if (!player) {
+    throw new GamingApiError("INVALID_USER", `No player found for user_id ${playerExternalId}`)
+  }
+
+  const bankAccount = await prisma.bankAccount.findFirst({ where: { id: bankAccountId, playerId: player.id } })
+  if (!bankAccount) {
+    throw new WalletError("BANK_ACCOUNT_NOT_FOUND", "Bank account not found")
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const walletRows = await tx.$queryRaw<{ id: string; balance: string; lockedBalance: string }[]>`
+      SELECT id, balance, "lockedBalance" FROM wallets WHERE "playerId" = ${player.id} FOR UPDATE
+    `
+    const wallet = walletRows[0]
+    if (!wallet) {
+      throw new GamingApiError("INVALID_USER", `No wallet provisioned for user_id ${playerExternalId}`)
+    }
+
+    const decimalAmount = new Prisma.Decimal(amount)
+    const currentBalance = new Prisma.Decimal(wallet.balance)
+    if (currentBalance.lessThan(decimalAmount)) {
+      throw new GamingApiError("NO_BALANCE", "Insufficient balance for withdrawal")
+    }
+
+    const newBalance = currentBalance.minus(decimalAmount)
+    const newLocked = new Prisma.Decimal(wallet.lockedBalance).plus(decimalAmount)
+    await tx.wallet.update({ where: { id: wallet.id }, data: { balance: newBalance, lockedBalance: newLocked } })
+
+    const withdrawal = await tx.withdrawalRequest.create({
+      data: { playerId: player.id, bankAccountId: bankAccount.id, amount: decimalAmount },
+    })
+
+    return { withdrawalId: withdrawal.id, balance: newBalance.toNumber(), lockedBalance: newLocked.toNumber() }
   })
 }

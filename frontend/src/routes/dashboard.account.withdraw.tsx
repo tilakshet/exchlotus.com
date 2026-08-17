@@ -20,9 +20,9 @@ const MAX_WITHDRAW = 1_000_000
 const WITHDRAWAL_CHARGE = 0
 
 const faqs = [
-  { q: "How long do withdrawals take?", a: "Withdrawals here are processed instantly against your account balance — there's no manual review queue in this build." },
+  { q: "How long do withdrawals take?", a: "Your request goes to review first — once approved, payout to your bank account is usually quick, but can take longer depending on your bank." },
   { q: "Is there a withdrawal fee?", a: "No fees are applied to withdrawals." },
-  { q: "Why do I need a payout method?", a: "Saved bank accounts are stored on this device for reference — there's no bank verification or payout gateway in this build, so withdrawals still credit your in-app balance directly rather than transferring to the account." },
+  { q: "Why do I need a payout method?", a: "Your bank account details are where an approved withdrawal actually gets paid out to." },
 ]
 
 function maskAccountNumber(accountNumber: string) {
@@ -34,7 +34,7 @@ function WithdrawPage() {
   const withdraw = useWithdraw()
   const { accounts, removeAccount } = useBankAccounts()
   const [payoutNote, setPayoutNote] = useState<string | null>(null)
-  const [successBalance, setSuccessBalance] = useState<number | null>(null)
+  const [requestedAmount, setRequestedAmount] = useState<number | null>(null)
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const availableBalance = wallet?.balance ?? 0
 
@@ -71,10 +71,11 @@ function WithdrawPage() {
   const netAmount = Math.max(0, numericAmount - WITHDRAWAL_CHARGE)
 
   async function onSubmit(values: WithdrawValues) {
-    setSuccessBalance(null)
+    if (!selectedAccountId) return
+    setRequestedAmount(null)
     try {
-      const result = await withdraw.mutateAsync(values.amount)
-      setSuccessBalance(result.balance)
+      await withdraw.mutateAsync({ amount: values.amount, bankAccountId: selectedAccountId })
+      setRequestedAmount(values.amount)
     } catch {
       // Surfaced via withdraw.isError/withdraw.error below.
     }
@@ -116,7 +117,7 @@ function WithdrawPage() {
               <span>
                 Min: {formatInr(MIN_WITHDRAW)} Max: {formatInr(MAX_WITHDRAW)}
               </span>
-              <span>Withdrawals are processed instantly</span>
+              <span>Withdrawals are reviewed before payout</span>
             </div>
             {errors.amount && (
               <p role="alert" className="mt-1 text-sm" style={{ color: "var(--acc-danger)" }}>
@@ -175,43 +176,49 @@ function WithdrawPage() {
               </Link>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setPayoutNote("Saved crypto wallets aren't available yet — withdrawals credit your in-app balance directly.")}
-              className="mt-3 flex items-center gap-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
-              style={{ color: "var(--acc-text-secondary)" }}
-            >
-              <Plus className="size-4.5" aria-hidden="true" />
-              Add Crypto Wallet instead
-            </button>
-            {payoutNote && (
-              <div className="mt-3">
-                <ComingSoon message={payoutNote} />
-              </div>
-            )}
+            {/* Non-functional stub (crypto payout doesn't exist) — desktop-only so mobile isn't cluttered with a dead end. */}
+            <div className="hidden lg:block">
+              <button
+                type="button"
+                onClick={() => setPayoutNote("Crypto payouts aren't available yet — bank transfer is the only payout method right now.")}
+                className="mt-3 flex items-center gap-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
+                style={{ color: "var(--acc-text-secondary)" }}
+              >
+                <Plus className="size-4.5" aria-hidden="true" />
+                Add Crypto Wallet instead
+              </button>
+              {payoutNote && (
+                <div className="mt-3">
+                  <ComingSoon message={payoutNote} />
+                </div>
+              )}
+            </div>
           </section>
 
           <section className="flex flex-col gap-6">
             <div className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
-              <StepHeading step={2} title="Withdrawal Summary" />
-              <div className="flex flex-col gap-3 text-base">
-                <div className="flex items-center justify-between">
-                  <span className="text-[color:var(--acc-text-secondary)]">Withdrawal Amount</span>
-                  <span className="font-semibold text-[color:var(--acc-text-primary)]">{formatInr(numericAmount)}</span>
+              {/* Summary breakdown is desktop-only — mobile goes straight from the amount/bank-account step to the Request Withdrawal button below. */}
+              <div className="hidden lg:block">
+                <StepHeading step={2} title="Withdrawal Summary" />
+                <div className="flex flex-col gap-3 text-base">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[color:var(--acc-text-secondary)]">Withdrawal Amount</span>
+                    <span className="font-semibold text-[color:var(--acc-text-primary)]">{formatInr(numericAmount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[color:var(--acc-text-secondary)]">Charges</span>
+                    <span className="font-semibold" style={{ color: "var(--acc-success-fg)" }}>
+                      {WITHDRAWAL_CHARGE === 0 ? "Free" : formatInr(WITHDRAWAL_CHARGE)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between border-t border-[color:var(--acc-border-soft)] pt-3">
+                    <span className="text-lg font-semibold text-[color:var(--acc-text-primary)]">Net Amount</span>
+                    <span className="text-2xl font-bold" style={{ color: "var(--acc-accent)" }}>
+                      {formatInr(netAmount)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-[color:var(--acc-text-secondary)]">Reviewed before payout to your selected bank account.</p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[color:var(--acc-text-secondary)]">Charges</span>
-                  <span className="font-semibold" style={{ color: "var(--acc-success-fg)" }}>
-                    {WITHDRAWAL_CHARGE === 0 ? "Free" : formatInr(WITHDRAWAL_CHARGE)}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center justify-between border-t border-[color:var(--acc-border-soft)] pt-3">
-                  <span className="text-lg font-semibold text-[color:var(--acc-text-primary)]">Net Amount</span>
-                  <span className="text-2xl font-bold" style={{ color: "var(--acc-accent)" }}>
-                    {formatInr(netAmount)}
-                  </span>
-                </div>
-                <p className="text-sm text-[color:var(--acc-text-secondary)]">Processed instantly to your account balance.</p>
               </div>
 
               {withdraw.isError && (
@@ -219,28 +226,33 @@ function WithdrawPage() {
                   {friendlyErrorMessage(withdraw.error instanceof ApiError ? withdraw.error : withdraw.error)}
                 </p>
               )}
-              {successBalance !== null && (
+              {!withdraw.isError && !selectedAccountId && (
+                <p role="alert" className="mt-4 text-base" style={{ color: "var(--acc-danger)" }}>
+                  Add a bank account below before requesting a withdrawal.
+                </p>
+              )}
+              {requestedAmount !== null && (
                 <p role="status" className="mt-4 flex items-center gap-2 text-base font-medium" style={{ color: "var(--acc-success-fg)" }}>
                   <CheckCircle2 className="size-5.5" aria-hidden="true" />
-                  Withdrawal successful — new balance {formatInr(successBalance)}
+                  Withdrawal requested — {formatInr(requestedAmount)} is reserved and pending review.
                 </p>
               )}
 
               <button
                 type="submit"
-                disabled={withdraw.isPending}
+                disabled={withdraw.isPending || !selectedAccountId}
                 className="mt-5 flex h-14 w-full items-center justify-center gap-2.5 rounded-[var(--acc-radius-md)] text-lg font-bold outline-none transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
                 style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
               >
                 <CreditCard className="size-5.5" aria-hidden="true" strokeWidth={2.2} />
-                {withdraw.isPending ? "Processing…" : "Withdraw Now"}
+                {withdraw.isPending ? "Requesting…" : "Request Withdrawal"}
               </button>
             </div>
           </section>
         </div>
       </form>
 
-      <section>
+      <section className="hidden lg:block">
         <h3 className="mb-4 text-center text-xl font-bold" style={{ color: "var(--acc-accent)" }}>
           Frequently Asked Questions
         </h3>

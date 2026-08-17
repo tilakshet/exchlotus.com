@@ -1,5 +1,6 @@
 export type AuthErrorCode =
   | "EMAIL_TAKEN"
+  | "PHONE_TAKEN"
   | "INVALID_CREDENTIALS"
   | "INVALID_REFRESH_TOKEN"
   | "OTP_INVALID"

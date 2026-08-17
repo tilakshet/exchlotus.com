@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import * as walletApi from "@/api/wallet.api"
+import { createDepositOrder } from "@/api/payments.api"
 import { useAppSelector } from "@/store"
 
 export const walletQueryKey = ["wallet"] as const
@@ -22,15 +23,14 @@ export function useWallet() {
   })
 }
 
-export function useDeposit() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: walletApi.deposit,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: walletQueryKey })
-      queryClient.invalidateQueries({ queryKey: ["wallet", "history"] })
-    },
-  })
+/**
+ * Doesn't touch the wallet at all — the balance only actually updates once
+ * the gateway's callback lands (backend payments.service.ts), which arrives
+ * over the existing wallet:update socket event, not this mutation's result.
+ * Callers redirect to `paymentUrl` on success.
+ */
+export function useCreateDepositOrder() {
+  return useMutation({ mutationFn: createDepositOrder })
 }
 
 export function useWithdraw() {

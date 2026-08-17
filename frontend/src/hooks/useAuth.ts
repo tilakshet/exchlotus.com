@@ -29,9 +29,9 @@ export function useAuth() {
   )
 
   const register = useCallback(
-    async (username: string, email: string, password: string) => {
-      const tokens = await authApi.registerAccount({ username, email, password })
-      dispatch(credentialsReceived({ user: { username, email, currency: "INR" }, tokens }))
+    async (username: string, phone: string, password: string, email?: string) => {
+      const tokens = await authApi.registerAccount({ username, phone, email, password })
+      dispatch(credentialsReceived({ user: { username, phone, email, currency: "INR" }, tokens }))
     },
     [dispatch]
   )
