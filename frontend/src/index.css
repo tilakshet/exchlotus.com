@@ -462,149 +462,44 @@
   transform: translateX(120%);
 }
 
-.login-gaming-bg {
-    background:
-        radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--landing-gold) 28%, transparent), transparent 24%),
-        radial-gradient(circle at 82% 28%, color-mix(in srgb, var(--landing-emerald) 18%, transparent), transparent 22%),
-        radial-gradient(circle at 50% 88%, color-mix(in srgb, var(--landing-gold) 18%, transparent), transparent 30%),
-        linear-gradient(135deg, var(--landing-bg-1), var(--landing-bg-2) 48%, var(--landing-bg-1));
+/* Login CTA — a blue gradient pill (distinct from the site's gold accent,
+   so it reads as its own "primary action" rather than blending into gold
+   badges/tabs everywhere else), with a soft matching glow that deepens and
+   lifts slightly on hover. Flat, no skeuomorphic press. */
+.landing-cta-blue {
+  background: linear-gradient(135deg, #4f8dff, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 10px 28px -12px rgb(37 99 235 / 60%);
+  transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
+}
+.landing-cta-blue:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 14px 34px -10px rgb(37 99 235 / 70%);
+}
+.landing-cta-blue:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+  box-shadow: 0 6px 18px -10px rgb(37 99 235 / 55%);
 }
 
-.login-gaming-bg::before,
-.login-gaming-bg::after {
-    content: "";
-    position: absolute;
-    inset: -25%;
-    pointer-events: none;
+/* Deliberately restrained: a near-flat two-tone backdrop with exactly one
+   soft accent glow that drifts slowly, instead of the earlier stack of
+   radial blobs + animated dot-grid + rising game tiles firing at once
+   (the generic "AI landing page" look). One confident, slow effect reads
+   as intentional; five ambient ones read as a template. */
+.login-gaming-bg {
+    background: linear-gradient(135deg, var(--landing-bg-1), var(--landing-bg-2) 48%, var(--landing-bg-1));
 }
 
 .login-gaming-bg::before {
-    /* Much lower opacity than the old dark-theme version — a bold gold grid
-     reads as premium texture on near-black but as clutter on white, so
-     this is tuned as a faint watermark instead. */
-    opacity: 0.09;
-    background-image:
-        linear-gradient(color-mix(in srgb, var(--landing-gold) 28%, transparent) 1px, transparent 1px),
-        linear-gradient(90deg, color-mix(in srgb, var(--landing-gold) 22%, transparent) 1px, transparent 1px);
-    background-size: 72px 72px;
-    transform: perspective(700px) rotateX(62deg) translateY(8%);
-    transform-origin: center bottom;
-    animation: login-grid-drift 12s linear infinite;
-}
-
-.login-gaming-bg::after {
-    opacity: 0.28;
-    background:
-        radial-gradient(circle, color-mix(in srgb, var(--landing-gold) 78%, transparent) 0 2px, transparent 3px) 8% 20% / 160px 160px,
-        radial-gradient(circle, color-mix(in srgb, var(--landing-emerald) 60%, transparent) 0 1px, transparent 3px) 72% 28% / 190px 190px,
-        linear-gradient(115deg, transparent 38%, color-mix(in srgb, var(--landing-gold) 12%, transparent) 48%, transparent 58%);
-    filter: blur(0.2px);
-    animation: login-neon-sweep 9s ease-in-out infinite alternate;
-}
-
-.login-orbit {
+    content: "";
     position: absolute;
-    inset: 0;
-    z-index: 0;
-}
-
-.login-orbit-b {
-    overflow: hidden;
-}
-
-.login-game-tile {
-    position: absolute;
-    bottom: -170px;
-    left: var(--tile-left);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 176px;
-    min-height: 96px;
-    border-radius: var(--landing-radius-md);
-    border: 0;
-    background: color-mix(in srgb, var(--landing-bg-3) 62%, transparent);
-    color: var(--landing-text-primary);
-    box-shadow: 0 18px 42px -24px color-mix(in srgb, var(--landing-gold) 70%, transparent);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
-    padding: 12px 14px;
-    opacity: 0;
-    transform: translate3d(-50%, 0, 0);
-    animation: login-game-rise var(--tile-duration, 22s) linear infinite;
-    animation-delay: var(--tile-delay, 0s);
-}
-
-.login-game-tile-image {
-    aspect-ratio: 3 / 4;
-    min-height: 0;
-    overflow: hidden;
-    padding: 0;
-}
-
-.login-game-tile-image img {
-    height: 100%;
-    width: 100%;
-    object-fit: cover;
-}
-
-.login-card-game-bg {
-    opacity: 0.95;
-    mix-blend-mode: screen;
-}
-
-.login-card-game-bg .login-gaming-bg::before,
-.login-card-game-bg .login-gaming-bg::after {
-    display: none;
-}
-
-.login-card-game-bg .login-game-tile {
-    bottom: -150px;
-    width: 132px;
-    --tile-opacity: 0.5;
-    box-shadow: 0 18px 38px -18px color-mix(in srgb, var(--landing-gold) 90%, transparent);
-}
-
-.login-card-game-bg .login-game-tile-image {
-    --tile-opacity: 0.48;
-}
-
-.login-card-game-bg .login-game-tile:not(.login-game-tile-image) {
-    --tile-opacity: 0.42;
-}
-
-.login-game-tile span {
-    font-size: 14px;
-    font-weight: 900;
-}
-
-.login-game-tile small {
-    color: var(--landing-text-secondary);
-    font-size: 11px;
-    font-weight: 700;
-}
-
-@keyframes login-grid-drift {
-    from {
-        background-position: 0 0, 0 0;
-    }
-
-    to {
-        background-position: 0 72px, 72px 0;
-    }
-}
-
-@keyframes login-neon-sweep {
-    from {
-        transform: translate3d(-3%, 1%, 0) scale(1);
-    }
-
-    to {
-        transform: translate3d(3%, -2%, 0) scale(1.05);
-    }
+    inset: -15%;
+    pointer-events: none;
+    opacity: 0.4;
+    background: radial-gradient(circle at 26% 22%, color-mix(in srgb, var(--landing-gold) 20%, transparent), transparent 45%);
+    animation: login-layer-drift 26s ease-in-out infinite alternate;
 }
 
 @keyframes login-layer-drift {
@@ -613,25 +508,44 @@
     }
 
     to {
-        transform: translate3d(1.5%, -1%, 0) scale(1.02);
+        transform: translate3d(1.5%, -1%, 0) scale(1.04);
     }
 }
 
-@keyframes login-game-rise {
-    0% {
-        opacity: 0;
-        transform: translate3d(-50%, 0, 0) scale(0.92);
-    }
+/* Login card / promo panel — a crisp solid surface with one thin gold
+   accent line, not a blurred glow halo. */
+.login-card {
+    position: relative;
+    border: 1px solid var(--landing-border-strong);
+}
 
-    10%,
-    82% {
-        opacity: var(--tile-opacity, 0.3);
-    }
+.login-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent, var(--landing-gold), transparent);
+}
 
-    100% {
-        opacity: 0;
-        transform: translate3d(-50%, calc(-100vh - 280px), 0) scale(1.04);
-    }
+/* Login form submit buttons — solid, a tight grounded shadow instead of a
+   soft color-bleed glow, small lift on hover. */
+.login-btn-primary {
+    background: var(--landing-gold);
+    color: var(--landing-gold-fg);
+    box-shadow: 0 10px 24px -14px rgb(0 0 0 / 45%);
+    transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+}
+
+.login-btn-primary:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+    box-shadow: 0 14px 28px -14px rgb(0 0 0 / 50%);
+}
+
+.login-btn-primary:active {
+    transform: translateY(0);
+    filter: brightness(0.97);
 }
 
 /* A real, always-visible horizontal scrollbar (not the hidden-track +

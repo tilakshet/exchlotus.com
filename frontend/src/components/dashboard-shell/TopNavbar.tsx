@@ -53,9 +53,9 @@ function LoggedOutActions() {
     return (
         <Link
             to="/login"
-            className="landing-glow landing-shine flex items-center justify-center gap-1.5 rounded-(--landing-radius-full) bg-(--landing-gold) px-4 py-2.5 text-sm font-black text-(--landing-gold-fg) outline-none transition-all hover:brightness-110 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
+            className="landing-cta-blue landing-shine flex items-center justify-center gap-1.5 rounded-(--landing-radius-sm) px-8 py-4 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
         >
-            Login / Sign Up
+            Login
         </Link>
     )
 }

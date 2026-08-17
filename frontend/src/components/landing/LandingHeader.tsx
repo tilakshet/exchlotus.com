@@ -2,32 +2,21 @@ import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { motion, AnimatePresence } from "framer-motion"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
-import { Wallet, ChevronDown, LayoutDashboard, LogOut, Search, Trophy, Spade, Gem, Dices, Gift, X } from "lucide-react"
+import { Wallet, ChevronDown, LayoutDashboard, LogOut, Search, X } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { useWallet } from "@/hooks/useWallet"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
 import { Logo } from "@/components/shared/Logo"
 import { UserAvatar } from "@/components/shared/UserAvatar"
 
-const navItems = [
-  { href: "#sports", label: "Sports", icon: Trophy },
-  { href: "#live-casino", label: "Live Casino", icon: Spade },
-  { href: "#categories", label: "Casino", icon: Gem },
-  { href: "#trending", label: "Slots", icon: Dices },
-  { href: "#promotions", label: "Promotions", icon: Gift },
-] as const
-
 /**
- * Sticky header, two rows. Row 1: logo, search, theme toggle, auth — always
- * visible at every width, no hamburger, since row 2 replaces the old
- * hide-past-a-breakpoint text nav with an always-visible horizontal-scroll
- * pill strip (same pattern as the dashboard's CategoryNavPills). The whole
- * header carries a real backdrop-blurred backing at all times — not just
- * once scrolled — since it sits directly over the hero carousel's own
- * artwork/gradients, which are bright and busy enough in places (gold
- * wheel hubs, lit scenes) that a fully transparent header made row 2's
- * near-invisible pill chips unreadable. Scrolling just deepens the same
- * backing into a fully solid bar.
+ * Sticky header: logo, search, theme toggle, auth — always visible at every
+ * width, no hamburger. Carries a real backdrop-blurred backing at all times
+ * — not just once scrolled — since it sits directly over the hero
+ * carousel's own artwork/gradients, which are bright and busy enough in
+ * places (gold wheel hubs, lit scenes) that a fully transparent header
+ * would be hard to read against. Scrolling just deepens the same backing
+ * into a fully solid bar.
  */
 export function LandingHeader() {
   const [scrolled, setScrolled] = useState(false)
@@ -66,34 +55,12 @@ export function LandingHeader() {
             <Link
               to="/login"
               search={{ view: "otp" }}
-              className="landing-glow landing-shine shrink-0 whitespace-nowrap rounded-(--landing-radius-full) bg-(--landing-gold) px-4 py-2.5 text-sm font-black text-(--landing-gold-fg) outline-none transition-all hover:brightness-110 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) sm:px-5"
+              className="landing-cta-blue landing-shine shrink-0 whitespace-nowrap rounded-(--landing-radius-sm) px-8 py-4 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
             >
-              <span className="sm:hidden">Login</span>
-              <span className="hidden sm:inline">Login / Sign Up</span>
+              Login
             </Link>
           )}
         </div>
-      </div>
-
-      <div className="relative border-t border-(--landing-border)">
-        <nav
-          aria-label="Primary"
-          className="landing-scrollbar flex gap-2 overflow-x-auto px-4 pt-2.5 pb-3 sm:px-6 lg:px-8"
-        >
-          {navItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <a
-                key={item.href}
-                href={item.href}
-                className="flex shrink-0 items-center gap-1.5 rounded-(--landing-radius-full) border border-(--landing-border-strong) bg-(--landing-bg-2) px-3.5 py-1.5 text-xs font-bold whitespace-nowrap uppercase tracking-wide text-(--landing-text-primary) outline-none transition-all hover:border-(--landing-gold)/60 hover:bg-(--landing-bg-3) focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
-              >
-                <Icon className="size-5.5 text-(--landing-gold)" aria-hidden="true" />
-                {item.label}
-              </a>
-            )
-          })}
-        </nav>
       </div>
     </header>
   )

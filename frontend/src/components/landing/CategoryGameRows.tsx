@@ -25,7 +25,10 @@ function CategoryRow({ code, name, onPlay }: { code: string; name: string; onPla
   if (isLoading) {
     return (
       <div>
-        <h3 className="mb-3 text-lg font-bold text-(--landing-text-primary)">{name}</h3>
+        <h3 className="mb-3 flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-(--landing-text-primary)">
+          <span aria-hidden="true" className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: "linear-gradient(180deg, var(--landing-gold-text), transparent)" }} />
+          {name}
+        </h3>
         <CategoryRowSkeleton />
       </div>
     )
@@ -36,7 +39,10 @@ function CategoryRow({ code, name, onPlay }: { code: string; name: string; onPla
 
   return (
     <div>
-      <h3 className="mb-3 text-lg font-bold text-(--landing-text-primary)">{name}</h3>
+      <h3 className="mb-3 flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-(--landing-text-primary)">
+        <span aria-hidden="true" className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: "linear-gradient(180deg, var(--landing-gold-text), transparent)" }} />
+        {name}
+      </h3>
       <ul className="scrollbar-none flex gap-3 overflow-x-auto pb-1">
         {games.map((game) => (
           <li key={game.id} className="w-48 shrink-0">

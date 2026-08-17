@@ -7,14 +7,16 @@ import { DASHBOARD_NAV_ITEMS } from "@/data/dashboardShell"
  * same real /dashboard/* routes — browsing is open without a session (see
  * routes/dashboard.tsx), so these are valid destinations straight from the
  * landing page too, not a separate landing-only copy. `top` matches
- * LandingHeader's measured two-row height (~135px) so it sits directly
- * below the fixed header with no gap or overlap.
+ * LandingHeader's measured single-row height (~76px, same markup as the
+ * dashboard's TopNavbar.tsx, which uses the same 76px offset in
+ * dashboard-shell/Sidebar.tsx) so it sits directly below the fixed header
+ * with no gap or overlap.
  */
 export function LandingSidebar() {
   return (
     <nav
       aria-label="Main"
-      className="fixed top-[135px] left-0 z-40 hidden h-[calc(100vh-135px)] w-56 flex-col gap-1.5 overflow-y-auto border-r border-(--landing-border) bg-(--landing-bg-1) px-3 py-5 lg:flex"
+      className="fixed top-[76px] left-0 z-40 hidden h-[calc(100vh-76px)] w-56 flex-col gap-1.5 overflow-y-auto border-r border-(--landing-border) bg-(--landing-bg-1) px-3 py-5 lg:flex"
     >
       {DASHBOARD_NAV_ITEMS.map((item) => (
         <Link
