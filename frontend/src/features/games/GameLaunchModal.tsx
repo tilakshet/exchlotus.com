@@ -50,7 +50,7 @@ export function GameLaunchModal({ game, onClose }: { game: Game; onClose: () => 
     <DialogPrimitive.Root open onOpenChange={(open) => !open && handleClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70" />
-        <DialogPrimitive.Content className="fixed inset-4 z-50 flex flex-col overflow-hidden rounded-[var(--sb-radius-lg)] bg-black shadow-2xl sm:inset-8 lg:inset-10">
+        <DialogPrimitive.Content className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-black shadow-2xl">
           <div className="flex min-h-16 items-center justify-between gap-4 bg-[color:var(--sb-navbar-bg)] px-5 py-3">
             <DialogPrimitive.Title className="min-w-0 text-base font-bold leading-[1.25] text-[color:var(--sb-navbar-fg)]">
               <span className="block truncate">{game.gameName}</span>
