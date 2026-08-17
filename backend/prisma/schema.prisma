@@ -64,6 +64,7 @@ model Player {
   bankAccounts       BankAccount[]
   paymentOrders      PaymentOrder[]
   withdrawalRequests WithdrawalRequest[]
+  tickets            SupportTicket[]
 
   @@map("players")
 }
@@ -285,6 +286,55 @@ model WithdrawalRequest {
   @@index([playerId])
   @@index([status])
   @@map("withdrawal_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Support (backend/src/modules/support, admin/backend/src/modules/support) —
+// a player-raised ticket handled by admin staff. Player-facing and admin-
+// facing, unlike everything above/below this block, so it sits between them.
+// ---------------------------------------------------------------------------
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model SupportTicket {
+  id              String              @id @default(uuid())
+  playerId        String
+  player          Player              @relation(fields: [playerId], references: [id])
+  subject         String
+  status          SupportTicketStatus @default(OPEN)
+  /// AdminUser.id from admin/backend's schema — no FK, same reasoning as
+  /// LedgerEntry.actorAdminId / WithdrawalRequest.decidedByAdminId: this
+  /// table must stay readable even if that admin account is later deleted.
+  assignedAdminId String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  messages SupportMessage[]
+
+  @@index([playerId])
+  @@index([status])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id             String        @id @default(uuid())
+  ticketId       String
+  ticket         SupportTicket @relation(fields: [ticketId], references: [id])
+  /// Exactly one of these is set — a message is authored by the player or
+  /// an admin, never both/neither. No FK on authorAdminId, same reasoning
+  /// as SupportTicket.assignedAdminId.
+  authorPlayerId String?
+  authorAdminId  String?
+  body           String
+  createdAt      DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
 }
 
 // ---------------------------------------------------------------------------

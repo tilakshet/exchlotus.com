@@ -28,6 +28,8 @@ export const PERMISSION_CODES = [
   "ledger.export",
   "games.export",
   "reports.export",
+  "support.view",
+  "support.manage",
 ] as const
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number]

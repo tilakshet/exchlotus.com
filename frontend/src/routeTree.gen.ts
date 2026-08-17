@@ -34,9 +34,11 @@ import { Route as DashboardAccountDepositRouteImport } from './routes/dashboard.
 import { Route as DashboardAccountHistoryRouteImport } from './routes/dashboard.account.history'
 import { Route as DashboardAccountLoyaltyRouteImport } from './routes/dashboard.account.loyalty'
 import { Route as DashboardAccountProfileRouteImport } from './routes/dashboard.account.profile'
+import { Route as DashboardAccountSupportRouteImport } from './routes/dashboard.account.support'
 import { Route as DashboardAccountWithdrawRouteImport } from './routes/dashboard.account.withdraw'
 import { Route as DashboardCategoryCategoryCodeRouteImport } from './routes/dashboard.category.$categoryCode'
 import { Route as DashboardGamesSlugRouteImport } from './routes/dashboard.games.$slug'
+import { Route as DashboardAccountSupportIdRouteImport } from './routes/dashboard.account.support.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -163,6 +165,11 @@ const DashboardAccountProfileRoute = DashboardAccountProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => DashboardAccountRoute,
 } as any)
+const DashboardAccountSupportRoute = DashboardAccountSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => DashboardAccountRoute,
+} as any)
 const DashboardAccountWithdrawRoute =
   DashboardAccountWithdrawRouteImport.update({
     id: '/withdraw',
@@ -180,6 +187,12 @@ const DashboardGamesSlugRoute = DashboardGamesSlugRouteImport.update({
   path: '/games/$slug',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAccountSupportIdRoute =
+  DashboardAccountSupportIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => DashboardAccountSupportRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -206,10 +219,12 @@ export interface FileRoutesByFullPath {
   '/dashboard/account/history': typeof DashboardAccountHistoryRoute
   '/dashboard/account/loyalty': typeof DashboardAccountLoyaltyRoute
   '/dashboard/account/profile': typeof DashboardAccountProfileRoute
+  '/dashboard/account/support': typeof DashboardAccountSupportRouteWithChildren
   '/dashboard/account/withdraw': typeof DashboardAccountWithdrawRoute
   '/dashboard/category/$categoryCode': typeof DashboardCategoryCategoryCodeRoute
   '/dashboard/games/$slug': typeof DashboardGamesSlugRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
+  '/dashboard/account/support/$id': typeof DashboardAccountSupportIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -234,10 +249,12 @@ export interface FileRoutesByTo {
   '/dashboard/account/history': typeof DashboardAccountHistoryRoute
   '/dashboard/account/loyalty': typeof DashboardAccountLoyaltyRoute
   '/dashboard/account/profile': typeof DashboardAccountProfileRoute
+  '/dashboard/account/support': typeof DashboardAccountSupportRouteWithChildren
   '/dashboard/account/withdraw': typeof DashboardAccountWithdrawRoute
   '/dashboard/category/$categoryCode': typeof DashboardCategoryCategoryCodeRoute
   '/dashboard/games/$slug': typeof DashboardGamesSlugRoute
   '/dashboard/account': typeof DashboardAccountIndexRoute
+  '/dashboard/account/support/$id': typeof DashboardAccountSupportIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -265,10 +282,12 @@ export interface FileRoutesById {
   '/dashboard/account/history': typeof DashboardAccountHistoryRoute
   '/dashboard/account/loyalty': typeof DashboardAccountLoyaltyRoute
   '/dashboard/account/profile': typeof DashboardAccountProfileRoute
+  '/dashboard/account/support': typeof DashboardAccountSupportRouteWithChildren
   '/dashboard/account/withdraw': typeof DashboardAccountWithdrawRoute
   '/dashboard/category/$categoryCode': typeof DashboardCategoryCategoryCodeRoute
   '/dashboard/games/$slug': typeof DashboardGamesSlugRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
+  '/dashboard/account/support/$id': typeof DashboardAccountSupportIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -297,10 +316,12 @@ export interface FileRouteTypes {
     | '/dashboard/account/history'
     | '/dashboard/account/loyalty'
     | '/dashboard/account/profile'
+    | '/dashboard/account/support'
     | '/dashboard/account/withdraw'
     | '/dashboard/category/$categoryCode'
     | '/dashboard/games/$slug'
     | '/dashboard/account/'
+    | '/dashboard/account/support/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -325,10 +346,12 @@ export interface FileRouteTypes {
     | '/dashboard/account/history'
     | '/dashboard/account/loyalty'
     | '/dashboard/account/profile'
+    | '/dashboard/account/support'
     | '/dashboard/account/withdraw'
     | '/dashboard/category/$categoryCode'
     | '/dashboard/games/$slug'
     | '/dashboard/account'
+    | '/dashboard/account/support/$id'
   id:
     | '__root__'
     | '/'
@@ -355,10 +378,12 @@ export interface FileRouteTypes {
     | '/dashboard/account/history'
     | '/dashboard/account/loyalty'
     | '/dashboard/account/profile'
+    | '/dashboard/account/support'
     | '/dashboard/account/withdraw'
     | '/dashboard/category/$categoryCode'
     | '/dashboard/games/$slug'
     | '/dashboard/account/'
+    | '/dashboard/account/support/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -552,6 +577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAccountProfileRouteImport
       parentRoute: typeof DashboardAccountRoute
     }
+    '/dashboard/account/support': {
+      id: '/dashboard/account/support'
+      path: '/support'
+      fullPath: '/dashboard/account/support'
+      preLoaderRoute: typeof DashboardAccountSupportRouteImport
+      parentRoute: typeof DashboardAccountRoute
+    }
     '/dashboard/account/withdraw': {
       id: '/dashboard/account/withdraw'
       path: '/withdraw'
@@ -573,8 +605,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardGamesSlugRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/account/support/$id': {
+      id: '/dashboard/account/support/$id'
+      path: '/$id'
+      fullPath: '/dashboard/account/support/$id'
+      preLoaderRoute: typeof DashboardAccountSupportIdRouteImport
+      parentRoute: typeof DashboardAccountSupportRoute
+    }
   }
 }
+
+interface DashboardAccountSupportRouteChildren {
+  DashboardAccountSupportIdRoute: typeof DashboardAccountSupportIdRoute
+}
+
+const DashboardAccountSupportRouteChildren: DashboardAccountSupportRouteChildren =
+  {
+    DashboardAccountSupportIdRoute: DashboardAccountSupportIdRoute,
+  }
+
+const DashboardAccountSupportRouteWithChildren =
+  DashboardAccountSupportRoute._addFileChildren(
+    DashboardAccountSupportRouteChildren,
+  )
 
 interface DashboardAccountRouteChildren {
   DashboardAccountAddBankRoute: typeof DashboardAccountAddBankRoute
@@ -582,6 +635,7 @@ interface DashboardAccountRouteChildren {
   DashboardAccountHistoryRoute: typeof DashboardAccountHistoryRoute
   DashboardAccountLoyaltyRoute: typeof DashboardAccountLoyaltyRoute
   DashboardAccountProfileRoute: typeof DashboardAccountProfileRoute
+  DashboardAccountSupportRoute: typeof DashboardAccountSupportRouteWithChildren
   DashboardAccountWithdrawRoute: typeof DashboardAccountWithdrawRoute
   DashboardAccountIndexRoute: typeof DashboardAccountIndexRoute
 }
@@ -592,6 +646,7 @@ const DashboardAccountRouteChildren: DashboardAccountRouteChildren = {
   DashboardAccountHistoryRoute: DashboardAccountHistoryRoute,
   DashboardAccountLoyaltyRoute: DashboardAccountLoyaltyRoute,
   DashboardAccountProfileRoute: DashboardAccountProfileRoute,
+  DashboardAccountSupportRoute: DashboardAccountSupportRouteWithChildren,
   DashboardAccountWithdrawRoute: DashboardAccountWithdrawRoute,
   DashboardAccountIndexRoute: DashboardAccountIndexRoute,
 }

@@ -1,13 +1,13 @@
 import {
   ArrowDownToLine,
-  ArrowUpFromLine,
-  BarChart3, 
+  BarChart3,
   Dices,
   Gamepad2,
   Gauge,
   KeyRound,
   Landmark,
   LayoutDashboard,
+  LifeBuoy,
   ScrollText,
   ShieldCheck,
   Users as UsersIcon,
@@ -39,6 +39,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Operations",
     items: [
       { label: "Users", to: "/users", permission: "users.view", icon: UsersIcon },
+      { label: "Support", to: "/support", permission: "support.view", icon: LifeBuoy },
       { label: "Games", to: "/games", permission: "games.view", icon: Gamepad2 },
       { label: "Game Activity", to: "/game-activity", permission: "ledger.view", icon: Dices },
     ],
@@ -47,17 +48,13 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Finance",
     items: [
       { label: "Deposits", to: "/deposits", permission: "ledger.view", icon: ArrowDownToLine },
-      { label: "Withdrawals", to: "/withdrawals", permission: "ledger.view", icon: ArrowUpFromLine },
+      { label: "Withdrawals", to: "/withdrawals", permission: "withdrawals.view", icon: Landmark },
       { label: "Transactions", to: "/transactions", permission: "ledger.view", icon: ScrollText },
     ],
   },
   {
     label: "Insights",
     items: [{ label: "Reports", to: "/reports", permission: "reports.view", icon: BarChart3 }],
-  },
-  {
-    label: "Finance",
-    items: [{ label: "Withdrawals", to: "/withdrawals", permission: "withdrawals.view", icon: Landmark }],
   },
   {
     label: "Administration",

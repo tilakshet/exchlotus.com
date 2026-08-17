@@ -19,6 +19,7 @@ import { monitoringRouter } from "./modules/monitoring/monitoring.controller"
 import { reportsRouter } from "./modules/reports/reports.controller"
 import { gamesRouter } from "./modules/games/games.controller"
 import { notificationsRouter } from "./modules/notifications/notifications.controller"
+import { supportRouter } from "./modules/support/support.controller"
 
 export function createApp() {
   const app = express()
@@ -50,6 +51,7 @@ export function createApp() {
   app.use("/admin-api/reports", reportsRouter)
   app.use("/admin-api/games", gamesRouter)
   app.use("/admin-api/notifications", notificationsRouter)
+  app.use("/admin-api/support", supportRouter)
 
   app.use((req, res) => {
     res.status(404).json({ error: "NOT_FOUND", path: req.path })

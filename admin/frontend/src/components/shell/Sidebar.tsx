@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router"
 import { ChevronsLeft, ChevronsRight } from "lucide-react"
 import { NAV_GROUPS } from "@/lib/nav"
 import { useAdminAuth } from "@/hooks/useAdminAuth"
+import { useOpenTicketCount } from "@/hooks/useOpenTicketCount"
 import { useAppDispatch, useAppSelector } from "@/store"
 import { sidebarToggled } from "@/store/uiSlice"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -12,6 +13,7 @@ export function Sidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const dispatch = useAppDispatch()
   const collapsed = useAppSelector((s) => s.ui.sidebarCollapsed)
+  const openTicketCount = useOpenTicketCount()
 
   const groups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => hasPermission(i.permission)) })).filter(
     (g) => g.items.length > 0
@@ -51,7 +53,16 @@ export function Sidebar() {
                   )}
                 >
                   <item.icon className="size-4 shrink-0" aria-hidden="true" />
-                  {!collapsed && <span className="truncate">{item.label}</span>}
+                  {!collapsed && (
+                    <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                      <span className="truncate">{item.label}</span>
+                      {item.to === "/support" && openTicketCount > 0 && (
+                        <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+                          {openTicketCount > 99 ? "99+" : openTicketCount}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </Link>
               )
 

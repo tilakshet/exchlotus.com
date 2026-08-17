@@ -30,6 +30,8 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
       "ledger.export",
       "games.export",
       "reports.export",
+      "support.view",
+      "support.manage",
     ],
   },
   {
@@ -52,12 +54,21 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
   },
   {
     name: "SUPPORT",
-    description: "Read-only user/wallet lookup for handling support tickets.",
-    permissions: ["dashboard.view", "users.view", "wallets.view", "ledger.view", "games.view", "notifications.view"],
+    description: "User/wallet lookup and support ticket handling.",
+    permissions: [
+      "dashboard.view",
+      "users.view",
+      "wallets.view",
+      "ledger.view",
+      "games.view",
+      "notifications.view",
+      "support.view",
+      "support.manage",
+    ],
   },
   {
     name: "AUDITOR",
-    description: "Read-only across users/wallets/ledger/games/reports/monitoring, plus the audit trail.",
+    description: "Read-only across users/wallets/ledger/games/reports/monitoring/support, plus the audit trail.",
     permissions: [
       "dashboard.view",
       "users.view",
@@ -72,6 +83,7 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
       "ledger.export",
       "games.export",
       "reports.export",
+      "support.view",
     ],
   },
 ]
