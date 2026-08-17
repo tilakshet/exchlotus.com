@@ -28,7 +28,10 @@ export function CategoryRow({ code, name, onPlay }: { code: string; name: string
   if (isLoading) {
     return (
       <div>
-        <h3 className="mb-3 text-lg font-bold text-[color:var(--sb-text-primary)]">{name}</h3>
+        <h3 className="mb-3 flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-[color:var(--sb-text-primary)]">
+          <span aria-hidden="true" className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: "linear-gradient(180deg, var(--sb-accent-gold), transparent)" }} />
+          {name}
+        </h3>
         <CategoryRowSkeleton />
       </div>
     )
@@ -40,7 +43,10 @@ export function CategoryRow({ code, name, onPlay }: { code: string; name: string
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="text-lg font-bold text-[color:var(--sb-text-primary)]">{name}</h3>
+        <h3 className="flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-[color:var(--sb-text-primary)]">
+          <span aria-hidden="true" className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: "linear-gradient(180deg, var(--sb-accent-gold), transparent)" }} />
+          {name}
+        </h3>
         <Link
           to="/dashboard/category/$categoryCode"
           params={{ categoryCode: code }}

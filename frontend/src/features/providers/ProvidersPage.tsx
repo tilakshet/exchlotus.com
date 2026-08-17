@@ -1,19 +1,17 @@
 import { motion } from "framer-motion"
-import { BadgeCheck } from "lucide-react"
 import { useProviders } from "@/hooks/useProviders"
 
 function ProviderCardSkeleton() {
-  return (
-    <div className="h-28 animate-pulse rounded-[var(--sb-radius-lg)] border border-[color:var(--sb-border)] bg-[color:var(--sb-content-alt)]" />
-  )
+  return <div className="mx-auto h-5 w-24 animate-pulse rounded-full bg-[color:var(--sb-content-alt)]" />
 }
 
 /**
  * All real, backend-synced providers (see useProviders()/GET
- * /api/catalog/providers) as a responsive grid of animated cards — entrance
- * stagger + hover lift, gated by prefers-reduced-motion via Framer Motion's
- * own reduced-motion handling (it disables transform/opacity animation
- * automatically for users with that preference).
+ * /api/catalog/providers) as a responsive grid of plain wordmark names — no
+ * card/border/logo, just the name with an entrance stagger + hover lift,
+ * gated by prefers-reduced-motion via Framer Motion's own reduced-motion
+ * handling (it disables transform/opacity animation automatically for
+ * users with that preference).
  */
 export function ProvidersPage() {
   const { data: providers, isLoading, isError, refetch } = useProviders()
@@ -51,23 +49,12 @@ export function ProvidersPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.6) }}
-              whileHover={{ y: -4 }}
-              className="flex flex-col items-center gap-3 rounded-[var(--sb-radius-lg)] border border-[color:var(--sb-border)] bg-[color:var(--sb-content-alt)] p-5 text-center transition-colors hover:border-[color:var(--sb-accent-gold)]/40"
+              whileHover={{ y: -3 }}
+              className="flex items-center justify-center px-3 py-6 text-center"
             >
-              <span
-                aria-hidden="true"
-                className="flex size-12 shrink-0 items-center justify-center rounded-full text-base font-black"
-                style={{ background: "var(--sb-accent-gold)", color: "var(--sb-accent-gold-fg)" }}
-              >
-                {provider.name.charAt(0)}
+              <span className="cursor-default text-base font-black tracking-wide text-[color:var(--sb-text-primary)]/55 transition-colors duration-300 hover:text-[color:var(--sb-accent-gold)] sm:text-lg">
+                {provider.name}
               </span>
-              <span className="text-sm font-bold text-[color:var(--sb-text-primary)]">{provider.name}</span>
-              {provider.rtp != null && (
-                <span className="flex items-center gap-1 text-xs font-medium text-emerald-400">
-                  <BadgeCheck className="size-4" aria-hidden="true" />
-                  {provider.rtp}% avg RTP
-                </span>
-              )}
             </motion.div>
           ))}
         </div>

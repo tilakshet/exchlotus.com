@@ -1,17 +1,15 @@
-import { useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Lock, Phone, Info, Ticket } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useGames } from "@/hooks/useGames";
 import { usePhoneOtpFlow } from "@/hooks/usePhoneOtpFlow";
 import { ApiError, friendlyErrorMessage } from "@/api/api-error";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Logo } from "@/components/shared/Logo";
 import promoImage from "@/assets/hero.png";
-import type { Game as CatalogGame } from "@/types/catalog";
 
 interface LoginSearch {
   redirect?: string;
@@ -86,7 +84,6 @@ type View = "otp" | "password" | "register";
 function LoginPage() {
   const { redirect, view: initialView } = Route.useSearch();
   const navigate = useNavigate();
-  const gamesQuery = useGames();
   const [view, setView] = useState<View>(initialView ?? "otp");
   const [signUpMethod, setSignUpMethod] = useState<"otp" | "password">("otp");
 
@@ -96,13 +93,12 @@ function LoginPage() {
 
   return (
     <div className="login-gaming-bg relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
-      <GamingBackdrop games={gamesQuery.data?.data} />
       <div className="absolute right-4 top-4 z-20 sm:right-7 sm:top-7">
         <ThemeToggle />
       </div>
       <div className="relative grid w-full max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(460px,560px)_1fr] lg:gap-16">
         <div
-          className="landing-glow rounded-(--landing-radius-lg) p-7 shadow-token-4 sm:p-10 lg:min-h-[620px]"
+          className="login-card rounded-(--landing-radius-lg) p-7 shadow-token-4 sm:p-10 lg:min-h-[620px]"
           style={{ background: "var(--landing-bg-3)" }}
         >
           <div className="flex items-center gap-3">
@@ -264,71 +260,18 @@ function LoginPage() {
           </p>
         </div>
 
-        <AvatarPanel games={gamesQuery.data?.data} />
+        <AvatarPanel />
       </div>
     </div>
   );
 }
 
 /**
- * The real promo banner asset (src/assets/hero.png) — replaces the earlier
- * stylized CSS badge now that there's an actual image to show instead of
- * approximating one. Same tilt-toward-the-pointer interaction as before,
- * applied to the image itself rather than a gradient circle.
+ * The real promo banner asset (src/assets/hero.png) on a clean solid panel
+ * — one deliberate custom touch (the image tilts toward the pointer) rather
+ * than a stack of ambient background effects.
  */
-function GamingBackdrop({ games }: { games?: CatalogGame[] }) {
-  // Real catalog data only — while it's still loading, this renders no
-  // tiles rather than falling back to placeholder fixtures (there are no
-  // more hardcoded games anywhere in this app to fall back to).
-  const backgroundGames =
-    games
-      ?.filter((game) => game.bannerUrl)
-      .slice(0, 18)
-      .map((game) => ({
-        id: game.gameId,
-        title: game.gameName,
-        provider: game.provider.name,
-        imageUrl: game.bannerUrl,
-      })) ?? [];
-
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 overflow-hidden"
-    >
-      <div className="login-orbit login-orbit-b">
-        {backgroundGames.map((game, index) => (
-          <span
-            key={game.id}
-            className={
-              game.imageUrl
-                ? "login-game-tile login-game-tile-image"
-                : "login-game-tile"
-            }
-            style={
-              {
-                "--tile-left": `${4 + ((index * 19) % 88)}%`,
-                "--tile-delay": `${index * -1.25}s`,
-                "--tile-duration": `${18 + (index % 6) * 2}s`,
-              } as CSSProperties
-            }
-          >
-            {game.imageUrl ? (
-              <img src={game.imageUrl} alt="" loading="lazy" />
-            ) : (
-              <>
-                <span>{game.title}</span>
-                <small>{game.provider}</small>
-              </>
-            )}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AvatarPanel({ games }: { games?: CatalogGame[] }) {
+function AvatarPanel() {
   const imgRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
@@ -355,7 +298,7 @@ function AvatarPanel({ games }: { games?: CatalogGame[] }) {
         ref={imgRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="landing-glow relative aspect-[1448/1086] w-[660px] overflow-hidden rounded-(--landing-radius-lg) transition-transform duration-150 ease-out"
+        className="login-card relative aspect-[1448/1086] w-[660px] overflow-hidden rounded-(--landing-radius-lg) transition-transform duration-150 ease-out"
         style={{
           background: "var(--brand-showcase-bg-2)",
           transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
@@ -366,12 +309,9 @@ function AvatarPanel({ games }: { games?: CatalogGame[] }) {
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(circle at 55% 30%, color-mix(in srgb, var(--landing-gold) 30%, transparent), transparent 34%), linear-gradient(145deg, color-mix(in srgb, var(--brand-showcase-bg-2) 84%, var(--landing-gold)), var(--brand-showcase-bg-1))",
+              "linear-gradient(145deg, color-mix(in srgb, var(--brand-showcase-bg-2) 88%, var(--landing-gold)), var(--brand-showcase-bg-1))",
           }}
         />
-        <div className="login-card-game-bg absolute inset-0 z-10">
-          <GamingBackdrop games={games} />
-        </div>
         <img
           src={promoImage}
           alt=""
@@ -403,13 +343,11 @@ function FormError({ message }: { message: string | null }) {
   );
 }
 
-/** Translucent glass input — matches the header search field / hero chips. */
+/** Solid, flat input surface — no glass/blur. */
 function inputBoxStyle() {
   return {
-    background: "var(--landing-glass)",
+    background: "var(--landing-bg-2)",
     border: "1px solid var(--landing-border)",
-    backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
   };
 }
 
@@ -547,11 +485,7 @@ function OtpCodeStep({
       <button
         type="submit"
         disabled={codeForm.formState.isSubmitting}
-        className="landing-glow mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
-        style={{
-          background: "var(--landing-gold)",
-          color: "var(--landing-gold-fg)",
-        }}
+        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
       >
         {codeForm.formState.isSubmitting ? "Verifying…" : verifyLabel}
       </button>
@@ -607,11 +541,7 @@ function OtpLoginForm({ onSuccess }: { onSuccess: () => void }) {
       <button
         type="submit"
         disabled={phoneForm.formState.isSubmitting}
-        className="landing-glow mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
-        style={{
-          background: "var(--landing-gold)",
-          color: "var(--landing-gold-fg)",
-        }}
+        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
       >
         {phoneForm.formState.isSubmitting ? "Sending…" : "Request OTP"}
       </button>
@@ -713,11 +643,7 @@ function SignUpForm({ onSuccess }: { onSuccess: () => void }) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="landing-glow mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
-        style={{
-          background: "var(--landing-gold)",
-          color: "var(--landing-gold-fg)",
-        }}
+        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Sending…" : "Request OTP"}
       </button>
@@ -790,11 +716,7 @@ function PasswordLoginForm({ onSuccess }: { onSuccess: () => void }) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="landing-glow mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
-        style={{
-          background: "var(--landing-gold)",
-          color: "var(--landing-gold-fg)",
-        }}
+        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Signing in…" : "Sign In"}
       </button>
@@ -950,11 +872,7 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="landing-glow mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
-        style={{
-          background: "var(--landing-gold)",
-          color: "var(--landing-gold-fg)",
-        }}
+        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Creating account…" : "Create Account"}
       </button>
