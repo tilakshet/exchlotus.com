@@ -100,7 +100,12 @@ export const HeroCarousel = memo(function HeroCarousel({ compact = false }: { co
   }
 
   return (
-    <section ref={setSectionNode} className={`w-full px-4 sm:px-6 lg:px-8 ${compact ? "" : "pt-40"}`} aria-label="Featured games">
+    // pt-20/sm:pt-24 clears LandingHeader.tsx's `fixed` header (measured
+    // ~66.5px tall below the sm breakpoint, ~82.5px at sm: and up once the
+    // logo grows) with a small breathing gap — was pt-40 (160px), roughly
+    // double the header's actual height, which is what left the large empty
+    // gap between the header and the carousel.
+    <section ref={setSectionNode} className={`w-full px-4 sm:px-6 lg:px-8 ${compact ? "" : "pt-20 sm:pt-24"}`} aria-label="Featured games">
       <div
         tabIndex={0}
         // Box is sized to the banner art's own ~2.69:1 aspect ratio
