@@ -21,14 +21,16 @@ import { Route as AuthenticatedGamesRouteImport } from './routes/_authenticated.
 import { Route as AuthenticatedMonitoringRouteImport } from './routes/_authenticated.monitoring'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated.reports'
 import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated.roles'
+import { Route as AuthenticatedSupportRouteImport } from './routes/_authenticated.support'
 import { Route as AuthenticatedTransactionsRouteImport } from './routes/_authenticated.transactions'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated.users'
 import { Route as AuthenticatedWithdrawalsRouteImport } from './routes/_authenticated.withdrawals'
 import { Route as AuthenticatedGamesIndexRouteImport } from './routes/_authenticated.games.index'
 import { Route as AuthenticatedGamesIdRouteImport } from './routes/_authenticated.games.$id'
+import { Route as AuthenticatedSupportIndexRouteImport } from './routes/_authenticated.support.index'
+import { Route as AuthenticatedSupportIdRouteImport } from './routes/_authenticated.support.$id'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated.users.index'
 import { Route as AuthenticatedUsersIdRouteImport } from './routes/_authenticated.users.$id'
-import { Route as AuthenticatedWithdrawalsIndexRouteImport } from './routes/_authenticated.withdrawals.index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -90,6 +92,11 @@ const AuthenticatedRolesRoute = AuthenticatedRolesRouteImport.update({
   path: '/roles',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedSupportRoute = AuthenticatedSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedTransactionsRoute =
   AuthenticatedTransactionsRouteImport.update({
     id: '/transactions',
@@ -117,6 +124,17 @@ const AuthenticatedGamesIdRoute = AuthenticatedGamesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedGamesRoute,
 } as any)
+const AuthenticatedSupportIndexRoute =
+  AuthenticatedSupportIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedSupportRoute,
+  } as any)
+const AuthenticatedSupportIdRoute = AuthenticatedSupportIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedSupportRoute,
+} as any)
 const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -127,12 +145,6 @@ const AuthenticatedUsersIdRoute = AuthenticatedUsersIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedUsersRoute,
 } as any)
-const AuthenticatedWithdrawalsIndexRoute =
-  AuthenticatedWithdrawalsIndexRouteImport.update({
-    id: '/withdrawals/',
-    path: '/withdrawals/',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -146,14 +158,16 @@ export interface FileRoutesByFullPath {
   '/monitoring': typeof AuthenticatedMonitoringRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/roles': typeof AuthenticatedRolesRoute
+  '/support': typeof AuthenticatedSupportRouteWithChildren
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/users': typeof AuthenticatedUsersRouteWithChildren
   '/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/games/$id': typeof AuthenticatedGamesIdRoute
+  '/support/$id': typeof AuthenticatedSupportIdRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
   '/games/': typeof AuthenticatedGamesIndexRoute
+  '/support/': typeof AuthenticatedSupportIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
-  '/withdrawals/': typeof AuthenticatedWithdrawalsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -169,10 +183,11 @@ export interface FileRoutesByTo {
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/games/$id': typeof AuthenticatedGamesIdRoute
+  '/support/$id': typeof AuthenticatedSupportIdRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
   '/games': typeof AuthenticatedGamesIndexRoute
+  '/support': typeof AuthenticatedSupportIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
-  '/withdrawals': typeof AuthenticatedWithdrawalsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -188,14 +203,16 @@ export interface FileRoutesById {
   '/_authenticated/monitoring': typeof AuthenticatedMonitoringRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/roles': typeof AuthenticatedRolesRoute
+  '/_authenticated/support': typeof AuthenticatedSupportRouteWithChildren
   '/_authenticated/transactions': typeof AuthenticatedTransactionsRoute
   '/_authenticated/users': typeof AuthenticatedUsersRouteWithChildren
   '/_authenticated/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/_authenticated/games/$id': typeof AuthenticatedGamesIdRoute
+  '/_authenticated/support/$id': typeof AuthenticatedSupportIdRoute
   '/_authenticated/users/$id': typeof AuthenticatedUsersIdRoute
   '/_authenticated/games/': typeof AuthenticatedGamesIndexRoute
+  '/_authenticated/support/': typeof AuthenticatedSupportIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
-  '/_authenticated/withdrawals/': typeof AuthenticatedWithdrawalsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -211,14 +228,16 @@ export interface FileRouteTypes {
     | '/monitoring'
     | '/reports'
     | '/roles'
+    | '/support'
     | '/transactions'
     | '/users'
     | '/withdrawals'
     | '/games/$id'
+    | '/support/$id'
     | '/users/$id'
     | '/games/'
+    | '/support/'
     | '/users/'
-    | '/withdrawals/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -234,10 +253,11 @@ export interface FileRouteTypes {
     | '/transactions'
     | '/withdrawals'
     | '/games/$id'
+    | '/support/$id'
     | '/users/$id'
     | '/games'
+    | '/support'
     | '/users'
-    | '/withdrawals'
   id:
     | '__root__'
     | '/'
@@ -252,14 +272,16 @@ export interface FileRouteTypes {
     | '/_authenticated/monitoring'
     | '/_authenticated/reports'
     | '/_authenticated/roles'
+    | '/_authenticated/support'
     | '/_authenticated/transactions'
     | '/_authenticated/users'
     | '/_authenticated/withdrawals'
     | '/_authenticated/games/$id'
+    | '/_authenticated/support/$id'
     | '/_authenticated/users/$id'
     | '/_authenticated/games/'
+    | '/_authenticated/support/'
     | '/_authenticated/users/'
-    | '/_authenticated/withdrawals/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -354,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRolesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/support': {
+      id: '/_authenticated/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof AuthenticatedSupportRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/transactions': {
       id: '/_authenticated/transactions'
       path: '/transactions'
@@ -389,6 +418,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGamesIdRouteImport
       parentRoute: typeof AuthenticatedGamesRoute
     }
+    '/_authenticated/support/': {
+      id: '/_authenticated/support/'
+      path: '/'
+      fullPath: '/support/'
+      preLoaderRoute: typeof AuthenticatedSupportIndexRouteImport
+      parentRoute: typeof AuthenticatedSupportRoute
+    }
+    '/_authenticated/support/$id': {
+      id: '/_authenticated/support/$id'
+      path: '/$id'
+      fullPath: '/support/$id'
+      preLoaderRoute: typeof AuthenticatedSupportIdRouteImport
+      parentRoute: typeof AuthenticatedSupportRoute
+    }
     '/_authenticated/users/': {
       id: '/_authenticated/users/'
       path: '/'
@@ -402,13 +445,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/users/$id'
       preLoaderRoute: typeof AuthenticatedUsersIdRouteImport
       parentRoute: typeof AuthenticatedUsersRoute
-    }
-    '/_authenticated/withdrawals/': {
-      id: '/_authenticated/withdrawals/'
-      path: '/withdrawals'
-      fullPath: '/withdrawals/'
-      preLoaderRoute: typeof AuthenticatedWithdrawalsIndexRouteImport
-      parentRoute: typeof AuthenticatedRoute
     }
   }
 }
@@ -425,6 +461,19 @@ const AuthenticatedGamesRouteChildren: AuthenticatedGamesRouteChildren = {
 
 const AuthenticatedGamesRouteWithChildren =
   AuthenticatedGamesRoute._addFileChildren(AuthenticatedGamesRouteChildren)
+
+interface AuthenticatedSupportRouteChildren {
+  AuthenticatedSupportIdRoute: typeof AuthenticatedSupportIdRoute
+  AuthenticatedSupportIndexRoute: typeof AuthenticatedSupportIndexRoute
+}
+
+const AuthenticatedSupportRouteChildren: AuthenticatedSupportRouteChildren = {
+  AuthenticatedSupportIdRoute: AuthenticatedSupportIdRoute,
+  AuthenticatedSupportIndexRoute: AuthenticatedSupportIndexRoute,
+}
+
+const AuthenticatedSupportRouteWithChildren =
+  AuthenticatedSupportRoute._addFileChildren(AuthenticatedSupportRouteChildren)
 
 interface AuthenticatedUsersRouteChildren {
   AuthenticatedUsersIdRoute: typeof AuthenticatedUsersIdRoute
@@ -449,6 +498,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedMonitoringRoute: typeof AuthenticatedMonitoringRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedRolesRoute: typeof AuthenticatedRolesRoute
+  AuthenticatedSupportRoute: typeof AuthenticatedSupportRouteWithChildren
   AuthenticatedTransactionsRoute: typeof AuthenticatedTransactionsRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRouteWithChildren
   AuthenticatedWithdrawalsRoute: typeof AuthenticatedWithdrawalsRoute
@@ -464,6 +514,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMonitoringRoute: AuthenticatedMonitoringRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedRolesRoute: AuthenticatedRolesRoute,
+  AuthenticatedSupportRoute: AuthenticatedSupportRouteWithChildren,
   AuthenticatedTransactionsRoute: AuthenticatedTransactionsRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRouteWithChildren,
   AuthenticatedWithdrawalsRoute: AuthenticatedWithdrawalsRoute,

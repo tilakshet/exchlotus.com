@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowDownToLine, ArrowUpFromLine, Ban, CheckCircle2, ScrollText, Sliders, Wallet as WalletIcon } from "lucide-react"
-import { activateUser, getUser, suspendUser } from "@/api/users.api"
+import { ArrowDownToLine, ArrowUpFromLine, ScrollText, Sliders, Wallet as WalletIcon } from "lucide-react"
+import { getUser } from "@/api/users.api"
 import { adjustWallet, getLedger } from "@/api/wallets.api"
 import { useAdminAuth } from "@/hooks/useAdminAuth"
 import { toast } from "@/lib/toast"
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { StatusBadge, USER_STATUS_CONFIG } from "@/components/shared/StatusBadge"
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { UserStatusAction } from "@/components/shared/UserStatusAction"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { ErrorState } from "@/components/shared/ErrorState"
 import { CardSkeletonGrid, TableSkeletonRows } from "@/components/shared/TableSkeleton"
@@ -29,54 +29,6 @@ function StatCard({ label, value }: { label: string; value: string }) {
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <span className="text-xl font-semibold tracking-tight">{value}</span>
     </div>
-  )
-}
-
-function StatusAction({ id, username, status }: { id: string; username: string; status: "ACTIVE" | "SUSPENDED" }) {
-  const { hasPermission } = useAdminAuth()
-  const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const nextStatus = status === "ACTIVE" ? "SUSPENDED" : "ACTIVE"
-
-  const mutation = useMutation({
-    mutationFn: (reason?: string) => (status === "ACTIVE" ? suspendUser(id, reason!) : activateUser(id, reason!)),
-    onSuccess: () => {
-      setOpen(false)
-      queryClient.invalidateQueries({ queryKey: ["user", id] })
-      queryClient.invalidateQueries({ queryKey: ["users"] })
-      toast({
-        title: nextStatus === "SUSPENDED" ? "User suspended" : "User reactivated",
-        description: username,
-        variant: "success",
-      })
-    },
-    onError: (err) => toast({ title: "Action failed", description: err instanceof ApiError ? err.message : undefined, variant: "destructive" }),
-  })
-
-  if (!hasPermission("users.suspend")) return null
-
-  return (
-    <>
-      <Button variant={status === "ACTIVE" ? "destructive" : "default"} size="sm" onClick={() => setOpen(true)}>
-        {status === "ACTIVE" ? <Ban className="size-3.5" /> : <CheckCircle2 className="size-3.5" />}
-        {status === "ACTIVE" ? "Suspend" : "Reactivate"}
-      </Button>
-      <ConfirmDialog
-        open={open}
-        onOpenChange={setOpen}
-        title={status === "ACTIVE" ? `Suspend ${username}?` : `Reactivate ${username}?`}
-        description={
-          status === "ACTIVE"
-            ? "The player will be immediately blocked from logging in and playing. This is recorded in the audit log."
-            : "The player regains full access immediately. This is recorded in the audit log."
-        }
-        confirmLabel={status === "ACTIVE" ? "Suspend user" : "Reactivate user"}
-        variant={status === "ACTIVE" ? "destructive" : "default"}
-        requireReason
-        loading={mutation.isPending}
-        onConfirm={(reason) => mutation.mutate(reason)}
-      />
-    </>
   )
 }
 
@@ -183,7 +135,7 @@ function UserDetailPage() {
         actions={
           <>
             <StatusBadge config={USER_STATUS_CONFIG} status={user.status} />
-            <StatusAction id={user.id} username={user.username} status={user.status} />
+            <UserStatusAction id={user.id} username={user.username} status={user.status} />
           </>
         }
       />

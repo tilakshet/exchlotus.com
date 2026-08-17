@@ -15,6 +15,7 @@ import { homeRouter } from "./modules/home/home.controller"
 import { paymentsCallbackRouter } from "./modules/payments/payments-callback.controller"
 import { paymentsRouter } from "./modules/payments/payments.controller"
 import { bankAccountsRouter } from "./modules/bank-accounts/bank-accounts.controller"
+import { supportRouter } from "./modules/support/support.controller"
 
 export function createApp() {
   const app = express()
@@ -53,6 +54,7 @@ export function createApp() {
   app.use("/api/home", homeRouter)
   app.use("/api/payments", paymentsRouter)
   app.use("/api/bank-accounts", bankAccountsRouter)
+  app.use("/api/support", supportRouter)
 
   app.use((req, res) => {
     res.status(404).json({ error: "NOT_FOUND", path: req.path })

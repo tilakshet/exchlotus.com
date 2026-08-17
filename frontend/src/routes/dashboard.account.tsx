@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useMatchRoute, useNavigate, useRouterState } from "@tanstack/react-router"
-import { ArrowDownLeft, ArrowUpRight, Briefcase, Gift, History as HistoryIcon, LogOut, Star, User } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, Briefcase, Gift, History as HistoryIcon, LifeBuoy, LogOut, Star, User } from "lucide-react"
 import { store } from "@/store"
 import { useAuth } from "@/hooks/useAuth"
 import { UserAvatar } from "@/components/shared/UserAvatar"
@@ -53,6 +53,7 @@ const sideNav = [
   { to: "/dashboard/account/loyalty", label: "Loyalty", icon: Gift, exact: false },
   { to: "/dashboard/account", label: "Account", icon: Briefcase, exact: true },
   { to: "/dashboard/account/history", label: "History", icon: HistoryIcon, exact: false },
+  { to: "/dashboard/account/support", label: "Support", icon: LifeBuoy, exact: false },
   { to: "/dashboard/account/profile", label: "My Profile", icon: User, exact: false },
 ] as const
 
@@ -64,10 +65,15 @@ const topTabs = [
   { to: "/dashboard/account/history", label: "History", icon: HistoryIcon, exact: false },
 ] as const
 
-// Mobile bottom bar for this section — topTabs plus Profile, which is
-// otherwise only reachable via the sidebar (hidden on mobile below, see
-// AccountLayout) — without this it would have no mobile entry point at all.
-const accountBottomNavItems = [...topTabs, { to: "/dashboard/account/profile", label: "Profile", icon: User, exact: false }]
+// Mobile bottom bar for this section — topTabs plus Profile and Support,
+// which are otherwise only reachable via the sidebar (hidden on mobile
+// below, see AccountLayout) — without this they'd have no mobile entry
+// point at all.
+const accountBottomNavItems = [
+  ...topTabs,
+  { to: "/dashboard/account/support", label: "Support", icon: LifeBuoy, exact: false },
+  { to: "/dashboard/account/profile", label: "Profile", icon: User, exact: false },
+]
 
 const pageHeadings: { match: string; exact: boolean; title: string; subtitle: string }[] = [
   { match: "/dashboard/account/add-bank", exact: false, title: "Add Bank Account", subtitle: "Save a payout method for withdrawals." },
@@ -75,6 +81,7 @@ const pageHeadings: { match: string; exact: boolean; title: string; subtitle: st
   { match: "/dashboard/account/withdraw", exact: false, title: "Withdraw", subtitle: "Move your withdrawable balance out instantly." },
   { match: "/dashboard/account/loyalty", exact: false, title: "Loyalty", subtitle: "Track your tier, rewards and progress." },
   { match: "/dashboard/account/history", exact: false, title: "Transaction History", subtitle: "Every deposit, withdrawal and game transaction on your account." },
+  { match: "/dashboard/account/support", exact: false, title: "Support", subtitle: "Raise a query and track your conversation with our team." },
   { match: "/dashboard/account/profile", exact: false, title: "My Profile", subtitle: "Manage your personal details and security." },
   { match: "/dashboard/account", exact: true, title: "Account", subtitle: "Manage your wallet, deposits, withdrawals and rewards." },
 ]

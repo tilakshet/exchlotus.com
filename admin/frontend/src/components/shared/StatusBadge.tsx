@@ -12,6 +12,7 @@ import {
   Sliders,
   Trophy,
   XCircle,
+  Archive,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -43,6 +44,13 @@ export const WITHDRAWAL_STATUS_CONFIG: Record<string, StatusConfig> = {
   PAID: { label: "Paid", tone: "success", icon: CheckCircle2 },
   REJECTED: { label: "Rejected", tone: "destructive", icon: XCircle },
   FAILED: { label: "Failed", tone: "destructive", icon: XCircle },
+}
+
+export const TICKET_STATUS_CONFIG: Record<string, StatusConfig> = {
+  OPEN: { label: "Open", tone: "warning", icon: Clock },
+  IN_PROGRESS: { label: "In progress", tone: "default", icon: Loader2 },
+  RESOLVED: { label: "Resolved", tone: "success", icon: CheckCircle2 },
+  CLOSED: { label: "Closed", tone: "default", icon: Archive },
 }
 
 export const MFA_STATUS_CONFIG: Record<string, StatusConfig> = {
