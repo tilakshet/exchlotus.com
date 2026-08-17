@@ -1,7 +1,6 @@
 import { memo, useState } from "react"
 import { motion } from "framer-motion"
 import type { HeroBanner } from "@/types/hero"
-import { HeroButton } from "./HeroButton"
 
 interface HeroSlideProps {
   banner: HeroBanner
@@ -24,35 +23,36 @@ export const HeroSlide = memo(function HeroSlide({ banner, isActive, onPlay }: H
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
     >
       {banner.backgroundImage && !imageFailed ? (
-        // Pinned hero art (frontend/public/hero/*.jpg) is sized for this —
-        // full-bleed cover, no blurred-backdrop crutch needed like the old
-        // provider-thumbnail-sourced images required.
-        <motion.img
+        // The carousel box is sized to match the promo art's own aspect
+        // ratio at every breakpoint (see HeroCarousel.tsx), so object-cover
+        // fills it with no letterbox/pillarbox bars on any screen size and
+        // no crop for images at that ratio.
+        <img
           src={banner.backgroundImage}
           alt=""
           loading={isActive ? "eager" : "lazy"}
           decoding="async"
           onError={() => setImageFailed(true)}
           className="absolute inset-0 size-full object-cover"
-          animate={{ scale: isActive ? 1.06 : 1 }}
-          transition={{ duration: 6, ease: "easeOut" }}
         />
       ) : (
         <div className="absolute inset-0" style={{ background: FALLBACK_BACKGROUND }} />
       )}
 
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(14,23,18,.65)_0%,rgba(14,23,18,.15)_38%,transparent_62%)]" />
-
-      <div className="relative z-10 flex h-full flex-col justify-end p-6 pb-16 sm:p-8 sm:pb-18 md:p-10 md:pb-20 lg:p-12">
-        <motion.div
-          initial={false}
-          animate={isActive ? "show" : "hide"}
-          variants={{ show: { opacity: 1, x: 0 }, hide: { opacity: 0, x: -14 } }}
-          transition={{ duration: 0.5, delay: isActive ? 0.12 : 0 }}
-        >
-          <HeroButton onClick={() => onPlay(banner)}>{banner.ctaText}</HeroButton>
-        </motion.div>
-      </div>
+      {/* The banner art already carries its own CTA button (see
+          public/promotion_banner/*.png) — no second, redundant button drawn
+          on top. The whole slide stays clickable instead so tapping the
+          image (including its own baked-in button) still navigates.
+          tabIndex/pointer-events are gated on isActive since every slide is
+          stacked absolute inset-0 — only the visible one should be
+          reachable by click or keyboard. */}
+      <button
+        type="button"
+        aria-label={banner.ctaText}
+        tabIndex={isActive ? 0 : -1}
+        onClick={() => onPlay(banner)}
+        className={`absolute inset-0 z-10 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-(--brand-gold-bright) ${isActive ? "" : "pointer-events-none"}`}
+      />
     </motion.article>
   )
 })

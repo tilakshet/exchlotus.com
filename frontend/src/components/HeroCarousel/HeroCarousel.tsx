@@ -59,6 +59,13 @@ export const HeroCarousel = memo(function HeroCarousel({ compact = false }: { co
 
   const handlePlay = useCallback(
     (banner: HeroBanner) => {
+      // Promo banners (page links) just navigate — no auth/deposit gate,
+      // same as any other in-app browsing link. Only an actual game launch
+      // needs the gate below.
+      if (banner.linkType === "page") {
+        navigate({ to: banner.path! })
+        return
+      }
       if (!isAuthenticated) {
         setGate("auth")
         return
@@ -67,7 +74,7 @@ export const HeroCarousel = memo(function HeroCarousel({ compact = false }: { co
         setGate("deposit")
         return
       }
-      navigate({ to: "/game/$gameSlug", params: { gameSlug: banner.gameSlug } })
+      navigate({ to: "/game/$gameSlug", params: { gameSlug: banner.gameSlug! } })
     },
     [isAuthenticated, navigate, walletQuery.data?.balance]
   )
@@ -96,7 +103,19 @@ export const HeroCarousel = memo(function HeroCarousel({ compact = false }: { co
     <section ref={setSectionNode} className={`w-full px-4 sm:px-6 lg:px-8 ${compact ? "" : "pt-40"}`} aria-label="Featured games">
       <div
         tabIndex={0}
-        className="group relative h-[420px] overflow-hidden rounded-[24px] border border-white/[.08] bg-(--brand-showcase-bg-1) shadow-[0_34px_100px_-52px_rgba(0,0,0,.92)] outline-none focus-visible:ring-2 focus-visible:ring-(--brand-gold-bright) md:h-[520px]"
+        // Box is sized to the banner art's own ~2.69:1 aspect ratio
+        // (promotion_banner images are ~1926x716 as of the 2026-08-17
+        // resize — update this if the art is re-exported at a different
+        // ratio again) up to a max-h-[520px] cap on tall/wide desktop
+        // viewports — object-cover (see HeroSlide.tsx) fills it with no
+        // letterbox/pillarbox bars. w-full is required here: without it,
+        // once max-height clamps the aspect-ratio-computed height, Chromium
+        // also shrinks the box's WIDTH to keep the exact ratio (confirmed
+        // via direct measurement) instead of filling available width,
+        // leaving a blank gap on the right. w-full forces width to stay
+        // 100% of the parent regardless; object-cover then crops the image
+        // (not the box) to fit.
+        className="group relative aspect-[1926/716] max-h-[520px] w-full overflow-hidden rounded-[24px] border border-white/[.08] bg-(--brand-showcase-bg-1) shadow-[0_34px_100px_-52px_rgba(0,0,0,.92)] outline-none focus-visible:ring-2 focus-visible:ring-(--brand-gold-bright)"
         {...carousel.handlers}
       >
         {banners.map((banner, index) => (
