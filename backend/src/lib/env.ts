@@ -38,6 +38,9 @@ const envSchema = z.object({
   PAYMENT_GATEWAY_SECRET_ID: z.string().min(1),
   /** Used to build the per-transaction redirect_url sent to the PayIn API — where the player's browser returns to after paying. */
   PAYMENT_CALLBACK_BASE_URL: z.string().url(),
+
+  /** This backend's own public origin — used to build absolute URLs (e.g. support ticket image attachments) that admin/frontend, a different domain, can load directly. Unlike PAYMENT_CALLBACK_BASE_URL (the frontend's origin), this is the API's own. */
+  PUBLIC_BASE_URL: z.string().url(),
 })
 
 const parsed = envSchema.safeParse(process.env)

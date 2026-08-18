@@ -48,6 +48,17 @@ export function useSocketConnection() {
 
     socket.on("notification", (payload: { message: string; link?: string }) => {
       dispatch(notificationReceived(payload.message, payload.link))
+      // A support-ticket reply is the one event on this channel today (see
+      // admin/backend's replyToTicket → publishPlayerNotification) — without
+      // this, a player sitting on an open ticket thread never sees the
+      // admin's reply appear until they navigate away and back (TanStack
+      // Query has no other reason to refetch a query with no active
+      // subscription-driven refresh). Broad match on the link rather than a
+      // dedicated event name, since the socket payload shape is generic.
+      if (payload.link?.includes("/support/")) {
+        queryClient.invalidateQueries({ queryKey: ["support-ticket"] })
+        queryClient.invalidateQueries({ queryKey: ["support-tickets"] })
+      }
     })
 
     return () => {

@@ -15,6 +15,7 @@ const BASE_URL = envBaseUrl === undefined ? "http://127.0.0.1:4000" : envBaseUrl
 
 interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "DELETE"
+  /** A FormData body (e.g. a file upload) skips JSON.stringify and the Content-Type header below — fetch sets its own multipart boundary automatically, and setting Content-Type manually would omit that boundary and break parsing. */
   body?: unknown
   query?: Record<string, string | number | undefined>
   /** Skip the Authorization header entirely (auth endpoints themselves). */
@@ -57,13 +58,14 @@ function buildUrl(path: string, query?: RequestOptions["query"]) {
 }
 
 async function rawRequest(path: string, options: RequestOptions, accessToken: string | null): Promise<Response> {
+  const isFormData = options.body instanceof FormData
   return fetch(buildUrl(path, options.query), {
     method: options.method ?? "GET",
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(accessToken && !options.anonymous ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
-    ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+    ...(options.body !== undefined ? { body: isFormData ? (options.body as FormData) : JSON.stringify(options.body) } : {}),
   })
 }
 

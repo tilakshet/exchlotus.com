@@ -7,10 +7,10 @@ import { prisma } from "../../lib/prisma"
 // because those modules also have to correlate against the provider's
 // user_id.
 
-export async function createTicket(playerId: string, subject: string, body: string) {
+export async function createTicket(playerId: string, subject: string, body: string, attachmentUrl?: string) {
   return prisma.$transaction(async (tx) => {
     const ticket = await tx.supportTicket.create({ data: { playerId, subject } })
-    await tx.supportMessage.create({ data: { ticketId: ticket.id, authorPlayerId: playerId, body } })
+    await tx.supportMessage.create({ data: { ticketId: ticket.id, authorPlayerId: playerId, body, attachmentUrl } })
     return ticket
   })
 }
@@ -49,6 +49,7 @@ export async function getMyTicket(playerId: string, ticketId: string) {
       id: m.id,
       body: m.body,
       author: m.authorPlayerId ? ("player" as const) : ("admin" as const),
+      attachmentUrl: m.attachmentUrl,
       createdAt: m.createdAt.toISOString(),
     })),
   }
