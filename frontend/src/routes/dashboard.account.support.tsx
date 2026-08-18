@@ -1,11 +1,17 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { LifeBuoy, MessageCircle, Plus } from "lucide-react"
+import { ImagePlus, LifeBuoy, MessageCircle, Plus, X } from "lucide-react"
 import { useSupportTickets } from "@/hooks/useSupportTickets"
 import type { SupportTicketStatus } from "@/types/support"
+
+// Kept in sync with backend/src/lib/uploads.ts — this is client-side UX
+// only (instant feedback instead of a round trip), the backend enforces the
+// same limits regardless.
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 export const Route = createFileRoute("/dashboard/account/support")({
   component: SupportPage,
@@ -50,16 +56,43 @@ const inputStyle = { background: "var(--acc-input-bg)", color: "var(--acc-input-
 function NewTicketForm({ onDone }: { onDone: () => void }) {
   const { createTicket, isCreating } = useSupportTickets()
   const [formError, setFormError] = useState<string | null>(null)
+  const [image, setImage] = useState<File | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<TicketValues>({ resolver: zodResolver(ticketSchema) })
 
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = "" // allow re-selecting the same file after removing it
+    if (!file) return
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setFormError("Only JPEG, PNG, WEBP, or GIF images are allowed.")
+      return
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setFormError(`Image must be under ${MAX_IMAGE_BYTES / 1024 / 1024}MB.`)
+      return
+    }
+    setFormError(null)
+    setImage(file)
+    setImagePreviewUrl(URL.createObjectURL(file))
+  }
+
+  function removeImage() {
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl)
+    setImage(null)
+    setImagePreviewUrl(null)
+  }
+
   async function onSubmit(values: TicketValues) {
     setFormError(null)
     try {
-      await createTicket(values)
+      await createTicket({ ...values, image: image ?? undefined })
       onDone()
     } catch {
       setFormError("Couldn't submit your query — please try again.")
@@ -97,6 +130,36 @@ function NewTicketForm({ onDone }: { onDone: () => void }) {
           <p role="alert" className="mt-1 text-sm text-red-600">
             {errors.message.message}
           </p>
+        )}
+      </div>
+
+      <div>
+        <label className="mb-2 block text-base font-semibold text-[color:var(--acc-text-primary)]">Attach a screenshot (optional)</label>
+        <input ref={fileInputRef} type="file" accept={ALLOWED_IMAGE_TYPES.join(",")} onChange={handleImageSelect} className="sr-only" id="ticket-image" />
+
+        {imagePreviewUrl ? (
+          <div className="relative inline-block">
+            <img src={imagePreviewUrl} alt="Selected attachment preview" className="h-28 w-auto rounded-[var(--acc-radius-md)] border object-cover" style={{ borderColor: "var(--acc-border)" }} />
+            <button
+              type="button"
+              onClick={removeImage}
+              aria-label="Remove attached image"
+              className="absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full outline-none"
+              style={{ background: "var(--acc-danger)", color: "white" }}
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 rounded-[var(--acc-radius-md)] border border-dashed px-4 py-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
+            style={{ borderColor: "var(--acc-border)", color: "var(--acc-text-secondary)" }}
+          >
+            <ImagePlus className="size-5" aria-hidden="true" />
+            Choose an image
+          </button>
         )}
       </div>
 

@@ -33,6 +33,13 @@ services:
     restart: unless-stopped
     env_file:
       - backend/.env.production
+    volumes:
+      # Uploaded support-ticket images (see src/lib/uploads.ts) land in the
+      # container's ./uploads (relative to WORKDIR, matching
+      # process.cwd()) — without this volume, every `--build` redeploy
+      # would wipe them, since they'd otherwise only live in that build's
+      # container filesystem.
+      - exchlotus_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -105,5 +112,6 @@ services:
 volumes:
   exchlotus_pgdata:
   exchlotus_redisdata:
+  exchlotus_uploads:
   certbot_conf:
   certbot_www:

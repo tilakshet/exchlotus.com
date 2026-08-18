@@ -99,6 +99,7 @@ export async function getTicketDetail(id: string) {
       id: m.id,
       body: m.body,
       author: m.authorPlayerId ? ("player" as const) : ("admin" as const),
+      attachmentUrl: m.attachmentUrl,
       createdAt: m.createdAt.toISOString(),
     })),
     recentActivity: {

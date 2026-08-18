@@ -16,6 +16,7 @@ import { paymentsCallbackRouter } from "./modules/payments/payments-callback.con
 import { paymentsRouter } from "./modules/payments/payments.controller"
 import { bankAccountsRouter } from "./modules/bank-accounts/bank-accounts.controller"
 import { supportRouter } from "./modules/support/support.controller"
+import { SUPPORT_UPLOAD_DIR } from "./lib/uploads"
 
 export function createApp() {
   const app = express()
@@ -54,6 +55,19 @@ export function createApp() {
   app.use("/api/payments", paymentsRouter)
   app.use("/api/bank-accounts", bankAccountsRouter)
   app.use("/api/support", supportRouter)
+
+  // Uploaded support-ticket images (see lib/uploads.ts). helmet's default
+  // Cross-Origin-Resource-Policy: same-origin would otherwise block
+  // admin/frontend — a different domain — from loading these as <img>
+  // src; overridden to cross-origin on this route only, nowhere else.
+  app.use(
+    "/api/uploads/support",
+    (_req, res, next) => {
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin")
+      next()
+    },
+    express.static(SUPPORT_UPLOAD_DIR)
+  )
 
   app.use((req, res) => {
     res.status(404).json({ error: "NOT_FOUND", path: req.path })

@@ -1,6 +1,7 @@
 import { Router } from "express"
 import { z } from "zod"
 import { requireAuth } from "../auth/auth.middleware"
+import { parseSupportImageUpload, supportImageUrl } from "../../lib/uploads"
 import { createTicket, getMyTicket, listMyTickets, replyToMyTicket } from "./support.service"
 
 export const supportRouter = Router()
@@ -15,10 +16,19 @@ const createTicketSchema = z.object({
   message: z.string().min(1).max(4000),
 })
 
+// multipart/form-data (fields: subject, message, optional image file) —
+// express.json() only parses application/json bodies (see app.ts), so it
+// leaves req.body untouched here; multer populates both req.body's text
+// fields and req.file from the multipart stream itself.
 supportRouter.post("/", async (req, res) => {
+  const upload = await parseSupportImageUpload(req, res)
+  if (upload.error) return res.status(422).json({ error: "VALIDATION_ERROR", message: upload.error })
+
   const parsed = createTicketSchema.safeParse(req.body)
   if (!parsed.success) return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
-  const ticket = await createTicket(req.auth!.sub, parsed.data.subject, parsed.data.message)
+
+  const attachmentUrl = req.file ? supportImageUrl(req.file.filename) : undefined
+  const ticket = await createTicket(req.auth!.sub, parsed.data.subject, parsed.data.message, attachmentUrl)
   res.status(201).json({ id: ticket.id })
 })
 

@@ -1,7 +1,8 @@
 import { apiRequest } from "./http"
 
-export interface NotificationItem {
+export interface AuditNotificationItem {
   id: string
+  kind: "audit"
   action: string
   entityType: string
   entityId: string
@@ -10,6 +11,19 @@ export interface NotificationItem {
   createdAt: string
   read: boolean
 }
+
+export interface TicketNotificationItem {
+  id: string
+  kind: "ticket"
+  ticketId: string
+  subject: string
+  playerUsername: string
+  preview: string
+  createdAt: string
+  read: boolean
+}
+
+export type NotificationItem = AuditNotificationItem | TicketNotificationItem
 
 export function listNotifications(params: { cursor?: string; limit?: number } = {}) {
   return apiRequest<{ items: NotificationItem[]; nextCursor: string | null }>("/admin-api/notifications", { query: params })

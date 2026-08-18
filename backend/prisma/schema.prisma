@@ -331,6 +331,13 @@ model SupportMessage {
   authorPlayerId String?
   authorAdminId  String?
   body           String
+  /// Public URL of an optionally-attached image, served from backend/'s own
+  /// /api/uploads/support static route — absolute (not relative) so
+  /// admin/frontend (a different domain) can load it directly. Only ever
+  /// set on the player's first message when raising a ticket today (see
+  /// support.controller.ts) — the schema doesn't restrict it to that, in
+  /// case attachments on replies get added later.
+  attachmentUrl  String?
   createdAt      DateTime      @default(now())
 
   @@index([ticketId, createdAt])

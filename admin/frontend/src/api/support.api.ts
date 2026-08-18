@@ -16,6 +16,7 @@ export interface SupportMessage {
   id: string
   body: string
   author: "player" | "admin"
+  attachmentUrl: string | null
   createdAt: string
 }
 

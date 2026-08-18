@@ -179,6 +179,11 @@ function TicketDetailPage() {
                 {m.author === "admin" ? "Support team" : ticket.player.username} · {formatDateTime(m.createdAt)}
               </p>
               <p className="text-sm whitespace-pre-wrap text-foreground">{m.body}</p>
+              {m.attachmentUrl && (
+                <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block w-fit">
+                  <img src={m.attachmentUrl} alt="Attachment" className="max-h-48 w-auto rounded-md border border-border" />
+                </a>
+              )}
             </div>
           </li>
         ))}

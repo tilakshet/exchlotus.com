@@ -91,6 +91,16 @@ function TicketThreadPage() {
                     {m.author === "player" ? "You" : "Support team"} · {new Date(m.createdAt).toLocaleString()}
                   </p>
                   <p className="text-base whitespace-pre-wrap text-[color:var(--acc-text-primary)]">{m.body}</p>
+                  {m.attachmentUrl && (
+                    <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block w-fit">
+                      <img
+                        src={m.attachmentUrl}
+                        alt="Attachment"
+                        className="max-h-48 w-auto rounded-[var(--acc-radius-md)] border"
+                        style={{ borderColor: "var(--acc-border)" }}
+                      />
+                    </a>
+                  )}
                 </div>
               </li>
             ))}
