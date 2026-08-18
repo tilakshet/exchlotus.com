@@ -36,9 +36,8 @@ export function createApp() {
 
   app.get("/health", (_req, res) => res.json({ status: "ok" }))
 
-  // Mounted before express.json() (needs the raw body for signature
-  // verification, see gaming-webhook.controller.ts) and before apiLimiter —
-  // this is inbound provider traffic (HMAC-verified, not user-facing), and
+  // Mounted before apiLimiter — this is inbound provider traffic (bearer-
+  // token verified, see gaming-webhook.controller.ts), not user-facing, and
   // a 300/15min-per-IP cap would throttle legitimate settlement callbacks.
   app.use("/api", gamingWebhookRouter)
   app.use("/api/payments", paymentsCallbackRouter)
