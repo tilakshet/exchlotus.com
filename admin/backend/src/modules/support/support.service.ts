@@ -2,6 +2,7 @@ import type { Request } from "express"
 import { prisma } from "../../lib/prisma"
 import { writeAuditLog } from "../../lib/audit"
 import { AdminApiError } from "../../lib/api-error"
+import { publishPlayerNotification } from "../../lib/redis"
 import type { Prisma, SupportTicketStatus } from "../../generated/prisma"
 
 export interface ListTicketsOptions {
@@ -113,10 +114,13 @@ export async function getTicketDetail(id: string) {
 }
 
 export async function replyToTicket(req: Request, actorAdminId: string, ticketId: string, body: string) {
-  const ticket = await prisma.supportTicket.findUnique({ where: { id: ticketId } })
+  const ticket = await prisma.supportTicket.findUnique({
+    where: { id: ticketId },
+    include: { player: { select: { externalId: true } } },
+  })
   if (!ticket) throw new AdminApiError("NOT_FOUND", "Ticket not found")
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const message = await tx.supportMessage.create({ data: { ticketId, authorAdminId: actorAdminId, body } })
     // Idempotent no-op if already assigned, first-touch assignment
     // otherwise — always a real field, so this also bumps `updatedAt`
@@ -133,6 +137,16 @@ export async function replyToTicket(req: Request, actorAdminId: string, ticketId
     })
     return { id: message.id }
   })
+
+  // Real-time push only — the player still sees the reply on next load via
+  // GET /support-tickets/:id regardless, so a missed/delayed push here is
+  // never data loss, just a delayed in-app notification.
+  await publishPlayerNotification(ticket.player.externalId, {
+    message: `Support replied to "${ticket.subject}"`,
+    link: `/dashboard/account/support/${ticketId}`,
+  })
+
+  return result
 }
 
 export async function setTicketStatus(req: Request, actorAdminId: string, ticketId: string, status: SupportTicketStatus) {

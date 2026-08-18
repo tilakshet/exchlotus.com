@@ -92,8 +92,14 @@ export function WalletChip() {
 /** Real unread count from the socket-fed notification store — not a fabricated badge number. */
 export function NotificationBell() {
     const dispatch = useAppDispatch()
+    const navigate = useNavigate()
     const items = useAppSelector((s) => s.notifications.items)
     const unread = items.filter((n) => !n.read).length
+
+    function handleSelect(notification: (typeof items)[number]) {
+        dispatch(notificationMarkedRead(notification.id))
+        if (notification.link) navigate({ to: notification.link as "/dashboard" })
+    }
 
     return (
         <DropdownMenuPrimitive.Root>
@@ -125,8 +131,8 @@ export function NotificationBell() {
                         items.map((n) => (
                             <DropdownMenuPrimitive.Item
                                 key={n.id}
-                                onSelect={() => dispatch(notificationMarkedRead(n.id))}
-                                className="flex cursor-pointer flex-col gap-0.5 rounded-(--landing-radius-sm) px-3 py-2.5 outline-none data-highlighted:bg-(--landing-hover-tint)"
+                                onSelect={() => handleSelect(n)}
+                                className={`flex flex-col gap-0.5 rounded-(--landing-radius-sm) px-3 py-2.5 outline-none data-highlighted:bg-(--landing-hover-tint) ${n.link ? "cursor-pointer" : "cursor-default"}`}
                             >
                                 <span className={n.read ? "text-(--landing-text-secondary)" : "font-semibold"}>{n.message}</span>
                                 <span className="text-xs text-(--landing-text-secondary)">{new Date(n.createdAt).toLocaleString()}</span>
