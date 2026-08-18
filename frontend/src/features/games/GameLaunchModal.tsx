@@ -91,7 +91,7 @@ export function GameLaunchModal({ game, onClose }: { game: Game; onClose: () => 
             <button
               type="button"
               aria-label="Close game"
-              className={`fixed right-3 top-1/2 z-[60] flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white opacity-100 outline-none backdrop-blur transition-opacity duration-300 hover:bg-black/80 focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)] sm:top-3 sm:translate-y-0 ${
+              className={`fixed right-3 top-3 z-[60] flex size-11 items-center justify-center rounded-full bg-black/60 text-white opacity-100 outline-none backdrop-blur transition-opacity duration-300 hover:bg-black/80 focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)] ${
                 showClose ? "sm:opacity-100" : "sm:pointer-events-none sm:opacity-0"
               }`}
             >

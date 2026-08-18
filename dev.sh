@@ -50,21 +50,38 @@ docker_desktop_process_running() {
     powershell.exe -NoProfile -Command "exit [int](-not (Get-Process 'Docker Desktop' -ErrorAction SilentlyContinue))" >/dev/null 2>&1
 }
 
+# Docker Desktop's install location varies by machine (per-user installs
+# land under %LocalAppData%\Programs\DockerDesktop instead of the
+# system-wide Program Files path) — check both instead of hardcoding one.
+find_docker_desktop_exe() {
+  local candidates=(
+    "/c/Program Files/Docker/Docker/Docker Desktop.exe"
+    "${LOCALAPPDATA:-}/Programs/DockerDesktop/Docker Desktop.exe"
+    "/c/Users/${USERNAME:-${USER:-}}/AppData/Local/Programs/DockerDesktop/Docker Desktop.exe"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    [ -f "$candidate" ] && { echo "$candidate"; return 0; }
+  done
+  return 1
+}
+
 # Launches Docker Desktop if it isn't open yet, then polls the engine
 # (not just the process — the GUI can be "open" for a while before the
 # engine actually answers) until it responds or we give up.
 ensure_docker_running() {
   docker_engine_ready && return 0
 
+  local docker_desktop_exe
   if docker_desktop_process_running; then
     echo "==> Docker Desktop is already open but its engine isn't ready yet — waiting..."
-  elif [ -f "/c/Program Files/Docker/Docker/Docker Desktop.exe" ]; then
+  elif docker_desktop_exe=$(find_docker_desktop_exe); then
     echo "==> Docker Desktop isn't running — launching it..."
     # cmd /c start, not a bare background exec: a plain `&` ties the GUI
     # process to this script's job control, so it dies with the script on
     # Ctrl+C/exit (hit this exact issue with a different GUI app earlier
     # today). `start` hands it off fully detached.
-    cmd //c start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe" >/dev/null 2>&1
+    cmd //c start "" "$(cygpath -w "$docker_desktop_exe" 2>/dev/null || echo "$docker_desktop_exe")" >/dev/null 2>&1
   elif command -v open >/dev/null 2>&1; then
     echo "==> Docker Desktop isn't running — launching it..."
     open -a "Docker Desktop"

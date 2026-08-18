@@ -32,3 +32,24 @@ export async function bumpCatalogVersion(): Promise<void> {
     logger.warn({ err }, "Redis write failed for catalog:version bump — cached catalog data may be briefly stale")
   }
 }
+
+/**
+ * Pushes a real-time notification to one player's connected sockets.
+ * Published on the same shared Redis instance as bumpCatalogVersion above —
+ * backend/'s socket server (backend/src/socket/socket.server.ts) subscribes
+ * to this channel and emits it over Socket.IO to that player's room. This
+ * process has no direct handle on that Socket.IO instance (separate
+ * process), so pub/sub is the bridge, not an in-process EventEmitter.
+ * Fails open, same as bumpCatalogVersion: a missed real-time push just
+ * means the player finds out next time they open the app, not a 500 here.
+ */
+export async function publishPlayerNotification(
+  playerExternalId: string,
+  payload: { message: string; link?: string }
+): Promise<void> {
+  try {
+    await redis.publish("player:notifications", JSON.stringify({ playerExternalId, ...payload }))
+  } catch (err) {
+    logger.warn({ err, playerExternalId }, "Redis publish failed — player will not get a real-time notification for this event")
+  }
+}

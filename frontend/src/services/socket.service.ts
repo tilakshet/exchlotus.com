@@ -46,8 +46,8 @@ export function useSocketConnection() {
       queryClient.invalidateQueries({ queryKey: ["wallet", "history"] })
     })
 
-    socket.on("notification", (payload: { message: string }) => {
-      dispatch(notificationReceived(payload.message))
+    socket.on("notification", (payload: { message: string; link?: string }) => {
+      dispatch(notificationReceived(payload.message, payload.link))
     })
 
     return () => {

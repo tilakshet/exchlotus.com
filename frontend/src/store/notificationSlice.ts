@@ -3,6 +3,8 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
 export interface AppNotification {
   id: string
   message: string
+  /** In-app route to navigate to on click, e.g. a support ticket thread. Absent for notifications with nothing to jump to. */
+  link?: string
   createdAt: string
   read: boolean
 }
@@ -23,11 +25,12 @@ const notificationSlice = createSlice({
       reducer(state, action: PayloadAction<AppNotification>) {
         state.items.unshift(action.payload)
       },
-      prepare(message: string) {
+      prepare(message: string, link?: string) {
         return {
           payload: {
             id: crypto.randomUUID(),
             message,
+            link,
             createdAt: new Date().toISOString(),
             read: false,
           } satisfies AppNotification,
