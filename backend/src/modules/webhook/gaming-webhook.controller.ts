@@ -1,74 +1,60 @@
-import { Router, type Request } from "express"
-import { timingSafeEqual, createHmac } from "node:crypto"
+import { Router, json } from "express"
+import { timingSafeEqual } from "node:crypto"
 import { env } from "../../lib/env"
 import { logger } from "../../lib/logger"
 import { GamingApiError } from "../../lib/api-error"
 import { gamingWebhookRequestSchema } from "./gaming-webhook.validators"
 import { handleGamingWebhook } from "./gaming-webhook.service"
 
-interface RequestWithRawBody extends Request {
-  rawBody?: Buffer
-}
-
 /**
- * The spec (as provided) doesn't document a webhook signature/auth scheme —
- * no header name, no algorithm. CLAUDE.md requires webhook signature
- * verification regardless, so this implements a standard HMAC-SHA256-over-
- * raw-body convention (`X-Webhook-Signature: <hex>`) as a placeholder.
- * Replace with whatever the real provider actually documents before this
- * goes anywhere near production — see README "Open questions".
+ * Auth: a plain `Authorization: Bearer <token>` header, checked against
+ * GAMING_WEBHOOK_SHARED_SECRET — confirmed 2026-08-19 via the gaming
+ * provider's own support team as their real, fixed integration pattern.
+ * This replaces an earlier self-invented `X-Webhook-Signature`
+ * HMAC-over-raw-body scheme, written before we had real docs (the pasted
+ * spec never documented an auth mechanism — see README "Open questions").
+ * The provider never sent that header, so every real-money `user_balance`
+ * check was silently rejected with 401 from Aug 15 onward — the root cause
+ * behind a string of confusing downstream game-launch failures.
  */
-function isValidSignature(rawBody: Buffer, signatureHeader: string | undefined): boolean {
-  if (!signatureHeader) return false
-  const expected = createHmac("sha256", env.GAMING_WEBHOOK_SHARED_SECRET).update(rawBody).digest("hex")
-  const expectedBuf = Buffer.from(expected, "hex")
-  const providedBuf = Buffer.from(signatureHeader, "hex")
-  if (expectedBuf.length !== providedBuf.length) return false
-  return timingSafeEqual(expectedBuf, providedBuf)
+function isValidBearerToken(header: string | undefined): boolean {
+  if (!header?.startsWith("Bearer ")) return false
+  const provided = Buffer.from(header.slice("Bearer ".length))
+  const expected = Buffer.from(env.GAMING_WEBHOOK_SHARED_SECRET)
+  if (provided.length !== expected.length) return false
+  return timingSafeEqual(provided, expected)
 }
 
 export const gamingWebhookRouter = Router()
+// Own body parser — mounted ahead of the app-wide express.json() in app.ts,
+// and ahead of apiLimiter (see app.ts): this is inbound provider traffic,
+// not user-facing, and a per-IP rate cap would throttle legitimate
+// settlement callbacks. No longer needs the raw body specifically (that was
+// only for the old HMAC scheme), but stays mounted early for the rate-limit
+// reason above.
+gamingWebhookRouter.use(json())
 
-gamingWebhookRouter.post(
-  "/gaming_webhook",
-  (req, _res, next) => {
-    // Capture the raw bytes for signature verification before JSON parsing
-    // discards them — express.json() doesn't retain the original buffer.
-    const chunks: Buffer[] = []
-    req.on("data", (chunk) => chunks.push(chunk))
-    req.on("end", () => {
-      ;(req as RequestWithRawBody).rawBody = Buffer.concat(chunks)
-      try {
-        req.body = JSON.parse((req as RequestWithRawBody).rawBody!.toString("utf8") || "{}")
-      } catch {
-        req.body = {}
-      }
-      next()
-    })
-  },
-  async (req, res) => {
-    const rawBody = (req as RequestWithRawBody).rawBody ?? Buffer.alloc(0)
-    if (!isValidSignature(rawBody, req.header("x-webhook-signature"))) {
-      logger.warn("Rejected gaming webhook call with missing/invalid signature")
-      return res.status(401).json({ status: false, error: "UNAUTHORIZED" })
-    }
-
-    const parsed = gamingWebhookRequestSchema.safeParse(req.body)
-    if (!parsed.success) {
-      logger.warn({ issues: parsed.error.issues }, "Rejected malformed gaming webhook payload")
-      return res.status(200).json({ status: false, error: "INVALID_TRANSACTION" })
-    }
-
-    try {
-      const result = await handleGamingWebhook(parsed.data)
-      return res.status(200).json(result)
-    } catch (err) {
-      if (err instanceof GamingApiError) {
-        logger.info({ code: err.code, method: parsed.data.method }, "Gaming webhook business error")
-        return res.status(200).json({ status: false, error: err.code })
-      }
-      logger.error({ err, method: parsed.data.method }, "Unhandled error processing gaming webhook")
-      return res.status(500).json({ status: false, error: "INTERNAL_ERROR" })
-    }
+gamingWebhookRouter.post("/gaming_webhook", async (req, res) => {
+  if (!isValidBearerToken(req.header("authorization"))) {
+    logger.warn("Rejected gaming webhook call with missing/invalid bearer token")
+    return res.status(401).json({ status: false, error: "UNAUTHORIZED" })
   }
-)
+
+  const parsed = gamingWebhookRequestSchema.safeParse(req.body)
+  if (!parsed.success) {
+    logger.warn({ issues: parsed.error.issues }, "Rejected malformed gaming webhook payload")
+    return res.status(200).json({ status: false, error: "INVALID_TRANSACTION" })
+  }
+
+  try {
+    const result = await handleGamingWebhook(parsed.data)
+    return res.status(200).json(result)
+  } catch (err) {
+    if (err instanceof GamingApiError) {
+      logger.info({ code: err.code, method: parsed.data.method }, "Gaming webhook business error")
+      return res.status(200).json({ status: false, error: err.code })
+    }
+    logger.error({ err, method: parsed.data.method }, "Unhandled error processing gaming webhook")
+    return res.status(500).json({ status: false, error: "INTERNAL_ERROR" })
+  }
+})

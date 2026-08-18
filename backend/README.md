@@ -7,7 +7,7 @@ has been through two versions:
    Gaming API Specification v2.4" doc: OAuth2 `agent_token:agent_secret` →
    short-lived `access_token`, `/games/*` paths.
 2. **Currently** built against a different, real provider (an API-docs
-   screenshot showing `/v1/catalog/providers`, `/v1/catalog/games`,
+   screenshot showing  `/v1/catalog/providers`, `/v1/catalog/games`,
    `/v1/sessions/launch`, and a `/v1/campaigns/*` free-spins CRUD set) with
    a simpler auth model — one static API key sent as
    `Authorization: Bearer <key>` on every call, no token-exchange step.
@@ -256,14 +256,15 @@ The pasted specification appears to be **truncated** (it cuts off mid-word
 in the final error description) and is missing pieces a complete
 integration doc would normally include:
 
-- **Webhook signature/auth scheme — not documented at all.** No header
-  name, no algorithm, no example. CLAUDE.md requires webhook signature
-  verification regardless of the source spec, so this implements an
-  `X-Webhook-Signature: <hex>` header as HMAC-SHA256 over the raw request
-  body, keyed by `GAMING_WEBHOOK_SHARED_SECRET`. **This is our own
-  placeholder convention, not something confirmed against the real
-  provider.** Get the actual mechanism from the provider before connecting
-  to anything but the mock.
+- **Webhook signature/auth scheme — resolved 2026-08-19.** The pasted spec
+  didn't document one, so this originally implemented a self-invented
+  `X-Webhook-Signature: <hex>` HMAC-SHA256-over-body scheme as a
+  placeholder. The provider's support team confirmed their real,
+  fixed integration pattern is a plain `Authorization: Bearer <token>`
+  header instead — they never sent the HMAC header, which is why every
+  real-money `user_balance` check was silently rejected with 401 from
+  Aug 15 onward. Now checks a bearer token against
+  `GAMING_WEBHOOK_SHARED_SECRET`.
 - **`DOUBLED_BET` vs. idempotent replay.** §6 says duplicate requests with
   *identical* parameters should silently return the existing balance;
   §7 separately lists `DOUBLED_BET` as an error for "wager transaction ID
