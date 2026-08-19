@@ -11,16 +11,6 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Roboto:wght@400;500;700;900&display=swap"
     />
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem("exchlotus-theme");
-          document.documentElement.setAttribute("data-theme", stored === "dark" ? "dark" : "light");
-        } catch (e) {
-          document.documentElement.setAttribute("data-theme", "light");
-        }
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

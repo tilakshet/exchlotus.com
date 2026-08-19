@@ -83,8 +83,8 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   virtual: Cpu,
 }
 
-/** Same fixed card width as the category rows (CategoryRow.tsx's `w-48` shelf cards) — auto-fill keeps that size but lets the grid wrap to fill the row instead of leaving a gap. */
-const GAME_GRID_COLS = "grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]"
+/** Fixed 3-per-row on mobile (cards grow to fill the row, same as the category-detail/search grids) so the count stays exactly 3 across the whole mobile width range instead of auto-fill sneaking in a 4th column on wider phones; back to the auto-fill `w-48`-ish sizing (matching CategoryRow.tsx's shelf cards) at `sm:` and up. */
+const GAME_GRID_COLS = "grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]"
 
 function GameGridSkeleton() {
   return (

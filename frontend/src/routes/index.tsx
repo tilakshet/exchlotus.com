@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { LandingHeader } from "@/components/landing/LandingHeader"
 import { LandingSidebar } from "@/components/landing/LandingSidebar"
+import { BottomNavBar } from "@/components/dashboard-shell/BottomNavBar"
+import { DASHBOARD_NAV_ITEMS } from "@/data/dashboardShell"
 import { HeroCarousel } from "@/components/HeroCarousel/HeroCarousel"
-import { ProviderStrip } from "@/components/landing/ProviderStrip"
 import { RecentBigWinsRow } from "@/components/landing/RecentBigWinsRow"
+import { TrendingGamesRow } from "@/components/landing/TrendingGamesRow"
+import { FavoritesRow } from "@/components/landing/FavoritesRow"
 import { CategoryGameRows } from "@/components/landing/CategoryGameRows"
 import { SectionContainer } from "@/components/landing/shared/SectionContainer"
 import { SectionHeading } from "@/components/landing/shared/SectionHeading"
@@ -29,8 +32,11 @@ export const Route = createFileRoute("/")({
  * (there's no sportsbook API in this backend to back one with real data).
  * What you see here before logging in is the same catalog you get after.
  * LandingSidebar is fixed (desktop only, see its own doc comment for the
- * header-height offset); the `lg:pl-56` below reserves its width in normal
- * flow so hero/sections/footer never render underneath it.
+ * header-height offset); the `lg:pl-44` below reserves its width in normal
+ * flow so hero/sections/footer never render underneath it. Below 1024px,
+ * LandingSidebar hides and BottomNavBar (same DASHBOARD_NAV_ITEMS, same
+ * component as dashboard.tsx) takes over as primary navigation — the
+ * `pb-24` on this wrapper keeps the floating bar from covering the footer.
  */
 function LandingPage() {
   return (
@@ -40,18 +46,20 @@ function LandingPage() {
       </a>
       <LandingHeader />
       <LandingSidebar />
-      <div className="lg:pl-56">
+      <div className="pb-24 lg:pb-0 lg:pl-44">
         <main id="main-content">
           <HeroCarousel />
-          <ProviderStrip />
           <SectionContainer ariaLabel="Recent big wins" className="py-8!">
             <RecentBigWinsRow />
           </SectionContainer>
-          <SectionContainer ariaLabel="Browse by category">
-            <SectionHeading eyebrow="Quick picks" title="Browse by category" />
-            <div className="mt-8">
-              <CategoryGameRows />
+          <SectionContainer ariaLabel="Trending and favorite games" className="py-8!">
+            <div className="flex flex-col gap-8">
+              <TrendingGamesRow />
+              <FavoritesRow />
             </div>
+          </SectionContainer>
+          <SectionContainer ariaLabel="Browse by category">
+            <CategoryGameRows />
           </SectionContainer>
           <SectionContainer id="trending" ariaLabel="Game catalog">
             <SectionHeading eyebrow="Play now" title="The full catalog" description="Live from our providers — search, filter, and jump straight in." />
@@ -68,6 +76,7 @@ function LandingPage() {
         </main>
         <LandingFooter />
       </div>
+      <BottomNavBar items={DASHBOARD_NAV_ITEMS} />
       <ScrollToTop />
     </div>
   )

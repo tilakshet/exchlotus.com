@@ -5,11 +5,11 @@ import { GameCard } from "@/features/games/GameCard"
 import { GameLaunchModal } from "@/features/games/GameLaunchModal"
 import type { Game } from "@/types/catalog"
 
-function CategoryRowSkeleton() {
+export function CategoryRowSkeleton() {
   return (
     <div className="scrollbar-none flex gap-3 overflow-x-auto">
       {Array.from({ length: 4 }, (_, i) => (
-        <div key={i} className="w-48 shrink-0 overflow-hidden rounded-(--landing-radius-md) border border-(--landing-border)">
+        <div key={i} className="w-28 shrink-0 overflow-hidden rounded-(--landing-radius-md) border border-(--landing-border) sm:w-48">
           <div className="aspect-[4/3] animate-pulse bg-(--landing-bg-3)" />
         </div>
       ))}
@@ -45,7 +45,7 @@ function CategoryRow({ code, name, onPlay }: { code: string; name: string; onPla
       </h3>
       <ul className="scrollbar-none flex gap-3 overflow-x-auto pb-1">
         {games.map((game) => (
-          <li key={game.id} className="w-48 shrink-0">
+          <li key={game.id} className="w-28 shrink-0 sm:w-48">
             <GameCard game={game} onPlay={onPlay} />
           </li>
         ))}

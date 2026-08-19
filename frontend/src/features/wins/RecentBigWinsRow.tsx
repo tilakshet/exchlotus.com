@@ -3,7 +3,7 @@ import { useRecentBigWinsData, type WinCardData } from "@/hooks/useRecentBigWins
 
 function WinCardSkeleton() {
   return (
-    <div className="flex w-32 shrink-0 flex-col gap-1.5">
+    <div className="flex w-24 shrink-0 flex-col gap-1.5">
       <div className="aspect-square animate-pulse rounded-[var(--sb-radius-lg)] bg-[color:var(--sb-content-alt)]" />
       <div className="h-4 w-3/4 animate-pulse rounded bg-[color:var(--sb-content-alt)]" />
     </div>
@@ -12,7 +12,7 @@ function WinCardSkeleton() {
 
 function WinCard({ card }: { card: WinCardData }) {
   return (
-    <div className="flex w-32 shrink-0 flex-col gap-1.5">
+    <div className="flex w-24 shrink-0 flex-col gap-1.5">
       <div className="relative aspect-square overflow-hidden rounded-[var(--sb-radius-lg)] border border-[color:var(--sb-border)] bg-[color:var(--sb-content-alt)]">
         {card.image && <img src={card.image} alt="" loading="lazy" className="size-full object-cover" />}
         <span className="absolute bottom-1.5 left-1.5 flex max-w-[calc(100%-12px)] items-center gap-1 truncate rounded-[var(--sb-radius-full)] bg-black/70 px-2 py-1 text-[11px] font-semibold text-white">
@@ -20,7 +20,7 @@ function WinCard({ card }: { card: WinCardData }) {
           <span className="truncate">{card.name}</span>
         </span>
       </div>
-      <p className="text-sm font-bold text-emerald-400">+₹{card.amount.toLocaleString("en-IN")}</p>
+      <p className="text-sm font-bold text-[color:var(--brand-green-text)]">+₹{card.amount.toLocaleString("en-IN")}</p>
     </div>
   )
 }

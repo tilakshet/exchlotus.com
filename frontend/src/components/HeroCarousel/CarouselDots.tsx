@@ -25,8 +25,10 @@ export const CarouselDots = memo(function CarouselDots({ count, activeIndex, onS
             <motion.span
               className="block h-2 rounded-full"
               animate={{
+                // Mirrors --brand-gold-bright's value — framer-motion's
+                // animate prop needs a literal color, not a CSS var().
                 width: isActive ? 28 : 8,
-                backgroundColor: isActive ? "#E8C766" : "rgba(255,255,255,.34)",
+                backgroundColor: isActive ? "#357f0f" : "rgba(255,255,255,.34)",
               }}
               transition={{ duration: 0.25, ease: "easeOut" }}
             />

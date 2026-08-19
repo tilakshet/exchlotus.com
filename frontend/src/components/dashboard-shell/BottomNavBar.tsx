@@ -10,8 +10,9 @@ export interface BottomNavItem {
 
 /**
  * Mobile-only (<1024px) primary navigation — replaces the old MobileNav
- * drawer. Two call sites share this component (dashboard.tsx for the main
- * sections, dashboard.account.tsx for the account sections) — mutually
+ * drawer. Three call sites share this component (dashboard.tsx for the main
+ * sections, dashboard.account.tsx for the account sections, and the public
+ * landing page's routes/index.tsx) — the two dashboard ones are mutually
  * exclusive by route, never both mounted at once, see each layout's own
  * comment for how it decides which bar (if any) to render. Active state
  * comes from Link's own `data-status` attribute — same mechanism

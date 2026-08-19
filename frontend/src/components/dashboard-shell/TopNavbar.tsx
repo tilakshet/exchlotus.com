@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from "@/store"
 import { notificationMarkedRead } from "@/store/notificationSlice"
 import { Logo } from "@/components/shared/Logo"
 import { UserAvatar } from "@/components/shared/UserAvatar"
-import { ThemeToggle } from "@/components/shared/ThemeToggle"
+import { NavSearchBar } from "@/components/shared/NavSearchBar"
 import { CURRENT_LOYALTY_TIER } from "@/features/account/loyalty-tiers"
 
 /**
@@ -21,6 +21,7 @@ import { CURRENT_LOYALTY_TIER } from "@/features/account/loyalty-tiers"
  * not a hamburger drawer. Theme toggle lives in Sidebar.tsx on desktop
  * (≥1024px) and inside ProfileChip's dropdown for mobile — not standalone
  * on the navbar, which stays free for wallet/notifications/profile only.
+ * Search (NavSearchBar) is desktop-only, same as LandingHeader.
  */
 export function TopNavbar() {
     const { isAuthenticated } = useAuth()
@@ -33,6 +34,8 @@ export function TopNavbar() {
             >
                 <Logo heightClass="h-12 sm:h-16" />
             </Link>
+
+            <NavSearchBar />
 
             <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-2.5">
                 {isAuthenticated ? (
@@ -51,12 +54,21 @@ export function TopNavbar() {
 
 function LoggedOutActions() {
     return (
-        <Link
-            to="/login"
-            className="landing-cta-blue landing-shine flex items-center justify-center gap-1.5 rounded-(--landing-radius-sm) px-8 py-4 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
-        >
-            Login
-        </Link>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+            <Link
+                to="/login"
+                search={{ view: "register" }}
+                className="landing-cta-green landing-shine flex items-center justify-center gap-1.5 rounded-(--landing-radius-sm) px-8 py-4 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
+            >
+                Sign Up
+            </Link>
+            <Link
+                to="/login"
+                className="landing-cta-purple landing-shine flex items-center justify-center gap-1.5 rounded-(--landing-radius-sm) px-8 py-4 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
+            >
+                Login
+            </Link>
+        </div>
     )
 }
 
@@ -185,12 +197,6 @@ export function ProfileChip() {
                             My Account
                         </Link>
                     </DropdownMenuPrimitive.Item>
-
-                    {/* Mobile only — desktop keeps its one copy in Sidebar.tsx, showing both would be redundant. */}
-                    <div className="flex items-center justify-between gap-2 border-t border-(--landing-border) px-3 py-2 lg:hidden">
-                        <span className="text-(--landing-text-secondary)">Theme</span>
-                        <ThemeToggle />
-                    </div>
 
                     <DropdownMenuPrimitive.Item
                         onSelect={() => handleLogout()}

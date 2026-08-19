@@ -83,7 +83,7 @@ function InfoTab() {
 
   if (isError || !profile) {
     return (
-      <div role="alert" className="flex items-center justify-between gap-2 rounded-[var(--acc-radius-sm)] bg-red-50 px-3 py-2.5 text-sm text-red-700">
+      <div role="alert" className="flex items-center justify-between gap-2 rounded-[var(--acc-radius-sm)] bg-[color:var(--acc-danger-bg)] px-3 py-2.5 text-sm text-[color:var(--acc-danger)]">
         <span className="flex items-center gap-2">
           <AlertCircle className="size-5.5 shrink-0" aria-hidden="true" />
           Couldn't load profile.
@@ -101,7 +101,7 @@ function InfoTab() {
         <Field label="Username">
           <input className={inputClass} style={inputStyle} aria-invalid={!!errors.username} {...register("username")} />
           {errors.username && (
-            <p role="alert" className="mt-1 text-sm text-red-600">
+            <p role="alert" className="mt-1 text-sm text-[color:var(--acc-danger)]">
               {errors.username.message}
             </p>
           )}
@@ -131,12 +131,12 @@ function InfoTab() {
       </div>
 
       {updateProfile.isError && (
-        <p role="alert" className="text-base text-red-600">
+        <p role="alert" className="text-base text-[color:var(--acc-danger)]">
           {friendlyErrorMessage(updateProfile.error instanceof ApiError ? updateProfile.error : updateProfile.error)}
         </p>
       )}
       {saved && !updateProfile.isPending && (
-        <p role="status" className="flex items-center gap-2 text-base font-medium text-emerald-600">
+        <p role="status" className="flex items-center gap-2 text-base font-medium text-[color:var(--acc-success-fg)]">
           <CheckCircle2 className="size-5.5" aria-hidden="true" />
           Profile updated
         </p>
@@ -190,7 +190,7 @@ function PasswordTab() {
       <Field label="Current Password">
         <input type="password" className={inputClass} style={inputStyle} aria-invalid={!!errors.currentPassword} {...register("currentPassword")} />
         {errors.currentPassword && (
-          <p role="alert" className="mt-1 text-sm text-red-600">
+          <p role="alert" className="mt-1 text-sm text-[color:var(--acc-danger)]">
             {errors.currentPassword.message}
           </p>
         )}
@@ -198,7 +198,7 @@ function PasswordTab() {
       <Field label="New Password">
         <input type="password" className={inputClass} style={inputStyle} aria-invalid={!!errors.newPassword} {...register("newPassword")} />
         {errors.newPassword && (
-          <p role="alert" className="mt-1 text-sm text-red-600">
+          <p role="alert" className="mt-1 text-sm text-[color:var(--acc-danger)]">
             {errors.newPassword.message}
           </p>
         )}
@@ -206,19 +206,19 @@ function PasswordTab() {
       <Field label="Confirm New Password">
         <input type="password" className={inputClass} style={inputStyle} aria-invalid={!!errors.confirmPassword} {...register("confirmPassword")} />
         {errors.confirmPassword && (
-          <p role="alert" className="mt-1 text-sm text-red-600">
+          <p role="alert" className="mt-1 text-sm text-[color:var(--acc-danger)]">
             {errors.confirmPassword.message}
           </p>
         )}
       </Field>
 
       {changePassword.isError && (
-        <p role="alert" className="text-base text-red-600">
+        <p role="alert" className="text-base text-[color:var(--acc-danger)]">
           {friendlyErrorMessage(changePassword.error instanceof ApiError ? changePassword.error : changePassword.error)}
         </p>
       )}
       {done && (
-        <p role="status" className="flex items-center gap-2 text-base font-medium text-emerald-600">
+        <p role="status" className="flex items-center gap-2 text-base font-medium text-[color:var(--acc-success-fg)]">
           <CheckCircle2 className="size-5.5" aria-hidden="true" />
           Password changed
         </p>

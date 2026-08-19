@@ -84,8 +84,8 @@ export const HeroCarousel = memo(function HeroCarousel({ compact = false }: { co
   if (bannersQuery.isError) {
     return (
       <section className={`w-full px-4 sm:px-6 lg:px-8 ${compact ? "" : "pt-40"}`} aria-label="Hero banners">
-        <div className="flex h-[420px] flex-col items-center justify-center gap-4 rounded-[24px] border border-white/[.08] bg-[#0d0714] p-6 text-center text-white md:h-[520px]">
-          <AlertCircle className="size-10 text-[#8B5CF6]" aria-hidden="true" />
+        <div className="flex h-[420px] flex-col items-center justify-center gap-4 rounded-[24px] border border-white/[.08] bg-[#000000] p-6 text-center text-white md:h-[520px]">
+          <AlertCircle className="size-10 text-(--brand-gold-bright)" aria-hidden="true" />
           <p className="text-lg font-bold">Hero banners could not be loaded.</p>
           <button
             type="button"
