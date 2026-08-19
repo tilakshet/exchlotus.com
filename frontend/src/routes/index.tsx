@@ -4,6 +4,7 @@ import { LandingSidebar } from "@/components/landing/LandingSidebar"
 import { BottomNavBar } from "@/components/dashboard-shell/BottomNavBar"
 import { DASHBOARD_NAV_ITEMS } from "@/data/dashboardShell"
 import { HeroCarousel } from "@/components/HeroCarousel/HeroCarousel"
+import { ProviderLogoCarousel } from "@/components/shared/ProviderLogoCarousel"
 import { RecentBigWinsRow } from "@/components/landing/RecentBigWinsRow"
 import { TrendingGamesRow } from "@/components/landing/TrendingGamesRow"
 import { FavoritesRow } from "@/components/landing/FavoritesRow"
@@ -49,6 +50,9 @@ function LandingPage() {
       <div className="pb-24 lg:pb-0 lg:pl-44">
         <main id="main-content">
           <HeroCarousel />
+          <SectionContainer ariaLabel="Game providers" className="py-4!">
+            <ProviderLogoCarousel />
+          </SectionContainer>
           <SectionContainer ariaLabel="Recent big wins" className="py-8!">
             <RecentBigWinsRow />
           </SectionContainer>
