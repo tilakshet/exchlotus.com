@@ -8,8 +8,8 @@ interface HeroSlideProps {
   onPlay: (banner: HeroBanner) => void
 }
 
-/** Same gradient fallback used when a banner has no real image, minus the theme-matching artwork — just a plain dark backdrop so the CTA stays legible. */
-const FALLBACK_BACKGROUND = "linear-gradient(135deg, #2a3f30, #1c2e24 48%, #0e1712)"
+/** Plain dark backdrop (the theme's own black/navy tones, no bespoke hues) so the CTA stays legible when a banner has no real image. */
+const FALLBACK_BACKGROUND = "linear-gradient(135deg, #021A2A, #131C2A 48%, #000000)"
 
 export const HeroSlide = memo(function HeroSlide({ banner, isActive, onPlay }: HeroSlideProps) {
   const [imageFailed, setImageFailed] = useState(false)
@@ -33,7 +33,7 @@ export const HeroSlide = memo(function HeroSlide({ banner, isActive, onPlay }: H
           loading={isActive ? "eager" : "lazy"}
           decoding="async"
           onError={() => setImageFailed(true)}
-          className="absolute inset-0 size-full object-cover"
+          className="absolute inset-0 size-full object-cover brightness-[1.15]"
         />
       ) : (
         <div className="absolute inset-0" style={{ background: FALLBACK_BACKGROUND }} />

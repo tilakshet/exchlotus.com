@@ -100,6 +100,41 @@ export async function listProviders() {
 const MAX_PAGE_SIZE = 100
 const DEFAULT_PAGE_SIZE = 50
 
+/**
+ * Some real synced categories each carry only a handful of games — too
+ * sparse to justify their own shelf on the landing/dashboard category rows.
+ * Each group below merges into one category (its `code`) everywhere
+ * (listCategories, listGames, and therefore every hub/detail page built on
+ * top of them) so there's a single source of truth instead of each
+ * frontend consumer special-casing it. `teenpatti` and `hi-lo` move out of
+ * the Live Casino grouping (lib/categoryGroups.ts on the frontend) as a
+ * result — they default to the Casino group under their merged "casual"/
+ * "arcade" codes, which is the intent here.
+ */
+const CATEGORY_MERGE_GROUPS: { code: string; name: string; sourceCodes: string[] }[] = [
+  { code: "casual", name: "Casual", sourceCodes: ["casual", "lotto", "minigame", "teenpatti", "topcard"] },
+  { code: "arcade", name: "Arcade", sourceCodes: ["arcade", "fish", "hi-lo"] },
+]
+
+function findMergeGroup(categoryCode: string) {
+  return CATEGORY_MERGE_GROUPS.find((g) => g.code === categoryCode)
+}
+
+function mergeCategoryGroups<T extends { code: string; name: string; sortOrder: number }>(categories: T[]): T[] {
+  let result = categories
+  for (const group of CATEGORY_MERGE_GROUPS) {
+    const grouped = result.filter((c) => group.sourceCodes.includes(c.code))
+    if (grouped.length === 0) continue
+
+    const rest = result.filter((c) => !group.sourceCodes.includes(c.code))
+    const canonical = grouped.find((c) => c.code === group.code) ?? grouped[0]
+    const merged: T = { ...canonical, code: group.code, name: group.name, sortOrder: Math.min(...grouped.map((c) => c.sortOrder)) }
+    result = [...rest, merged]
+  }
+
+  return result.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
+}
+
 export interface ListGamesFilters {
   categoryCode?: string
   providerCode?: string
@@ -146,7 +181,12 @@ export async function listGames(filters: ListGamesFilters = {}): Promise<GamesPa
   return getOrSetCache(cacheKey, 60, async () => {
     const where = {
       enabled: true,
-      ...(filters.categoryCode ? { category: { code: filters.categoryCode } } : {}),
+      ...(filters.categoryCode
+        ? (() => {
+            const group = findMergeGroup(filters.categoryCode)
+            return group ? { category: { code: { in: group.sourceCodes } } } : { category: { code: filters.categoryCode } }
+          })()
+        : {}),
       ...(filters.providerCode ? { provider: { code: filters.providerCode } } : {}),
       ...(filters.search
         ? {
@@ -188,7 +228,8 @@ export async function getGameByIdentifier(identifier: string) {
 
 export async function listCategories() {
   const version = await getCatalogVersion()
-  return getOrSetCache(`catalog:v${version}:categories`, 300, () =>
+  const categories = await getOrSetCache(`catalog:v${version}:categories`, 300, () =>
     prisma.category.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] })
   )
+  return mergeCategoryGroups(categories)
 }

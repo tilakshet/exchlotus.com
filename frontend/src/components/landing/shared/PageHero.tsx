@@ -27,7 +27,7 @@ export function PageHero({ eyebrow, title, subtitle, description, children }: Pa
       <div className="relative mx-auto max-w-3xl text-center">
         <span className="text-xs font-semibold tracking-widest text-(--landing-gold-text) uppercase">{eyebrow}</span>
         <h1 className="mt-3 text-4xl font-black tracking-tight text-(--landing-text-primary) sm:text-5xl">{title}</h1>
-        {subtitle && <p className="mt-3 text-lg font-bold text-(--landing-emerald)">{subtitle}</p>}
+        {subtitle && <p className="mt-3 text-lg font-bold text-(--brand-green-text)">{subtitle}</p>}
         {description && <p className="mx-auto mt-4 max-w-2xl text-base text-(--landing-text-secondary) sm:text-lg">{description}</p>}
         {children}
       </div>

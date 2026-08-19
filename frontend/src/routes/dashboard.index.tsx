@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { HeroCarousel } from "@/components/HeroCarousel/HeroCarousel"
 import { CategoryGameRows } from "@/features/games/CategoryGameRows"
+import { FavoritesRow } from "@/features/games/FavoritesRow"
+import { TrendingGamesRow } from "@/features/games/TrendingGamesRow"
 import { RecentBigWinsRow } from "@/features/wins/RecentBigWinsRow"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -25,6 +27,10 @@ function Dashboard() {
       </div>
 
       <RecentBigWinsRow />
+
+      <TrendingGamesRow />
+
+      <FavoritesRow />
 
       <CategoryGameRows />
     </div>

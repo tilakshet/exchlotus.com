@@ -26,6 +26,7 @@ import { Route as DashboardExchangeRouteImport } from './routes/dashboard.exchan
 import { Route as DashboardLiveCasinoRouteImport } from './routes/dashboard.live-casino'
 import { Route as DashboardPromotionsRouteImport } from './routes/dashboard.promotions'
 import { Route as DashboardProvidersRouteImport } from './routes/dashboard.providers'
+import { Route as DashboardSearchRouteImport } from './routes/dashboard.search'
 import { Route as DashboardSportsbookRouteImport } from './routes/dashboard.sportsbook'
 import { Route as GameGameSlugRouteImport } from './routes/game.$gameSlug'
 import { Route as DashboardAccountIndexRouteImport } from './routes/dashboard.account.index'
@@ -125,6 +126,11 @@ const DashboardProvidersRoute = DashboardProvidersRouteImport.update({
   path: '/providers',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardSearchRoute = DashboardSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardSportsbookRoute = DashboardSportsbookRouteImport.update({
   id: '/sportsbook',
   path: '/sportsbook',
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/live-casino': typeof DashboardLiveCasinoRoute
   '/dashboard/promotions': typeof DashboardPromotionsRoute
   '/dashboard/providers': typeof DashboardProvidersRoute
+  '/dashboard/search': typeof DashboardSearchRoute
   '/dashboard/sportsbook': typeof DashboardSportsbookRoute
   '/game/$gameSlug': typeof GameGameSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/dashboard/live-casino': typeof DashboardLiveCasinoRoute
   '/dashboard/promotions': typeof DashboardPromotionsRoute
   '/dashboard/providers': typeof DashboardProvidersRoute
+  '/dashboard/search': typeof DashboardSearchRoute
   '/dashboard/sportsbook': typeof DashboardSportsbookRoute
   '/game/$gameSlug': typeof GameGameSlugRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   '/dashboard/live-casino': typeof DashboardLiveCasinoRoute
   '/dashboard/promotions': typeof DashboardPromotionsRoute
   '/dashboard/providers': typeof DashboardProvidersRoute
+  '/dashboard/search': typeof DashboardSearchRoute
   '/dashboard/sportsbook': typeof DashboardSportsbookRoute
   '/game/$gameSlug': typeof GameGameSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/dashboard/live-casino'
     | '/dashboard/promotions'
     | '/dashboard/providers'
+    | '/dashboard/search'
     | '/dashboard/sportsbook'
     | '/game/$gameSlug'
     | '/dashboard/'
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/dashboard/live-casino'
     | '/dashboard/promotions'
     | '/dashboard/providers'
+    | '/dashboard/search'
     | '/dashboard/sportsbook'
     | '/game/$gameSlug'
     | '/dashboard'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/dashboard/live-casino'
     | '/dashboard/promotions'
     | '/dashboard/providers'
+    | '/dashboard/search'
     | '/dashboard/sportsbook'
     | '/game/$gameSlug'
     | '/dashboard/'
@@ -521,6 +533,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProvidersRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/search': {
+      id: '/dashboard/search'
+      path: '/search'
+      fullPath: '/dashboard/search'
+      preLoaderRoute: typeof DashboardSearchRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/sportsbook': {
       id: '/dashboard/sportsbook'
       path: '/sportsbook'
@@ -661,6 +680,7 @@ interface DashboardRouteChildren {
   DashboardLiveCasinoRoute: typeof DashboardLiveCasinoRoute
   DashboardPromotionsRoute: typeof DashboardPromotionsRoute
   DashboardProvidersRoute: typeof DashboardProvidersRoute
+  DashboardSearchRoute: typeof DashboardSearchRoute
   DashboardSportsbookRoute: typeof DashboardSportsbookRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardCategoryCategoryCodeRoute: typeof DashboardCategoryCategoryCodeRoute
@@ -674,6 +694,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardLiveCasinoRoute: DashboardLiveCasinoRoute,
   DashboardPromotionsRoute: DashboardPromotionsRoute,
   DashboardProvidersRoute: DashboardProvidersRoute,
+  DashboardSearchRoute: DashboardSearchRoute,
   DashboardSportsbookRoute: DashboardSportsbookRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardCategoryCategoryCodeRoute: DashboardCategoryCategoryCodeRoute,

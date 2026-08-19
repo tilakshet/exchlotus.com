@@ -53,7 +53,6 @@ const sideNav = [
   { to: "/dashboard/account/loyalty", label: "Loyalty", icon: Gift, exact: false },
   { to: "/dashboard/account", label: "Account", icon: Briefcase, exact: true },
   { to: "/dashboard/account/history", label: "History", icon: HistoryIcon, exact: false },
-  { to: "/dashboard/account/support", label: "Support", icon: LifeBuoy, exact: false },
   { to: "/dashboard/account/profile", label: "My Profile", icon: User, exact: false },
 ] as const
 

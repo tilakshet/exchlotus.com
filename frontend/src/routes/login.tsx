@@ -3,11 +3,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Lock, Phone, Info, Ticket } from "lucide-react";
+import { Lock, Phone, Info, Ticket, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePhoneOtpFlow } from "@/hooks/usePhoneOtpFlow";
 import { ApiError, friendlyErrorMessage } from "@/api/api-error";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Logo } from "@/components/shared/Logo";
 import promoImage from "@/assets/hero.png";
 
@@ -93,21 +92,21 @@ function LoginPage() {
 
   return (
     <div className="login-gaming-bg relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
-      <div className="absolute right-4 top-4 z-20 sm:right-7 sm:top-7">
-        <ThemeToggle />
-      </div>
       <div className="relative grid w-full max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(460px,560px)_1fr] lg:gap-16">
         <div
-          className="login-card rounded-(--landing-radius-lg) p-7 shadow-token-4 sm:p-10 lg:min-h-[620px]"
+          className="login-card relative rounded-(--landing-radius-lg) p-7 shadow-token-4 sm:p-10 lg:min-h-[620px]"
           style={{ background: "var(--landing-bg-3)" }}
         >
+          <Link
+            to="/"
+            aria-label="Close and return to home"
+            className="absolute right-4 top-4 flex size-14 items-center justify-center rounded-full text-(--landing-text-secondary) outline-none transition-colors hover:bg-(--landing-hover-tint) hover:text-(--landing-text-primary) focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
+          >
+            <X className="size-9" aria-hidden="true" />
+          </Link>
+
           <div className="flex items-center gap-3">
-            <Link
-              to="/"
-              className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
-            >
-              <Logo heightClass="h-20" />
-            </Link>
+            <Logo heightClass="h-20" />
           </div>
 
           {view !== "register" && (

@@ -3,44 +3,86 @@
 @import "shadcn/tailwind.css";
 
 /* ---------------------------------------------------------------------
- * Brand palette — premium gold + parrot green + white. This is the ONE
- * source of hue for the whole product; every token layer below (wincart
- * base, landing/login, dashboard-shell, account) is derived from these
- * values, not from independent literals. To re-tune the brand, edit only
- * this block.
+ * Brand palette — premium casino dark theme: black + dark navy surfaces,
+ * green primary accent, purple secondary/premium accent, white text. This
+ * is the ONE source of hue for the whole product; every token layer below
+ * (wincart base, landing/login, dashboard-shell, account) is derived from
+ * these values, not from independent literals. To re-tune the brand, edit
+ * only this block.
  *
- * Usage split (per product direction): gold = primary actions, premium/
- * reward moments, selected states. Parrot green = success, wallet balance,
- * positive indicators — a vivid yellow-green (not the softer sage/mint
- * this replaced), picked to read as distinctly "parrot" rather than a
- * muted pastel. White/near-white = card + page surfaces. The raw mid-tone
- * --brand-gold/--brand-green fail AA as text on white — use the *-dark
- * variants for text, the base tones for fills/borders/icons.
+ * Usage split (per product direction): green = primary actions, deposit/
+ * success, positive wallet values, primary CTAs. Purple = casino/live-
+ * casino highlights, premium/VIP styling, secondary CTAs. White/near-white
+ * = primary text and text on top of the accent colors. The legacy
+ * "--brand-gold*" names are kept (many components still reference them
+ * directly) but now resolve to the green accent, not an actual gold hue —
+ * see the note below.
  * ------------------------------------------------------------------- */
 :root {
-    --brand-gold: #d4af37;
-    --brand-gold-bright: #e8c766;
-    --brand-gold-dark: #a67c00;
-    --brand-gold-light: #f7e7b2;
-    --brand-green: #58b947;
-    --brand-green-soft: #e6f5d9;
-    --brand-green-dark: #2e7d1f;
-    --brand-green-deep: #1b4d12;
+    /* Kept as "--brand-gold*" for backward compatibility — dozens of
+     components (HeroCarousel, dashboard-shell, landing) reference these
+     names directly via --landing-gold/--sb-accent-gold or the raw
+     --brand-gold-bright var. Repointing the values here (instead of
+     renaming every call site) is what actually re-themes gold → green
+     across the whole app in one edit. --brand-gold-bright is the one
+     that's actually rendered everywhere; --brand-gold/-dark/-light only
+     back the (largely unused) light shadcn theme below.
+     Value is #357f0f, not the source palette's literal #3B8D11 — a ~10%
+     darken, verified (scripts/contrast check, WCAG 2.2 formula) to be the
+     lightest shade of this exact green that still clears 4.5:1 for white
+     text on top of it (raw #3B8D11 only clears ~4.20:1, just under AA) —
+     see button.text on this fill and .text on card/black checks below.
+     Still reads as the same green; not a "random" substitute hue. */
+    --brand-gold: #357f0f;
+    --brand-gold-bright: #357f0f;
+    --brand-gold-dark: color-mix(in srgb, #357f0f 80%, black);
+    --brand-gold-light: color-mix(in srgb, #357f0f 25%, white);
+    --brand-green: #357f0f;
+    /* Brighter tint for when green must BE the text/icon color sitting
+     directly on a dark bg (e.g. --acc-success-fg, a positive transaction
+     amount) rather than a button fill with white text on top — the fill
+     shade above (~5:1 vs white-on-it) reads too dark as text-on-black
+     itself (~4.2:1 on the darkest navy card, just under AA). This tint
+     clears 7–9:1 on every surface tone in this theme. */
+    --brand-green-text: #80b564;
+    --brand-green-soft: color-mix(in srgb, #357f0f 18%, white);
+    --brand-green-dark: color-mix(in srgb, #357f0f 75%, black);
+    --brand-green-deep: color-mix(in srgb, #357f0f 55%, black);
     --brand-white: #ffffff;
-    --brand-ink: #2b1d00;
+    /* Foreground text/icon color for anything sitting on the (green)
+     accent fill — was a dark "ink" tone back when the accent was a light
+     gold; a dark-green accent needs white text instead. Every consumer
+     (--landing-gold-fg, --sb-accent-gold-fg, and HeroCarousel's few direct
+     text-(--brand-ink) usages) is exclusively "text on the accent color",
+     so repointing this one variable is safe and complete. */
+    --brand-ink: var(--brand-white);
     --brand-text: #212529;
     --brand-text-muted: #5b6b60;
 
-    /* Fixed (non-theme-toggling) dark showcase surface — used only for the
-     login page's floating-game-tile display panel, which relies on
+    /* Secondary/premium accent — casino & live-casino highlights, VIP/
+     loyalty styling, secondary CTAs (see .landing-cta-purple). Purple is
+     dark enough at its exact spec value (#761386) that it fails contrast
+     as a TEXT/icon color directly on any of this theme's dark backgrounds
+     (measured ~1.8–2.2:1, below even the 3:1 non-text minimum) — it only
+     works as a solid fill with white text on top (~9.5:1, see
+     .landing-cta-purple). --brand-purple/-bright/-dark/-deep/-soft are for
+     that fill role; --brand-purple-text below is the separate, brighter
+     tint for every "purple IS the visible text/icon" case. */
+    --brand-purple: #761386;
+    --brand-purple-bright: #761386;
+    --brand-purple-text: #b47dbc;
+    --brand-purple-dark: color-mix(in srgb, #761386 75%, black);
+    --brand-purple-deep: color-mix(in srgb, #761386 55%, black);
+    --brand-purple-soft: color-mix(in srgb, #761386 18%, white);
+
+    /* Login page's floating-game-tile display panel, which relies on
      mix-blend-mode: screen against a dark backdrop to render the tile
-     imagery at all. Swapping to a white backdrop in light mode would
-     blend the tiles to invisible, so this one panel intentionally stays a
-     rich dark green/gold "display case" regardless of theme, the way a
-     premium product might keep one showcase vitrine dark under bright
-     gallery lighting. */
-    --brand-showcase-bg-1: #0e1712;
-    --brand-showcase-bg-2: #1c2e24;
+     imagery at all — stays dark navy regardless of the page's own light
+     theme (the "showcase vitrine dark under bright gallery lighting"
+     exception), otherwise the tiles would blend to invisible. Snapped to
+     the theme's own black/raised-navy pair instead of a bespoke navy. */
+    --brand-showcase-bg-1: #000000;
+    --brand-showcase-bg-2: #021A2A;
 }
 
 /* ---------------------------------------------------------------------
@@ -287,33 +329,46 @@
 
 /* ---------------------------------------------------------------------
  * Landing page tokens — a second, fully separate palette for the public
- * marketing page only. Dark premium gaming theme, one accent (orange) —
- * not the earlier flat cream system. Glassmorphism and glow are back, but
- * intentionally rationed: glass on the nav-on-scroll and a few floating
- * elements, glow on primary CTAs and the hero centerpiece, not smeared
- * across every card. Scope every landing component under `.landing-theme`
- * so none of this leaks into /dashboard.
+ * marketing page only. One theme: midnight blue, premium gold + parrot
+ * green accents. Glassmorphism and glow are rationed: glass on the
+ * nav-on-scroll and a few floating elements, glow on primary CTAs and the
+ * hero centerpiece, not smeared across every card. Scope every landing
+ * component under `.landing-theme` so none of this leaks into /dashboard.
  * ------------------------------------------------------------------- */
 :root {
-    /* Brand: premium gold + parrot green — the dark-mode pairing of the same
-     identity used everywhere else (not a separate violet theme). Background
-     tones carry a subtle deep-green-charcoal undertone rather than flat
-     neutral black, so dark mode still reads as "gold coin on green felt,"
-     not generic dark UI. */
-    --landing-bg-1: #0e1712;
-    --landing-bg-2: #16241c;
-    --landing-bg-3: #1c2e24;
+    /* Three-tier casino dark surface: pure black page background, a
+     standard card navy, and a slightly deeper "raised" navy for elevated/
+     featured/selected surfaces (wallet balance pill, active tabs, featured
+     sections) — see docs on the color system this was built from. Kept as
+     three distinct tokens (not two) because several components already
+     rely on a subtler in-between step (chips nested inside a card), not
+     because the source palette defines three. */
+    --landing-bg-1: #000000;
+    --landing-bg-2: #021A2A;
+    --landing-bg-3: #131C2A;
 
-    --landing-text-primary: #f5f7f5;
-    --landing-text-secondary: #b9c4bd;
-    --landing-text-muted: #7c8a82;
+    --landing-text-primary: #FFFFFF;
+    --landing-text-secondary: #D6D9E0;
+    --landing-text-muted: color-mix(in srgb, #D6D9E0 65%, black);
 
     --landing-gold: var(--brand-gold-bright);
     --landing-gold-fg: var(--brand-ink);
-    /* Bright gold already clears AA on this dark body — no separate deepened
-     variant needed here (unlike the light-mode body below). */
-    --landing-gold-text: var(--landing-gold);
+    /* NOT var(--landing-gold) — used as literal text color (eyebrow
+     labels, accent captions) across ~18 components. --landing-gold itself
+     is deliberately darkened for AA-safe white button text on top of it
+     (see brand palette block), which makes it fall short of 4.5:1 as text
+     directly on a dark bg. --brand-green-text is the bright tint made for
+     exactly this case. */
+    --landing-gold-text: var(--brand-green-text);
     --landing-emerald: var(--brand-green);
+    /* The AA-safe bright tint (see --brand-purple-text) — this is the one
+     consumed directly as an icon/text/border color on dark backgrounds.
+     For an actual filled purple button/badge with white text on top, use
+     --brand-purple (raw) + --landing-purple-fg instead — see
+     .landing-cta-purple. */
+    --landing-purple: var(--brand-purple-text);
+    --landing-purple-fill: var(--brand-purple);
+    --landing-purple-fg: var(--brand-white);
     --landing-red: #f04444;
 
     --landing-border: rgb(255 255 255 / 10%);
@@ -326,47 +381,8 @@
     --landing-radius-lg: 20px;
     --landing-radius-xl: 24px;
     --landing-radius-full: 999px;
-}
 
-/* ---------------------------------------------------------------------
- * Light mode — same brand (same accent orange, same radii), inverted
- * surfaces/text. Applied via `data-theme` on <html>, set by useTheme()
- * (src/hooks/useTheme.ts) and synced to localStorage; index.html carries a
- * blocking inline script that applies the stored value before first paint
- * so there's no flash of the wrong theme. Covers both the landing tokens
- * here and the dashboard-shell tokens further down, so login/landing and
- * the authenticated dashboard switch together.
- * ------------------------------------------------------------------- */
-:root[data-theme="light"] {
-    --landing-bg-1: #ffffff;
-    --landing-bg-2: var(--brand-green-soft);
-    --landing-bg-3: #ffffff;
-
-    --landing-text-primary: var(--brand-text);
-    --landing-text-secondary: #4b5a51;
-    --landing-text-muted: #7c8a82;
-
-    --landing-gold: var(--brand-gold);
-    --landing-gold-fg: var(--brand-ink);
-    /* Deepened for AA at text sizes on the light body — the raw mid-tone
-     --brand-gold doesn't clear it here (the bright variant does on the
-     dark body above). */
-    --landing-gold-text: var(--brand-gold-dark);
-    --landing-emerald: var(--brand-green-dark);
-    --landing-red: #c53030;
-
-    --landing-border: rgb(0 0 0 / 9%);
-    --landing-border-strong: rgb(0 0 0 / 18%);
-    --landing-hover-tint: rgb(0 0 0 / 5%);
-    --landing-glass: rgb(0 0 0 / 4%);
-}
-
-:root[data-theme="dark"] {
     color-scheme: dark;
-}
-
-:root[data-theme="light"] {
-    color-scheme: light;
 }
 
 .landing-theme {
@@ -378,27 +394,6 @@
 .exchlotus-logo {
     width: auto;
     object-fit: contain;
-    filter: drop-shadow(0 8px 18px rgb(0 0 0 / 22%));
-}
-
-:root[data-theme="light"] .exchlotus-logo {
-    mix-blend-mode: multiply;
-    filter: saturate(1.08) contrast(1.08) drop-shadow(0 8px 18px rgb(13 7 20 / 10%));
-}
-
-:root[data-theme="dark"] .exchlotus-logo {
-    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--landing-gold) 18%, transparent));
-}
-
-/* logo-dark.png's "EXCH" glyphs are near-white — the light theme's
-   `mix-blend-mode: multiply` above (tuned for logo.png's navy-on-white
-   asset merging into a white page) makes white pixels transmit the
-   backdrop unchanged, i.e. invisible against a dark surface. Surfaces
-   that force the dark logo variant regardless of the page's own light/
-   dark toggle (TopNavbar, DashboardFooter — permanently dark chrome) need
-   the "dark theme" treatment here even while `data-theme="light"`. */
-:root[data-theme="light"] .exchlotus-logo.exchlotus-logo--forced-dark {
-    mix-blend-mode: normal;
     filter: drop-shadow(0 0 6px color-mix(in srgb, var(--landing-gold) 18%, transparent));
 }
 
@@ -462,25 +457,46 @@
   transform: translateX(120%);
 }
 
-/* Login CTA — a blue gradient pill (distinct from the site's gold accent,
-   so it reads as its own "primary action" rather than blending into gold
-   badges/tabs everywhere else), with a soft matching glow that deepens and
-   lifts slightly on hover. Flat, no skeuomorphic press. */
-.landing-cta-blue {
-  background: linear-gradient(135deg, #4f8dff, #1d4ed8);
+/* Login CTA — the secondary action, a purple gradient pill (distinct from
+   the primary green Sign Up CTA — see .landing-cta-green — so the two read
+   as "primary vs secondary" rather than two competing primaries), with a
+   soft matching glow that deepens and lifts slightly on hover. Flat, no
+   skeuomorphic press. Was a blue "cornflower" pill — blue isn't part of
+   the theme's palette, so this moved to the purple secondary accent. */
+.landing-cta-purple {
+  background: linear-gradient(135deg, var(--brand-purple), var(--brand-purple-dark));
   color: #fff;
-  box-shadow: 0 10px 28px -12px rgb(37 99 235 / 60%);
+  box-shadow: 0 10px 28px -12px color-mix(in srgb, var(--brand-purple) 60%, transparent);
   transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
 }
-.landing-cta-blue:hover {
+.landing-cta-purple:hover {
   transform: translateY(-2px);
   filter: brightness(1.1);
-  box-shadow: 0 14px 34px -10px rgb(37 99 235 / 70%);
+  box-shadow: 0 14px 34px -10px color-mix(in srgb, var(--brand-purple) 70%, transparent);
 }
-.landing-cta-blue:active {
+.landing-cta-purple:active {
   transform: translateY(0);
   filter: brightness(0.95);
-  box-shadow: 0 6px 18px -10px rgb(37 99 235 / 55%);
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--brand-purple) 55%, transparent);
+}
+
+/* Sign Up CTA — a green gradient pill, the theme's PRIMARY action (same
+   treatment as .landing-cta-purple, the secondary/Login action). */
+.landing-cta-green {
+  background: linear-gradient(135deg, var(--brand-green), var(--brand-green-dark));
+  color: #fff;
+  box-shadow: 0 10px 28px -12px color-mix(in srgb, var(--brand-green) 60%, transparent);
+  transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
+}
+.landing-cta-green:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 14px 34px -10px color-mix(in srgb, var(--brand-green) 70%, transparent);
+}
+.landing-cta-green:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--brand-green) 55%, transparent);
 }
 
 /* Deliberately restrained: a near-flat two-tone backdrop with exactly one
@@ -663,50 +679,45 @@
         Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji",
         "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
-    --sb-navbar-bg: #0b0b0d;
-    --sb-navbar-bg-raised: #17171b;
-    --sb-navbar-fg: #f5f5f5;
-    --sb-navbar-fg-muted: #a1a1aa;
+    /* Same black/navy hues as the landing page's --landing-bg, so the
+     dashboard and the public site read as one product under one theme.
+     -raised now correctly points at the raised-navy tier (--landing-bg-2)
+     — it was pointing at the standard card tier (bg-3) before this token
+     pass, which didn't match its own name. */
+    --sb-navbar-bg: var(--landing-bg-1);
+    --sb-navbar-bg-raised: var(--landing-bg-2);
+    --sb-navbar-fg: #FFFFFF;
+    --sb-navbar-fg-muted: #D6D9E0;
     --sb-navbar-border: rgb(255 255 255 / 10%);
 
-    /* Same gold as the landing page (--brand-gold-bright / --brand-ink),
-     not a separate dashboard-only hue, so the wallet chip/footer/sidebar
-     read as the same product as the public site. ~11.6:1 on content-bg,
-     comfortably above the amber-orange it replaces. */
+    /* Green accent (--brand-gold-bright, repointed — see the brand palette
+     block's note) — same source hue as the landing page's dark theme, not
+     a separate dashboard-only color, so the wallet chip/footer/sidebar
+     read as the same product as the public site. */
     --sb-accent-gold: var(--brand-gold-bright);
     --sb-accent-gold-fg: var(--brand-ink);
 
-    --sb-content-bg: #0b0b0d;
-    --sb-content-alt: #17171b;
-    --sb-text-primary: #f5f5f5;
-    --sb-text-secondary: #a1a1aa;
+    /* Purple secondary/premium accent — casino & live-casino nav highlights,
+     VIP/loyalty styling (see dashboardShell.ts, dashboard.account*.tsx).
+     Uses the AA-safe bright tint (--brand-purple-text), not the raw
+     #761386 — this is consumed directly as an icon/text color on dark
+     backgrounds, where raw purple fails contrast (see brand palette
+     block's note). For a filled purple button/badge with white text on
+     top, use --sb-accent-purple-fill (raw) instead. */
+    --sb-accent-purple: var(--brand-purple-text);
+    --sb-accent-purple-fill: var(--brand-purple);
+    --sb-accent-purple-fg: var(--brand-white);
+
+    --sb-content-bg: var(--landing-bg-1);
+    --sb-content-alt: var(--landing-bg-3);
+    --sb-text-primary: #FFFFFF;
+    --sb-text-secondary: #D6D9E0;
     --sb-border: rgb(255 255 255 / 10%);
 
     --sb-radius-sm: 6px;
     --sb-radius-md: 10px;
     --sb-radius-lg: 16px;
     --sb-radius-full: 999px;
-}
-
-:root[data-theme="light"] {
-    --sb-navbar-bg: #ffffff;
-    --sb-navbar-bg-raised: #ffffff;
-    --sb-navbar-fg: #18181b;
-    --sb-navbar-fg-muted: #52525b;
-    --sb-navbar-border: rgb(0 0 0 / 9%);
-
-    /* Same gold as the landing page's light theme (--brand-gold /
-     --brand-ink) — matches the dark-theme swap above, keeping the
-     dashboard and landing site on one palette in both themes. ~7.8:1
-     text contrast on the gold fill. */
-    --sb-accent-gold: var(--brand-gold);
-    --sb-accent-gold-fg: var(--brand-ink);
-
-    --sb-content-bg: #fffaf5;
-    --sb-content-alt: #fdf1e6;
-    --sb-text-primary: #18181b;
-    --sb-text-secondary: #52525b;
-    --sb-border: rgb(0 0 0 / 9%);
 }
 
 .dashboard-shell {
@@ -740,15 +751,14 @@
  * Account section tokens — /dashboard/account/* (Deposit, Account
  * overview, Withdraw, Loyalty, History, My Profile). Aliased onto the
  * dashboard-shell (--sb-*) tokens rather than a standalone palette, so the
- * section shares the navbar's exact background and inherits the dark/light
- * toggle instead of fighting it. Two dedicated semantic pairs sit on top
- * of the shared --acc-accent (gold, primary actions/rewards):
- * --acc-success (green — positive amounts, wallet balance, credits) and
- * --acc-pending (gold — informational/awaiting states), per the product's
- * "gold = primary/premium, green = positive" split. --acc-input-* is now a
- * light bordered field (not the old fixed-black brand element) — a black
- * input box read as premium against the old dark casino theme, but clashes
- * with the white/gold/green fintech surface this section now uses.
+ * section shares the navbar's exact navy background. Three dedicated
+ * semantic pairs sit on top of the shared --acc-accent (green, primary
+ * actions): --acc-success (green — positive amounts, wallet balance,
+ * credits, same hue as --acc-accent since the new palette uses one green
+ * for both primary and success), --acc-pending (purple — informational/
+ * awaiting/in-progress states, since gold no longer exists in the palette
+ * and purple is the only other accent), and VIP/loyalty styling (--acc-star)
+ * which also moved to purple as the theme's "premium" marker.
  * ------------------------------------------------------------------- */
 :root {
     --acc-bg: var(--sb-content-bg);
@@ -761,12 +771,18 @@
     --acc-accent-soft: color-mix(in srgb, var(--sb-accent-gold) 45%, transparent);
 
     --acc-success: var(--brand-green);
-    --acc-success-fg: var(--brand-green-deep);
+    /* --brand-green-text (bright tint), not white — this is used standalone
+     as a colored amount/status text (TransactionTable, deposit/withdraw
+     confirmations) as often as it's paired with --acc-success-bg, so it
+     needs to actually read as "green" on its own, not just as white text
+     riding on a tinted background. Still AA (~7–9:1 on every surface in
+     this theme). */
+    --acc-success-fg: var(--brand-green-text);
     --acc-success-bg: color-mix(in srgb, var(--brand-green) 16%, transparent);
 
-    --acc-pending: var(--sb-accent-gold);
-    --acc-pending-fg: var(--sb-accent-gold-fg);
-    --acc-pending-bg: color-mix(in srgb, var(--sb-accent-gold) 16%, transparent);
+    --acc-pending: var(--brand-purple);
+    --acc-pending-fg: var(--brand-purple-text);
+    --acc-pending-bg: color-mix(in srgb, var(--brand-purple) 16%, transparent);
 
     --acc-danger: #f04444;
     --acc-danger-bg: color-mix(in srgb, #f04444 14%, transparent);
@@ -778,21 +794,13 @@
 
     --acc-text-primary: var(--sb-text-primary);
     --acc-text-secondary: var(--sb-text-secondary);
-    --acc-star: var(--brand-gold-bright);
+    --acc-star: var(--sb-accent-purple);
     --acc-star-empty: rgb(255 255 255 / 25%);
 
     --acc-radius-sm: var(--sb-radius-sm);
     --acc-radius-md: var(--sb-radius-md);
     --acc-radius-lg: var(--sb-radius-lg);
     --acc-radius-full: var(--sb-radius-full);
-}
-
-:root[data-theme="light"] {
-    --acc-star: var(--brand-gold-dark);
-    --acc-star-empty: #d9d9d9;
-    --acc-success-fg: var(--brand-green-dark);
-    --acc-danger: #c53030;
-    --acc-danger-bg: color-mix(in srgb, #c53030 10%, transparent);
 }
 
 .account-shell {

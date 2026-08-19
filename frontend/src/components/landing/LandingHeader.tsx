@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { motion, AnimatePresence } from "framer-motion"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
-import { Wallet, ChevronDown, LayoutDashboard, LogOut, Search, X } from "lucide-react"
+import { Wallet, ChevronDown, LayoutDashboard, LogOut } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { useWallet } from "@/hooks/useWallet"
-import { ThemeToggle } from "@/components/shared/ThemeToggle"
 import { Logo } from "@/components/shared/Logo"
 import { UserAvatar } from "@/components/shared/UserAvatar"
+import { NavSearchBar } from "@/components/shared/NavSearchBar"
 
 /**
- * Sticky header: logo, search, theme toggle, auth — always visible at every
- * width, no hamburger. Carries a real backdrop-blurred backing at all times
+ * Sticky header: logo, search (desktop only, see NavSearchBar), auth —
+ * always visible at every width, no hamburger. Carries a real
+ * backdrop-blurred backing at all times
  * — not just once scrolled — since it sits directly over the hero
  * carousel's own artwork/gradients, which are bright and busy enough in
  * places (gold wheel hubs, lit scenes) that a fully transparent header
@@ -45,78 +45,32 @@ export function LandingHeader() {
           <Logo heightClass="h-12 sm:h-16" />
         </a>
 
-        <div className="ml-auto flex items-center justify-end gap-3">
-          <HeaderSearch />
-          <ThemeToggle />
+        <div className="ml-auto flex min-w-0 items-center justify-end gap-3">
+          <NavSearchBar />
 
           {isAuthenticated ? (
             <ProfileMenu />
           ) : (
-            <Link
-              to="/login"
-              search={{ view: "otp" }}
-              className="landing-cta-blue landing-shine shrink-0 whitespace-nowrap rounded-(--landing-radius-sm) px-8 py-4 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
-            >
-              Login
-            </Link>
+            <>
+              <Link
+                to="/login"
+                search={{ view: "register" }}
+                className="landing-cta-green landing-shine shrink-0 whitespace-nowrap rounded-(--landing-radius-sm) px-8 py-4 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
+              >
+                Sign Up
+              </Link>
+              <Link
+                to="/login"
+                search={{ view: "otp" }}
+                className="landing-cta-purple landing-shine shrink-0 whitespace-nowrap rounded-(--landing-radius-sm) px-8 py-4 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
+              >
+                Login
+              </Link>
+            </>
           )}
         </div>
       </div>
     </header>
-  )
-}
-
-/**
- * Expand-in-place search field. There's no search backend/route wired up
- * yet, so submitting is a no-op for now — the interaction itself (expand,
- * focus, Escape to close, collapse on blur when empty) is real and
- * complete; it's just not connected to results yet.
- */
-function HeaderSearch() {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState("")
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  function openSearch() {
-    setOpen(true)
-    requestAnimationFrame(() => inputRef.current?.focus())
-  }
-
-  function closeSearch() {
-    setOpen(false)
-    setQuery("")
-  }
-
-  return (
-    <div className="flex items-center">
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.input
-            ref={inputRef}
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 160, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && closeSearch()}
-            onBlur={() => !query && setOpen(false)}
-            type="search"
-            placeholder="Search games…"
-            aria-label="Search games"
-            className="landing-glass mr-1 rounded-(--landing-radius-full) px-3.5 py-1.5 text-sm text-(--landing-text-primary) outline-none placeholder:text-(--landing-text-muted) focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
-          />
-        )}
-      </AnimatePresence>
-      <button
-        type="button"
-        onClick={() => (open ? closeSearch() : openSearch())}
-        aria-label={open ? "Close search" : "Search"}
-        className="rounded-full p-2.5 text-(--landing-text-secondary) outline-none transition-colors hover:bg-(--landing-hover-tint) hover:text-(--landing-text-primary) focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
-      >
-        {open ? <X className="size-5.5" aria-hidden="true" /> : <Search className="size-5.5" aria-hidden="true" />}
-      </button>
-    </div>
   )
 }
 
