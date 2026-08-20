@@ -90,6 +90,11 @@ services:
       args:
         VITE_API_BASE_URL: ""
         VITE_ADMIN_API_BASE_URL: ""
+        # Optional footer social links — leave blank to hide that icon.
+        VITE_SOCIAL_TELEGRAM_URL: ""
+        VITE_SOCIAL_X_URL: ""
+        VITE_SOCIAL_INSTAGRAM_URL: ""
+        VITE_SOCIAL_DISCORD_URL: ""
     restart: unless-stopped
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN in .env.production}

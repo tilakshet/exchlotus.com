@@ -6,18 +6,37 @@ function NavRow({ item }: { item: DashboardNavItem }) {
     <Link
       to={item.to}
       activeOptions={{ exact: item.to === "/dashboard" }}
-      className="group relative flex min-h-11 items-center gap-3 rounded-[var(--sb-radius-md)] py-2 pr-3 pl-3 text-sm font-semibold text-[color:var(--sb-text-secondary)] outline-none transition-colors duration-200 hover:bg-[color:var(--sb-accent-gold)]/8 hover:text-[color:var(--sb-accent-gold)] focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)] data-[status=active]:text-[color:var(--sb-accent-gold)]"
+      className="group relative flex min-h-15 items-center gap-3 rounded-[var(--sb-radius-md)] py-2 pr-3 pl-3 text-sm font-semibold text-[color:var(--sb-text-secondary)] outline-none transition-colors duration-200 hover:bg-[color:var(--sb-accent-gold)]/8 hover:text-[color:var(--sb-accent-gold)] focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)] data-[status=active]:text-[color:var(--sb-accent-gold)]"
     >
       {/* Left accent bar, only on the active row. */}
       <span
         aria-hidden="true"
         className="absolute inset-y-1.5 left-0 w-1 scale-y-0 rounded-full bg-[color:var(--sb-accent-gold)] transition-transform duration-200 group-data-[status=active]:scale-y-100"
       />
-      <item.icon
-        className="size-5 shrink-0 transition-transform duration-200 group-hover:scale-110"
-        strokeWidth={1.75}
-        aria-hidden="true"
-      />
+      {/* A round chip notched like a casino chip's edge (dashed inner ring),
+          not a per-item color (see header comment: a rainbow reads as
+          generic/AI-generated) and not a plain rounded-square box either —
+          on-brand for a betting product. Glow reuses the exact soft-gold
+          blur already behind the header/footer logo (LandingHeader.tsx,
+          LandingFooter.tsx), so this reads as the same hand throughout. */}
+      <span aria-hidden="true" className="relative flex size-12 shrink-0 items-center justify-center">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-1.5 -z-10 rounded-full opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-70 group-data-[status=active]:opacity-90"
+          style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--sb-accent-gold) 55%, transparent), transparent 70%)" }}
+        />
+        <span
+          className="relative flex size-12 items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-105"
+          style={{ background: "var(--landing-glass)", boxShadow: "inset 0 0 0 1.5px var(--sb-border)" }}
+        >
+          <span
+            aria-hidden="true"
+            className="absolute inset-[3px] rounded-full border border-dashed opacity-50 transition-colors duration-200 group-hover:opacity-90 group-data-[status=active]:opacity-90"
+            style={{ borderColor: "var(--sb-border)" }}
+          />
+          <item.icon className="relative size-6.5" strokeWidth={2} aria-hidden="true" />
+        </span>
+      </span>
       {item.label}
     </Link>
   )

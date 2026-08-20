@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { Building2, Dices, Gift, Home, LifeBuoy, Video } from "lucide-react"
+import { ArrowLeftRight, Building2, Crown, Dices, Gift, Home, LifeBuoy, Video, Volleyball } from "lucide-react"
 
 export interface DashboardNavItem {
   id: string
@@ -32,12 +32,15 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
  * DASHBOARD_NAV_ITEMS above so the mobile BottomNavBar's compact floating
  * pill (sized for ~4 icons) doesn't get overcrowded, and the landing
  * page's sidebar stays unchanged. Support routes into the real ticket
- * feature (dashboard.account.support.tsx). Refer & Earn has no dedicated
- * feature yet — routes to /dashboard/promotions (a real page, honestly
- * labeled "not built yet") rather than a fabricated one, the same landing
- * spot the hero banner's own "Refer & Earn" slide already uses.
+ * feature (dashboard.account.support.tsx). Refer & Earn routes to its own
+ * page (dashboard.refer-earn.tsx) — a real referral code/link a player can
+ * share today (recorded on the friend's account at sign-up), honestly
+ * flagged there as not yet tied to a reward payout.
  */
 export const SIDEBAR_EXTRA_NAV_ITEMS: DashboardNavItem[] = [
+  { id: "sportsbook", label: "Sportsbook", to: "/dashboard/sportsbook", icon: Volleyball, color: "var(--sb-accent-purple)" },
+  { id: "exchange", label: "Exchange", to: "/dashboard/exchange", icon: ArrowLeftRight, color: "var(--sb-accent-gold)" },
+  { id: "loyalty", label: "Loyalty", to: "/dashboard/account/loyalty", icon: Crown, color: "var(--sb-accent-purple)" },
   { id: "support", label: "Support", to: "/dashboard/account/support", icon: LifeBuoy, color: "var(--sb-accent-gold)" },
-  { id: "refer-earn", label: "Refer & Earn", to: "/dashboard/promotions", icon: Gift, color: "var(--brand-green)" },
+  { id: "refer-earn", label: "Refer & Earn", to: "/dashboard/refer-earn", icon: Gift, color: "var(--brand-green)" },
 ]

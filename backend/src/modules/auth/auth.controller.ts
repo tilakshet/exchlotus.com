@@ -5,6 +5,7 @@ import { logger } from "../../lib/logger"
 import { requireAuth } from "./auth.middleware"
 import { AuthError } from "./auth.errors"
 import { changePassword, login, logout, refresh, register, requestOtp, verifyOtp } from "./auth.service"
+import type { LoginEventContext } from "./login-event.service"
 
 export const authRouter = Router()
 
@@ -36,6 +37,10 @@ const otpVerifySchema = z.object({
   referralCode: z.string().max(40).optional(),
 })
 
+function loginContext(req: import("express").Request): LoginEventContext {
+  return { ip: req.ip, userAgent: req.header("user-agent") }
+}
+
 function sendAuthError(res: import("express").Response, err: unknown) {
   if (err instanceof AuthError) {
     const status =
@@ -59,7 +64,7 @@ authRouter.post("/register", authLimiter, async (req, res) => {
     return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   }
   try {
-    const tokens = await register(parsed.data)
+    const tokens = await register(parsed.data, loginContext(req))
     res.status(201).json(tokens)
   } catch (err) {
     sendAuthError(res, err)
@@ -72,7 +77,7 @@ authRouter.post("/login", authLimiter, async (req, res) => {
     return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   }
   try {
-    const tokens = await login(parsed.data)
+    const tokens = await login(parsed.data, loginContext(req))
     res.json(tokens)
   } catch (err) {
     sendAuthError(res, err)
@@ -125,7 +130,7 @@ authRouter.post("/otp/verify", authLimiter, async (req, res) => {
     return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   }
   try {
-    const tokens = await verifyOtp(parsed.data.phone, parsed.data.code, parsed.data.referralCode)
+    const tokens = await verifyOtp(parsed.data.phone, parsed.data.code, parsed.data.referralCode, loginContext(req))
     res.json(tokens)
   } catch (err) {
     sendAuthError(res, err)
