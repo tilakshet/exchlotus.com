@@ -62,7 +62,14 @@ export function createSocketServer(httpServer: HttpServer) {
   // commands, so this can't reuse the shared `redis` client from lib/redis.ts.
   const subscriber = redis.duplicate()
   subscriber.on("error", (err) => logger.warn({ err }, "Redis subscriber error on player:notifications"))
-  subscriber.subscribe("player:notifications").catch((err) => logger.warn({ err }, "Failed to subscribe to player:notifications"))
+  // Re-issue the SUBSCRIBE on every successful connection, not just once at
+  // startup — a `connect` here fires on ioredis's automatic reconnects too
+  // (e.g. Redis restarting after this process is already up), so a boot-time
+  // race where Redis isn't reachable yet doesn't leave this permanently
+  // unsubscribed for the rest of the process's life once Redis comes back.
+  subscriber.on("connect", () => {
+    subscriber.subscribe("player:notifications").catch((err) => logger.warn({ err }, "Failed to subscribe to player:notifications"))
+  })
   subscriber.on("message", (_channel, raw) => {
     try {
       const { playerExternalId, message, link } = JSON.parse(raw) as { playerExternalId: string; message: string; link?: string }

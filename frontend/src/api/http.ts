@@ -90,6 +90,23 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const json = await res.json().catch(() => null)
 
   if (!res.ok) {
+    // An admin suspending this player invalidates the session immediately
+    // (backend requireAuth re-checks Player.status on every request, not
+    // just at login — see auth.middleware.ts) — so a still-live token that
+    // comes back suspended must drop the session right away rather than
+    // leaving stale auth state/localStorage around for the next request to
+    // trip over. `anonymous` requests (login/register/otp) hit this too
+    // when the *attempted* account is suspended, but there's no session to
+    // clear there, so gate the logout on there having been a token to begin
+    // with — the redirect is skipped from the login page itself so the
+    // in-form error message (friendlyErrorMessage) stays visible instead of
+    // being blown away mid-render.
+    if (json?.error === "ACCOUNT_SUSPENDED" && accessToken) {
+      store.dispatch(loggedOut())
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.href = "/login?suspended=1"
+      }
+    }
     throw new ApiError(res.status, json?.error ?? "UNKNOWN_ERROR", json?.message ?? res.statusText, json?.issues)
   }
 

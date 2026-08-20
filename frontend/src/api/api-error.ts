@@ -23,6 +23,7 @@ export function friendlyErrorMessage(err: unknown): string {
         // would misreport a bad password/code as something else entirely.
         return err.message || "Sign-in failed — please check your details and try again."
       case 403:
+        if (err.code === "ACCOUNT_SUSPENDED") return "Your account has been suspended. Please contact support."
         return "You don't have permission to do that."
       case 404:
         return "That couldn't be found."
