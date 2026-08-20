@@ -39,6 +39,7 @@ import { Route as DashboardAccountSupportRouteImport } from './routes/dashboard.
 import { Route as DashboardAccountWithdrawRouteImport } from './routes/dashboard.account.withdraw'
 import { Route as DashboardCategoryCategoryCodeRouteImport } from './routes/dashboard.category.$categoryCode'
 import { Route as DashboardGamesSlugRouteImport } from './routes/dashboard.games.$slug'
+import { Route as DashboardAccountSupportIndexRouteImport } from './routes/dashboard.account.support.index'
 import { Route as DashboardAccountSupportIdRouteImport } from './routes/dashboard.account.support.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -193,6 +194,12 @@ const DashboardGamesSlugRoute = DashboardGamesSlugRouteImport.update({
   path: '/games/$slug',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAccountSupportIndexRoute =
+  DashboardAccountSupportIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => DashboardAccountSupportRoute,
+  } as any)
 const DashboardAccountSupportIdRoute =
   DashboardAccountSupportIdRouteImport.update({
     id: '/$id',
@@ -232,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/games/$slug': typeof DashboardGamesSlugRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/account/support/$id': typeof DashboardAccountSupportIdRoute
+  '/dashboard/account/support/': typeof DashboardAccountSupportIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -257,12 +265,12 @@ export interface FileRoutesByTo {
   '/dashboard/account/history': typeof DashboardAccountHistoryRoute
   '/dashboard/account/loyalty': typeof DashboardAccountLoyaltyRoute
   '/dashboard/account/profile': typeof DashboardAccountProfileRoute
-  '/dashboard/account/support': typeof DashboardAccountSupportRouteWithChildren
   '/dashboard/account/withdraw': typeof DashboardAccountWithdrawRoute
   '/dashboard/category/$categoryCode': typeof DashboardCategoryCategoryCodeRoute
   '/dashboard/games/$slug': typeof DashboardGamesSlugRoute
   '/dashboard/account': typeof DashboardAccountIndexRoute
   '/dashboard/account/support/$id': typeof DashboardAccountSupportIdRoute
+  '/dashboard/account/support': typeof DashboardAccountSupportIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -297,6 +305,7 @@ export interface FileRoutesById {
   '/dashboard/games/$slug': typeof DashboardGamesSlugRoute
   '/dashboard/account/': typeof DashboardAccountIndexRoute
   '/dashboard/account/support/$id': typeof DashboardAccountSupportIdRoute
+  '/dashboard/account/support/': typeof DashboardAccountSupportIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -332,6 +341,7 @@ export interface FileRouteTypes {
     | '/dashboard/games/$slug'
     | '/dashboard/account/'
     | '/dashboard/account/support/$id'
+    | '/dashboard/account/support/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -357,12 +367,12 @@ export interface FileRouteTypes {
     | '/dashboard/account/history'
     | '/dashboard/account/loyalty'
     | '/dashboard/account/profile'
-    | '/dashboard/account/support'
     | '/dashboard/account/withdraw'
     | '/dashboard/category/$categoryCode'
     | '/dashboard/games/$slug'
     | '/dashboard/account'
     | '/dashboard/account/support/$id'
+    | '/dashboard/account/support'
   id:
     | '__root__'
     | '/'
@@ -396,6 +406,7 @@ export interface FileRouteTypes {
     | '/dashboard/games/$slug'
     | '/dashboard/account/'
     | '/dashboard/account/support/$id'
+    | '/dashboard/account/support/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -624,6 +635,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardGamesSlugRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/account/support/': {
+      id: '/dashboard/account/support/'
+      path: '/'
+      fullPath: '/dashboard/account/support/'
+      preLoaderRoute: typeof DashboardAccountSupportIndexRouteImport
+      parentRoute: typeof DashboardAccountSupportRoute
+    }
     '/dashboard/account/support/$id': {
       id: '/dashboard/account/support/$id'
       path: '/$id'
@@ -636,11 +654,13 @@ declare module '@tanstack/react-router' {
 
 interface DashboardAccountSupportRouteChildren {
   DashboardAccountSupportIdRoute: typeof DashboardAccountSupportIdRoute
+  DashboardAccountSupportIndexRoute: typeof DashboardAccountSupportIndexRoute
 }
 
 const DashboardAccountSupportRouteChildren: DashboardAccountSupportRouteChildren =
   {
     DashboardAccountSupportIdRoute: DashboardAccountSupportIdRoute,
+    DashboardAccountSupportIndexRoute: DashboardAccountSupportIndexRoute,
   }
 
 const DashboardAccountSupportRouteWithChildren =

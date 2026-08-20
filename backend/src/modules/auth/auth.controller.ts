@@ -45,7 +45,9 @@ function sendAuthError(res: import("express").Response, err: unknown) {
           ? 429
           : err.code === "NO_PASSWORD_SET"
             ? 422
-            : 401
+            : err.code === "ACCOUNT_SUSPENDED"
+              ? 403
+              : 401
     return res.status(status).json({ error: err.code, message: err.message })
   }
   throw err

@@ -6,6 +6,7 @@ export type AuthErrorCode =
   | "OTP_INVALID"
   | "OTP_RATE_LIMITED"
   | "NO_PASSWORD_SET"
+  | "ACCOUNT_SUSPENDED"
 
 export class AuthError extends Error {
   constructor(

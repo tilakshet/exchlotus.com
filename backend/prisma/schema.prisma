@@ -52,8 +52,10 @@ model Player {
   lastName       String?
   dateOfBirth    DateTime?
   currency       String       @default("INR")
-  /// Set only by the admin panel (users.suspend permission) — the player
-  /// backend itself never reads or writes this today.
+  /// Set only by the admin panel (users.suspend permission). Read by the
+  /// player backend on every authenticated request (auth.middleware.ts) and
+  /// at login/refresh (auth.service.ts) to reject a suspended account
+  /// immediately, not just on its next fresh login.
   status         PlayerStatus @default(ACTIVE)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

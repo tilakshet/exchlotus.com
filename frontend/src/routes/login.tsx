@@ -13,6 +13,7 @@ import promoImage from "@/assets/hero.png";
 interface LoginSearch {
   redirect?: string;
   view?: View;
+  suspended?: boolean;
 }
 
 export const Route = createFileRoute("/login")({
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/login")({
       search.view === "otp"
         ? search.view
         : undefined,
+    suspended: search.suspended === "1" || search.suspended === true,
   }),
   component: LoginPage,
 });
@@ -81,7 +83,7 @@ type View = "otp" | "password" | "register";
  * one (e.g. the seeded fixture player), not something Sign Up collects.
  */
 function LoginPage() {
-  const { redirect, view: initialView } = Route.useSearch();
+  const { redirect, view: initialView, suspended } = Route.useSearch();
   const navigate = useNavigate();
   const [view, setView] = useState<View>(initialView ?? "otp");
   const [signUpMethod, setSignUpMethod] = useState<"otp" | "password">("otp");
@@ -158,12 +160,21 @@ function LoginPage() {
           >
             {view === "register" ? "Sign Up" : "Login"}
           </h1>
-          {redirect && view !== "register" && (
+          {redirect && view !== "register" && !suspended && (
             <p
               className="mt-1.5 text-xs"
               style={{ color: "var(--landing-text-secondary)" }}
             >
               Sign in to continue.
+            </p>
+          )}
+
+          {suspended && (
+            <p
+              role="alert"
+              className="mt-3 rounded-(--landing-radius-sm) border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+            >
+              Your account has been suspended. Contact support for help.
             </p>
           )}
 

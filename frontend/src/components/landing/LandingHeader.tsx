@@ -94,13 +94,6 @@ function ProfileMenu() {
         )}
       </div>
 
-      <Link
-        to="/dashboard"
-        className="landing-glow rounded-(--landing-radius-sm) bg-(--landing-gold) px-3.5 py-1.5 text-sm font-semibold text-(--landing-gold-fg) outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
-      >
-        Deposit
-      </Link>
-
       <DropdownMenuPrimitive.Root>
         <DropdownMenuPrimitive.Trigger asChild>
           <button

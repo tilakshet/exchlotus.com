@@ -79,6 +79,10 @@ export async function login(input: { phone: string; password: string }): Promise
     throw new AuthError("INVALID_CREDENTIALS", "No account with that phone number/password")
   }
 
+  if (player.status === "SUSPENDED") {
+    throw new AuthError("ACCOUNT_SUSPENDED", "This account has been suspended")
+  }
+
   return issueTokens(player)
 }
 
@@ -88,6 +92,14 @@ export async function refresh(refreshToken: string): Promise<AuthTokens> {
 
   if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
     throw new AuthError("INVALID_REFRESH_TOKEN", "Refresh token is invalid, expired, or already used")
+  }
+
+  if (stored.player.status === "SUSPENDED") {
+    // Revoke so this refresh token can't be retried once the account is
+    // reactivated — reactivation should require a fresh login, not silently
+    // resurrect whatever session was active at suspension time.
+    await prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } })
+    throw new AuthError("ACCOUNT_SUSPENDED", "This account has been suspended")
   }
 
   // Rotate: the presented token is single-use. Revoking it here means a
@@ -180,6 +192,10 @@ export async function verifyOtp(phone: string, code: string, referralCode?: stri
         wallet: { create: { balance: 0, currency: "INR" } },
       },
     }))
+
+  if (player.status === "SUSPENDED") {
+    throw new AuthError("ACCOUNT_SUSPENDED", "This account has been suspended")
+  }
 
   return issueTokens(player)
 }
