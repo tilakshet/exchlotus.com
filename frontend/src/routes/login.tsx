@@ -14,6 +14,9 @@ interface LoginSearch {
   redirect?: string;
   view?: View;
   suspended?: boolean;
+  idle?: boolean;
+  /** Pre-fills Sign Up's promo code field — carried in via a shared referral link (see dashboard.refer-earn.tsx). */
+  promo?: string;
 }
 
 export const Route = createFileRoute("/login")({
@@ -26,6 +29,8 @@ export const Route = createFileRoute("/login")({
         ? search.view
         : undefined,
     suspended: search.suspended === "1" || search.suspended === true,
+    idle: search.idle === "1" || search.idle === true,
+    promo: typeof search.promo === "string" && search.promo.trim() !== "" ? search.promo.trim().slice(0, 40) : undefined,
   }),
   component: LoginPage,
 });
@@ -83,9 +88,12 @@ type View = "otp" | "password" | "register";
  * one (e.g. the seeded fixture player), not something Sign Up collects.
  */
 function LoginPage() {
-  const { redirect, view: initialView, suspended } = Route.useSearch();
+  const { redirect, view: initialView, suspended, idle, promo } = Route.useSearch();
   const navigate = useNavigate();
-  const [view, setView] = useState<View>(initialView ?? "otp");
+  // A shared referral link (?promo=CODE) jumps straight to Sign Up rather
+  // than the default Login/OTP screen — the whole point of the link is to
+  // get a new player registering with that code already in hand.
+  const [view, setView] = useState<View>(initialView ?? (promo ? "register" : "otp"));
   const [signUpMethod, setSignUpMethod] = useState<"otp" | "password">("otp");
 
   function onSuccess() {
@@ -160,7 +168,7 @@ function LoginPage() {
           >
             {view === "register" ? "Sign Up" : "Login"}
           </h1>
-          {redirect && view !== "register" && !suspended && (
+          {redirect && view !== "register" && !suspended && !idle && (
             <p
               className="mt-1.5 text-xs"
               style={{ color: "var(--landing-text-secondary)" }}
@@ -175,6 +183,16 @@ function LoginPage() {
               className="mt-3 rounded-(--landing-radius-sm) border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300"
             >
               Your account has been suspended. Contact support for help.
+            </p>
+          )}
+
+          {idle && !suspended && (
+            <p
+              role="status"
+              className="mt-3 rounded-(--landing-radius-sm) border border-(--landing-border) bg-(--landing-glass) px-3 py-2 text-xs"
+              style={{ color: "var(--landing-text-secondary)" }}
+            >
+              You were logged out after 10 minutes of inactivity. Log back in to continue.
             </p>
           )}
 
@@ -224,7 +242,7 @@ function LoginPage() {
           <div className="mt-2 max-w-md">
             {view === "otp" && <OtpLoginForm onSuccess={onSuccess} />}
             {view === "password" && <PasswordLoginForm onSuccess={onSuccess} />}
-            {view === "register" && signUpMethod === "otp" && <SignUpForm onSuccess={onSuccess} />}
+            {view === "register" && signUpMethod === "otp" && <SignUpForm onSuccess={onSuccess} initialPromoCode={promo} />}
             {view === "register" && signUpMethod === "password" && <PasswordSignUpForm onSuccess={onSuccess} />}
           </div>
 
@@ -564,16 +582,16 @@ function OtpLoginForm({ onSuccess }: { onSuccess: () => void }) {
  * an 18+/terms checkbox, then the same OTP request/verify flow as Login
  * with OTP. No password field — see the module doc comment above for why.
  */
-function SignUpForm({ onSuccess }: { onSuccess: () => void }) {
+function SignUpForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; initialPromoCode?: string }) {
   const flow = usePhoneOtpFlow();
-  const [promoCode, setPromoCode] = useState("");
+  const [promoCode, setPromoCode] = useState(initialPromoCode ?? "");
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<SignUpPhoneValues>({
     resolver: zodResolver(signUpPhoneSchema),
-    defaultValues: { agreeTerms: false },
+    defaultValues: { agreeTerms: false, promoCode: initialPromoCode },
   });
 
   async function onRequest(values: SignUpPhoneValues) {

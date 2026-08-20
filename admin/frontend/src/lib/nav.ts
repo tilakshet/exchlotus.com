@@ -4,6 +4,7 @@ import {
   Dices,
   Gamepad2,
   Gauge,
+  History,
   KeyRound,
   Landmark,
   LayoutDashboard,
@@ -39,6 +40,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Operations",
     items: [
       { label: "Users", to: "/users", permission: "users.view", icon: UsersIcon },
+      { label: "Login Activity", to: "/login-activity", permission: "users.view", icon: History },
       { label: "Support", to: "/support", permission: "support.view", icon: LifeBuoy },
       { label: "Games", to: "/games", permission: "games.view", icon: Gamepad2 },
       { label: "Game Activity", to: "/game-activity", permission: "ledger.view", icon: Dices },

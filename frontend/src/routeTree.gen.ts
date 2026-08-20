@@ -26,6 +26,7 @@ import { Route as DashboardExchangeRouteImport } from './routes/dashboard.exchan
 import { Route as DashboardLiveCasinoRouteImport } from './routes/dashboard.live-casino'
 import { Route as DashboardPromotionsRouteImport } from './routes/dashboard.promotions'
 import { Route as DashboardProvidersRouteImport } from './routes/dashboard.providers'
+import { Route as DashboardReferEarnRouteImport } from './routes/dashboard.refer-earn'
 import { Route as DashboardSearchRouteImport } from './routes/dashboard.search'
 import { Route as DashboardSportsbookRouteImport } from './routes/dashboard.sportsbook'
 import { Route as GameGameSlugRouteImport } from './routes/game.$gameSlug'
@@ -127,6 +128,11 @@ const DashboardProvidersRoute = DashboardProvidersRouteImport.update({
   path: '/providers',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardReferEarnRoute = DashboardReferEarnRouteImport.update({
+  id: '/refer-earn',
+  path: '/refer-earn',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardSearchRoute = DashboardSearchRouteImport.update({
   id: '/search',
   path: '/search',
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/live-casino': typeof DashboardLiveCasinoRoute
   '/dashboard/promotions': typeof DashboardPromotionsRoute
   '/dashboard/providers': typeof DashboardProvidersRoute
+  '/dashboard/refer-earn': typeof DashboardReferEarnRoute
   '/dashboard/search': typeof DashboardSearchRoute
   '/dashboard/sportsbook': typeof DashboardSportsbookRoute
   '/game/$gameSlug': typeof GameGameSlugRoute
@@ -256,6 +263,7 @@ export interface FileRoutesByTo {
   '/dashboard/live-casino': typeof DashboardLiveCasinoRoute
   '/dashboard/promotions': typeof DashboardPromotionsRoute
   '/dashboard/providers': typeof DashboardProvidersRoute
+  '/dashboard/refer-earn': typeof DashboardReferEarnRoute
   '/dashboard/search': typeof DashboardSearchRoute
   '/dashboard/sportsbook': typeof DashboardSportsbookRoute
   '/game/$gameSlug': typeof GameGameSlugRoute
@@ -290,6 +298,7 @@ export interface FileRoutesById {
   '/dashboard/live-casino': typeof DashboardLiveCasinoRoute
   '/dashboard/promotions': typeof DashboardPromotionsRoute
   '/dashboard/providers': typeof DashboardProvidersRoute
+  '/dashboard/refer-earn': typeof DashboardReferEarnRoute
   '/dashboard/search': typeof DashboardSearchRoute
   '/dashboard/sportsbook': typeof DashboardSportsbookRoute
   '/game/$gameSlug': typeof GameGameSlugRoute
@@ -326,6 +335,7 @@ export interface FileRouteTypes {
     | '/dashboard/live-casino'
     | '/dashboard/promotions'
     | '/dashboard/providers'
+    | '/dashboard/refer-earn'
     | '/dashboard/search'
     | '/dashboard/sportsbook'
     | '/game/$gameSlug'
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/dashboard/live-casino'
     | '/dashboard/promotions'
     | '/dashboard/providers'
+    | '/dashboard/refer-earn'
     | '/dashboard/search'
     | '/dashboard/sportsbook'
     | '/game/$gameSlug'
@@ -391,6 +402,7 @@ export interface FileRouteTypes {
     | '/dashboard/live-casino'
     | '/dashboard/promotions'
     | '/dashboard/providers'
+    | '/dashboard/refer-earn'
     | '/dashboard/search'
     | '/dashboard/sportsbook'
     | '/game/$gameSlug'
@@ -542,6 +554,13 @@ declare module '@tanstack/react-router' {
       path: '/providers'
       fullPath: '/dashboard/providers'
       preLoaderRoute: typeof DashboardProvidersRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/refer-earn': {
+      id: '/dashboard/refer-earn'
+      path: '/refer-earn'
+      fullPath: '/dashboard/refer-earn'
+      preLoaderRoute: typeof DashboardReferEarnRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/search': {
@@ -700,6 +719,7 @@ interface DashboardRouteChildren {
   DashboardLiveCasinoRoute: typeof DashboardLiveCasinoRoute
   DashboardPromotionsRoute: typeof DashboardPromotionsRoute
   DashboardProvidersRoute: typeof DashboardProvidersRoute
+  DashboardReferEarnRoute: typeof DashboardReferEarnRoute
   DashboardSearchRoute: typeof DashboardSearchRoute
   DashboardSportsbookRoute: typeof DashboardSportsbookRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -714,6 +734,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardLiveCasinoRoute: DashboardLiveCasinoRoute,
   DashboardPromotionsRoute: DashboardPromotionsRoute,
   DashboardProvidersRoute: DashboardProvidersRoute,
+  DashboardReferEarnRoute: DashboardReferEarnRoute,
   DashboardSearchRoute: DashboardSearchRoute,
   DashboardSportsbookRoute: DashboardSportsbookRoute,
   DashboardIndexRoute: DashboardIndexRoute,

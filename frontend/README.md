@@ -10,7 +10,10 @@ works toward.
 
 1. `npm install`
 2. Copy `.env` if you don't already have one — `VITE_API_BASE_URL` should
-   point at the backend (default `http://127.0.0.1:4000`).
+   point at the backend (default `http://127.0.0.1:4000`). The four
+   `VITE_SOCIAL_*_URL` vars are optional — set the ones you have a real
+   profile for; any left unset point that footer icon to `/dashboard`
+   in-app instead of linking to `#`.
 3. The backend must be running (`../backend`, see its README) — this app
    has no mock-server fallback of its own; every `api/*.api.ts` call hits
    a real endpoint.

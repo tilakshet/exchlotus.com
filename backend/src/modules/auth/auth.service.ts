@@ -4,6 +4,7 @@ import { prisma } from "../../lib/prisma"
 import { hashPassword, verifyPassword } from "./password.util"
 import { generateRefreshToken, hashRefreshToken, signAccessToken } from "./token.util"
 import { AuthError } from "./auth.errors"
+import { recordLoginEvent, type LoginEventContext } from "./login-event.service"
 import type { AuthTokens } from "./auth.types"
 
 const OTP_TTL_MINUTES = 5
@@ -23,22 +24,27 @@ async function issueTokens(player: { id: string; externalId: string; username: s
   return { accessToken, refreshToken: refresh.token, expiresIn }
 }
 
-export async function register(input: {
-  username: string
-  phone: string
-  email?: string
-  password: string
-}): Promise<AuthTokens> {
+export async function register(
+  input: {
+    username: string
+    phone: string
+    email?: string
+    password: string
+  },
+  context?: LoginEventContext
+): Promise<AuthTokens> {
   // Phone first — it's the identifier login()/requestOtp() key off, so an
   // account created here has to collect it too or it would be permanently
   // unable to sign back in via "Login with Password".
   const existingPhone = await prisma.player.findUnique({ where: { phone: input.phone } })
   if (existingPhone) {
+    await recordLoginEvent({ phone: input.phone, method: "REGISTER", result: "FAILURE", reason: "PHONE_TAKEN", context })
     throw new AuthError("PHONE_TAKEN", `Phone ${input.phone} is already registered`)
   }
   if (input.email) {
     const existingEmail = await prisma.player.findUnique({ where: { email: input.email } })
     if (existingEmail) {
+      await recordLoginEvent({ phone: input.phone, method: "REGISTER", result: "FAILURE", reason: "EMAIL_TAKEN", context })
       throw new AuthError("EMAIL_TAKEN", `Email ${input.email} is already registered`)
     }
   }
@@ -57,6 +63,7 @@ export async function register(input: {
     },
   })
 
+  await recordLoginEvent({ playerId: player.id, phone: input.phone, method: "REGISTER", result: "SUCCESS", context })
   return issueTokens(player)
 }
 
@@ -68,21 +75,25 @@ export async function register(input: {
  * one such place now (Sign Up with Password); the seeded fixture player is
  * the other (a phone was added to it by hand for exactly this purpose).
  */
-export async function login(input: { phone: string; password: string }): Promise<AuthTokens> {
+export async function login(input: { phone: string; password: string }, context?: LoginEventContext): Promise<AuthTokens> {
   const player = await prisma.player.findUnique({ where: { phone: input.phone } })
   if (!player?.passwordHash) {
+    await recordLoginEvent({ phone: input.phone, method: "PASSWORD", result: "FAILURE", reason: "INVALID_CREDENTIALS", context })
     throw new AuthError("INVALID_CREDENTIALS", "No account with that phone number/password")
   }
 
   const valid = await verifyPassword(input.password, player.passwordHash)
   if (!valid) {
+    await recordLoginEvent({ playerId: player.id, phone: input.phone, method: "PASSWORD", result: "FAILURE", reason: "INVALID_CREDENTIALS", context })
     throw new AuthError("INVALID_CREDENTIALS", "No account with that phone number/password")
   }
 
   if (player.status === "SUSPENDED") {
+    await recordLoginEvent({ playerId: player.id, phone: input.phone, method: "PASSWORD", result: "FAILURE", reason: "ACCOUNT_SUSPENDED", context })
     throw new AuthError("ACCOUNT_SUSPENDED", "This account has been suspended")
   }
 
+  await recordLoginEvent({ playerId: player.id, phone: input.phone, method: "PASSWORD", result: "SUCCESS", context })
   return issueTokens(player)
 }
 
@@ -157,22 +168,25 @@ export async function requestOtp(phone: string): Promise<{ devCode?: string }> {
   return env.NODE_ENV === "production" ? {} : { devCode: code }
 }
 
-export async function verifyOtp(phone: string, code: string, referralCode?: string): Promise<AuthTokens> {
+export async function verifyOtp(phone: string, code: string, referralCode?: string, context?: LoginEventContext): Promise<AuthTokens> {
   const record = await prisma.otpCode.findFirst({
     where: { phone, consumedAt: null },
     orderBy: { createdAt: "desc" },
   })
 
   if (!record || record.expiresAt < new Date()) {
+    await recordLoginEvent({ phone, method: "OTP", result: "FAILURE", reason: "OTP_INVALID", context })
     throw new AuthError("OTP_INVALID", "No valid code found for that number — request a new one")
   }
   if (record.attempts >= OTP_MAX_ATTEMPTS) {
+    await recordLoginEvent({ phone, method: "OTP", result: "FAILURE", reason: "OTP_INVALID", context })
     throw new AuthError("OTP_INVALID", "Too many incorrect attempts — request a new code")
   }
 
   const valid = await verifyPassword(code, record.codeHash)
   if (!valid) {
     await prisma.otpCode.update({ where: { id: record.id }, data: { attempts: { increment: 1 } } })
+    await recordLoginEvent({ phone, method: "OTP", result: "FAILURE", reason: "OTP_INVALID", context })
     throw new AuthError("OTP_INVALID", "Incorrect code")
   }
 
@@ -194,8 +208,10 @@ export async function verifyOtp(phone: string, code: string, referralCode?: stri
     }))
 
   if (player.status === "SUSPENDED") {
+    await recordLoginEvent({ playerId: player.id, phone, method: "OTP", result: "FAILURE", reason: "ACCOUNT_SUSPENDED", context })
     throw new AuthError("ACCOUNT_SUSPENDED", "This account has been suspended")
   }
 
+  await recordLoginEvent({ playerId: player.id, phone, method: "OTP", result: "SUCCESS", context })
   return issueTokens(player)
 }

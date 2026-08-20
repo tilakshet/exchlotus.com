@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router"
-import { Camera, Gamepad2, Headset, Lock, MessageCircle, Send, ShieldCheck, Trophy, Wallet, Zap } from "lucide-react"
-import { socialLinks } from "@/data/landing"
+import { Headset, Lock, ShieldCheck, Trophy, Wallet, Zap } from "lucide-react"
+import { FaDiscord, FaInstagram, FaTelegram, FaXTwitter } from "react-icons/fa6"
+import { socialLinks, type SocialId } from "@/data/landing"
 import { Logo } from "@/components/shared/Logo"
 
 const paymentMethods = ["UPI", "Netbanking", "Cards", "Wallets"]
@@ -69,12 +70,21 @@ const columns = [
   },
 ] as const
 
-const socialIcon: Record<string, typeof Send> = {
-  telegram: Send,
-  x: MessageCircle,
-  instagram: Camera,
-  discord: Gamepad2,
+// Real brand marks (react-icons/fa6), not lucide's generic shapes — a
+// social row is only recognizable at a glance if Telegram actually looks
+// like Telegram.
+const socialIcon: Record<SocialId, typeof FaTelegram> = {
+  telegram: FaTelegram,
+  x: FaXTwitter,
+  instagram: FaInstagram,
+  discord: FaDiscord,
 }
+
+// Shared by both the external <a> and the /dashboard fallback <Link> below —
+// same badge regardless of which one a given channel resolves to.
+const socialIconClass =
+  "flex size-10 items-center justify-center rounded-full border bg-(--landing-glass) text-(--landing-text-secondary) shadow-(--shadow-token-2) outline-none transition-all duration-200 hover:-translate-y-0.5 hover:scale-105 hover:border-(--landing-gold) hover:bg-(--landing-gold) hover:text-(--landing-gold-fg) focus-visible:ring-2 focus-visible:ring-(--landing-gold) focus-visible:ring-offset-2 focus-visible:ring-offset-(--landing-bg-2) active:scale-95 active:transition-none"
+const socialIconStyle = { borderColor: "var(--landing-border-strong)" } as const
 
 export function LandingFooter() {
   return (
@@ -140,19 +150,32 @@ export function LandingFooter() {
               <p className="max-w-xs text-sm text-(--landing-text-secondary)">
                 Sportsbook, live casino, and slots on one licensed platform.
               </p>
-              <ul className="flex gap-2.5">
+              {/* socialLinks always has all four — a channel with no
+                  VITE_SOCIAL_*_URL configured (href: null) goes to /dashboard
+                  in-app instead of an external link, so the icon is never a
+                  dead "#" and never sends a real visitor to a placeholder
+                  domain either, see data/landing.ts. */}
+              <ul className="flex gap-3">
                 {socialLinks.map((social) => {
                   const Icon = socialIcon[social.id]
                   return (
                     <li key={social.id}>
-                      <a
-                        href={social.href}
-                        aria-label={social.label}
-                        className="flex size-10 items-center justify-center rounded-full border bg-(--landing-glass) text-(--landing-text-secondary) outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-(--landing-gold) hover:bg-(--landing-gold) hover:text-(--landing-gold-fg) focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
-                        style={{ borderColor: "var(--landing-border-strong)" }}
-                      >
-                        <Icon className="size-4.5" aria-hidden="true" />
-                      </a>
+                      {social.href ? (
+                        <a
+                          href={social.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`${social.label} (opens in a new tab)`}
+                          className={socialIconClass}
+                          style={socialIconStyle}
+                        >
+                          <Icon className="size-4.5" aria-hidden="true" />
+                        </a>
+                      ) : (
+                        <Link to="/dashboard" aria-label={social.label} className={socialIconClass} style={socialIconStyle}>
+                          <Icon className="size-4.5" aria-hidden="true" />
+                        </Link>
+                      )}
                     </li>
                   )
                 })}
@@ -179,19 +202,13 @@ export function LandingFooter() {
             ))}
           </div>
 
-          {/* Real cutout artwork, flowed between the Support column and
-              Secure & Trusted — bottom-anchored within the stretched row
-              height so it sits level with the trust badges, not floating. */}
-          <div className="hidden shrink-0 lg:flex lg:h-auto lg:w-32 lg:items-end lg:justify-center">
-            <img
-              src="/hero/cutout.png"
-              alt=""
-              className="max-h-64 w-auto object-contain object-bottom"
-              onError={(e) => {
-                e.currentTarget.closest("div")!.style.display = "none"
-              }}
-            />
-          </div>
+          {/* Invisible spacer — was previously filled by cutout artwork
+              (removed; the source hero.png changed and no matching
+              transparent cutout exists for it). Kept as a bare div rather
+              than dropped entirely: at lg widths this width is load-bearing
+              for keeping the Support column and Secure & Trusted from
+              colliding, not just decorative. */}
+          <div aria-hidden="true" className="hidden shrink-0 lg:block lg:w-32" />
 
           <div className="lg:w-72 lg:shrink-0">
             <h3 className="text-sm font-bold tracking-[0.08em] uppercase text-(--landing-gold-text)">Secure &amp; Trusted</h3>

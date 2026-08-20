@@ -17,7 +17,7 @@ export interface LoyaltyTier {
 export const LOYALTY_TIERS: LoyaltyTier[] = [
   { name: "Silver", stars: 1, pointsFrom: 0, pointsTo: 2_500_000, cashbackPct: 2, depositBonusPct: 2, freeWithdrawals: 39 },
   { name: "Gold", stars: 2, pointsFrom: 2_500_000, pointsTo: 4_000_000, cashbackPct: 3, depositBonusPct: 3, freeWithdrawals: "Unlimited" },
-  { name: "Pearl", stars: 3, pointsFrom: 4_000_000, pointsTo: 10_000_000, cashbackPct: 4, depositBonusPct: 4, freeWithdrawals: "Unlimited" },
+  { name: "Platinum", stars: 3, pointsFrom: 4_000_000, pointsTo: 10_000_000, cashbackPct: 4, depositBonusPct: 4, freeWithdrawals: "Unlimited" },
   { name: "Diamond", stars: 4, pointsFrom: 10_000_000, pointsTo: null, cashbackPct: 5, depositBonusPct: 5, freeWithdrawals: "Unlimited" },
 ]
 

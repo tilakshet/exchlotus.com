@@ -67,6 +67,7 @@ model Player {
   paymentOrders      PaymentOrder[]
   withdrawalRequests WithdrawalRequest[]
   tickets            SupportTicket[]
+  loginEvents        LoginEvent[]
 
   @@map("players")
 }
@@ -83,6 +84,44 @@ model RefreshToken {
 
   @@index([playerId])
   @@map("refresh_tokens")
+}
+
+enum LoginEventMethod {
+  PASSWORD
+  OTP
+  REGISTER
+}
+
+enum LoginEventResult {
+  SUCCESS
+  FAILURE
+}
+
+/// One row per login/signup attempt — success and failure alike (see
+/// auth.service.ts login/verifyOtp/register). This is IP/device tracking +
+/// login-anomaly-detection input, not a financial record, so it's
+/// best-effort: a write failure here never blocks a real login attempt.
+model LoginEvent {
+  id        String            @id @default(uuid())
+  /// Null when the attempt fails before a matching account is found (e.g.
+  /// wrong phone number entirely) — the phone below is still recorded so a
+  /// pattern of failed attempts against a not-yet-registered number is
+  /// still visible.
+  playerId  String?
+  player    Player?           @relation(fields: [playerId], references: [id])
+  phone     String
+  method    LoginEventMethod
+  result    LoginEventResult
+  /// e.g. "INVALID_CREDENTIALS", "OTP_INVALID", "ACCOUNT_SUSPENDED" — null on success.
+  reason    String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime          @default(now())
+
+  @@index([playerId, createdAt])
+  @@index([phone, createdAt])
+  @@index([createdAt])
+  @@map("login_events")
 }
 
 model Wallet {

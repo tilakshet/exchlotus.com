@@ -18,6 +18,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDepositsRouteImport } from './routes/_authenticated.deposits'
 import { Route as AuthenticatedGameActivityRouteImport } from './routes/_authenticated.game-activity'
 import { Route as AuthenticatedGamesRouteImport } from './routes/_authenticated.games'
+import { Route as AuthenticatedLoginActivityRouteImport } from './routes/_authenticated.login-activity'
 import { Route as AuthenticatedMonitoringRouteImport } from './routes/_authenticated.monitoring'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated.reports'
 import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated.roles'
@@ -77,6 +78,12 @@ const AuthenticatedGamesRoute = AuthenticatedGamesRouteImport.update({
   path: '/games',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedLoginActivityRoute =
+  AuthenticatedLoginActivityRouteImport.update({
+    id: '/login-activity',
+    path: '/login-activity',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedMonitoringRoute = AuthenticatedMonitoringRouteImport.update({
   id: '/monitoring',
   path: '/monitoring',
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/deposits': typeof AuthenticatedDepositsRoute
   '/game-activity': typeof AuthenticatedGameActivityRoute
   '/games': typeof AuthenticatedGamesRouteWithChildren
+  '/login-activity': typeof AuthenticatedLoginActivityRoute
   '/monitoring': typeof AuthenticatedMonitoringRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/roles': typeof AuthenticatedRolesRoute
@@ -177,6 +185,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/deposits': typeof AuthenticatedDepositsRoute
   '/game-activity': typeof AuthenticatedGameActivityRoute
+  '/login-activity': typeof AuthenticatedLoginActivityRoute
   '/monitoring': typeof AuthenticatedMonitoringRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/roles': typeof AuthenticatedRolesRoute
@@ -200,6 +209,7 @@ export interface FileRoutesById {
   '/_authenticated/deposits': typeof AuthenticatedDepositsRoute
   '/_authenticated/game-activity': typeof AuthenticatedGameActivityRoute
   '/_authenticated/games': typeof AuthenticatedGamesRouteWithChildren
+  '/_authenticated/login-activity': typeof AuthenticatedLoginActivityRoute
   '/_authenticated/monitoring': typeof AuthenticatedMonitoringRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/roles': typeof AuthenticatedRolesRoute
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/deposits'
     | '/game-activity'
     | '/games'
+    | '/login-activity'
     | '/monitoring'
     | '/reports'
     | '/roles'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/deposits'
     | '/game-activity'
+    | '/login-activity'
     | '/monitoring'
     | '/reports'
     | '/roles'
@@ -269,6 +281,7 @@ export interface FileRouteTypes {
     | '/_authenticated/deposits'
     | '/_authenticated/game-activity'
     | '/_authenticated/games'
+    | '/_authenticated/login-activity'
     | '/_authenticated/monitoring'
     | '/_authenticated/reports'
     | '/_authenticated/roles'
@@ -353,6 +366,13 @@ declare module '@tanstack/react-router' {
       path: '/games'
       fullPath: '/games'
       preLoaderRoute: typeof AuthenticatedGamesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/login-activity': {
+      id: '/_authenticated/login-activity'
+      path: '/login-activity'
+      fullPath: '/login-activity'
+      preLoaderRoute: typeof AuthenticatedLoginActivityRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/monitoring': {
@@ -495,6 +515,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDepositsRoute: typeof AuthenticatedDepositsRoute
   AuthenticatedGameActivityRoute: typeof AuthenticatedGameActivityRoute
   AuthenticatedGamesRoute: typeof AuthenticatedGamesRouteWithChildren
+  AuthenticatedLoginActivityRoute: typeof AuthenticatedLoginActivityRoute
   AuthenticatedMonitoringRoute: typeof AuthenticatedMonitoringRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedRolesRoute: typeof AuthenticatedRolesRoute
@@ -511,6 +532,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDepositsRoute: AuthenticatedDepositsRoute,
   AuthenticatedGameActivityRoute: AuthenticatedGameActivityRoute,
   AuthenticatedGamesRoute: AuthenticatedGamesRouteWithChildren,
+  AuthenticatedLoginActivityRoute: AuthenticatedLoginActivityRoute,
   AuthenticatedMonitoringRoute: AuthenticatedMonitoringRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedRolesRoute: AuthenticatedRolesRoute,

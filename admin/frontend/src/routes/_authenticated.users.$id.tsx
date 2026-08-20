@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowDownToLine, ArrowUpFromLine, ScrollText, Sliders, Wallet as WalletIcon } from "lucide-react"
+import { ArrowDownToLine, ArrowUpFromLine, KeyRound, ScrollText, Sliders, Wallet as WalletIcon } from "lucide-react"
 import { getUser } from "@/api/users.api"
 import { adjustWallet, getLedger } from "@/api/wallets.api"
+import { listLoginEvents } from "@/api/login-events.api"
 import { useAdminAuth } from "@/hooks/useAdminAuth"
 import { toast } from "@/lib/toast"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ import { EmptyState } from "@/components/shared/EmptyState"
 import { ErrorState } from "@/components/shared/ErrorState"
 import { CardSkeletonGrid, TableSkeletonRows } from "@/components/shared/TableSkeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { ApiError } from "@/api/api-error"
 
@@ -115,6 +117,10 @@ function UserDetailPage() {
   const { id } = Route.useParams()
   const { data: user, isLoading, isError, refetch } = useQuery({ queryKey: ["user", id], queryFn: () => getUser(id) })
   const { data: ledger, isLoading: ledgerLoading } = useQuery({ queryKey: ["ledger", id], queryFn: () => getLedger(id, { limit: 25 }) })
+  const { data: loginEvents, isLoading: loginEventsLoading } = useQuery({
+    queryKey: ["login-events", id],
+    queryFn: () => listLoginEvents({ playerId: id, limit: 10 }),
+  })
 
   if (isLoading) {
     return (
@@ -192,6 +198,45 @@ function UserDetailPage() {
                 <TableCell className="tabular-nums">{formatCurrency(entry.balanceAfter, user.currency)}</TableCell>
                 <TableCell className="text-muted-foreground">{entry.actorAdminId ? "Yes" : "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{formatDateTime(entry.createdAt)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </section>
+
+      <section>
+        <p className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+          <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
+          Recent logins
+        </p>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>When</TableHead>
+              <TableHead>Method</TableHead>
+              <TableHead>Result</TableHead>
+              <TableHead>Reason</TableHead>
+              <TableHead>IP</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loginEventsLoading && <TableSkeletonRows columns={5} />}
+            {!loginEventsLoading && loginEvents?.items.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="p-0">
+                  <EmptyState icon={KeyRound} title="No login activity yet" />
+                </TableCell>
+              </TableRow>
+            )}
+            {loginEvents?.items.map((event) => (
+              <TableRow key={event.id}>
+                <TableCell className="text-muted-foreground">{formatDateTime(event.createdAt)}</TableCell>
+                <TableCell>{event.method === "PASSWORD" ? "Password" : event.method === "OTP" ? "OTP" : "Sign up"}</TableCell>
+                <TableCell>
+                  <Badge variant={event.result === "SUCCESS" ? "success" : "destructive"}>{event.result === "SUCCESS" ? "Success" : "Failure"}</Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{event.reason ?? "—"}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{event.ipAddress ?? "—"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
