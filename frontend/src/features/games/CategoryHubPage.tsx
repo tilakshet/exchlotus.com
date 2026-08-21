@@ -46,7 +46,16 @@ export function CategoryHubPage({ group, title }: { group: "casino" | "live-casi
 
         {!isLoading &&
           !isError &&
-          filtered?.map((category) => <CategoryRow key={category.id} code={category.code} name={category.name} onPlay={setLaunchingGame} />)}
+          filtered?.map((category) => (
+            <CategoryRow
+              key={category.id}
+              code={category.code}
+              name={category.name}
+              heading={group === "live-casino" ? "Live Casino" : undefined}
+              live={group === "live-casino"}
+              onPlay={setLaunchingGame}
+            />
+          ))}
 
         {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
       </div>

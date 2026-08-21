@@ -1,9 +1,11 @@
 import { useEffect } from "react"
 import { io, type Socket } from "socket.io-client"
 import { useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import { useAppDispatch, useAppSelector } from "@/store"
 import { notificationReceived } from "@/store/notificationSlice"
 import { walletQueryKey } from "@/hooks/useWallet"
+import { useAuth } from "@/hooks/useAuth"
 
 // Same undefined-vs-empty-string distinction as api/http.ts's BASE_URL —
 // socket.io-client's own same-origin fallback only kicks in for a
@@ -23,20 +25,34 @@ interface WalletUpdatePayload {
  * need to hand-roll that.
  *
  * Server events wired to real handlers: `wallet:update` (invalidate the
- * wallet query — balances are never computed locally, just refetched) and
- * `notification`. `bet:update`/`provider:update` are defined server-side
- * but have no real emitter yet (see backend README), so there's nothing to
- * listen for on those two today.
+ * wallet query — balances are never computed locally, just refetched),
+ * `notification`, and `session:revoked` (single-active-session enforcement
+ * — see Player.sessionVersion in schema.prisma and socket.server.ts).
+ * `bet:update`/`provider:update` are defined server-side but have no real
+ * emitter yet (see backend README), so there's nothing to listen for on
+ * those two today.
  */
 export function useSocketConnection() {
   const accessToken = useAppSelector((s) => s.auth.accessToken)
   const dispatch = useAppDispatch()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const { logout } = useAuth()
 
   useEffect(() => {
     if (!accessToken) return
 
     const socket: Socket = io(SOCKET_URL, { auth: { token: accessToken } })
+
+    // A newer login elsewhere just revoked this device's session server-side
+    // (requireAuth would reject its next request either way) — logout()
+    // clears local auth state immediately; the redirect matches the
+    // suspended/idle banner pattern on the login page.
+    socket.on("session:revoked", () => {
+      logout().finally(() => {
+        navigate({ to: "/login", search: { sessionRevoked: true } })
+      })
+    })
 
     socket.on("wallet:update", (payload: WalletUpdatePayload) => {
       queryClient.setQueryData(walletQueryKey, (prev: unknown) =>
@@ -64,5 +80,5 @@ export function useSocketConnection() {
     return () => {
       socket.disconnect()
     }
-  }, [accessToken, dispatch, queryClient])
+  }, [accessToken, dispatch, queryClient, navigate, logout])
 }

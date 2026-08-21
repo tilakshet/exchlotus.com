@@ -4,6 +4,7 @@ import { Dices, Gem, Heart, Play, Rocket, Spade, type LucideIcon } from "lucide-
 import { useAuth } from "@/hooks/useAuth"
 import { useFavorites } from "@/hooks/useFavorites"
 import { useLivePlayingCount } from "@/hooks/useLivePlayingCount"
+import { isLiveCasinoCategory } from "@/lib/categoryGroups"
 import type { Game } from "@/types/catalog"
 
 /**
@@ -39,6 +40,7 @@ export function GameCard({ game, onPlay }: { game: Game; onPlay: (game: Game) =>
   const ArtIcon = art.icon
   const hasBanner = !!game.bannerUrl && !imgFailed
   const playingCount = useLivePlayingCount(game.gameId)
+  const isLive = !!game.category?.code && isLiveCasinoCategory(game.category.code)
 
   function handlePlay() {
     if (!isAuthenticated) {
@@ -51,6 +53,20 @@ export function GameCard({ game, onPlay }: { game: Game; onPlay: (game: Game) =>
   return (
     <div className="group flex flex-col gap-1 sm:gap-1.5">
       <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--sb-radius-md)] border border-[color:var(--sb-border)] bg-[color:var(--sb-content-bg)] transition-all duration-200 group-hover:-translate-y-1 group-hover:border-[color:var(--sb-accent-gold)]/40 group-hover:shadow-[0_18px_36px_-20px_rgba(0,0,0,.55)] sm:rounded-[var(--sb-radius-lg)]">
+        {/* Live indicator badge — small pulsing green dot pinned to the
+            card's top-left corner, same ping+dot treatment as the "N
+            Playing" badge below (useLivePlayingCount.ts). Derived from the
+            game's own real category via isLiveCasinoCategory, not a
+            caller-supplied flag, so it only ever appears on actual live
+            dealer games (baccarat, roulette, andar bahar, ...) — never on
+            Casino/slots/crash games, in any row this card renders in. */}
+        {isLive && (
+          <span aria-hidden="true" className="absolute left-1.5 top-1.5 z-10 flex size-2 sm:left-3 sm:top-3 sm:size-2.5">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[color:var(--brand-green-text)] opacity-75" />
+            <span className="relative inline-flex size-2 rounded-full bg-[color:var(--brand-green-text)] sm:size-2.5" />
+          </span>
+        )}
+
         {hasBanner ? (
           <img
             src={game.bannerUrl!}

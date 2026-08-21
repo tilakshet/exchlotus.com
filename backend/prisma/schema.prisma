@@ -57,6 +57,15 @@ model Player {
   /// at login/refresh (auth.service.ts) to reject a suspended account
   /// immediately, not just on its next fresh login.
   status         PlayerStatus @default(ACTIVE)
+  /// Bumped on every genuinely new login (auth.service.ts's
+  /// issueTokensForNewLogin) — never on a token refresh, which continues the
+  /// same session unchanged. Embedded in every access token's `sv` claim;
+  /// requireAuth rejects a request the moment its token's `sv` no longer
+  /// matches this column, so signing in on a second device invalidates every
+  /// other device's session on its very next request (immediately, if that
+  /// device also has a live socket connection — see socket.server.ts's
+  /// session:revoked push), enforcing one active session per account.
+  sessionVersion Int          @default(0)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 

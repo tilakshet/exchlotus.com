@@ -1,6 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto"
 import { env } from "../../lib/env"
 import { prisma } from "../../lib/prisma"
+import { appEvents } from "../../lib/events"
 import { hashPassword, verifyPassword } from "./password.util"
 import { generateRefreshToken, hashRefreshToken, signAccessToken } from "./token.util"
 import { AuthError } from "./auth.errors"
@@ -11,17 +12,39 @@ const OTP_TTL_MINUTES = 5
 const OTP_RESEND_COOLDOWN_SECONDS = 60
 const OTP_MAX_ATTEMPTS = 5
 
-async function issueTokens(player: { id: string; externalId: string; username: string }): Promise<AuthTokens> {
+async function issueTokens(player: { id: string; externalId: string; username: string; sessionVersion: number }): Promise<AuthTokens> {
   const { token: accessToken, expiresIn } = signAccessToken({
     sub: player.id,
     externalId: player.externalId,
     username: player.username,
+    sv: player.sessionVersion,
   })
   const refresh = generateRefreshToken()
   await prisma.refreshToken.create({
     data: { playerId: player.id, tokenHash: refresh.hash, expiresAt: refresh.expiresAt },
   })
   return { accessToken, refreshToken: refresh.token, expiresIn }
+}
+
+/**
+ * A genuinely new login (password, or OTP into an already-existing account)
+ * — as opposed to a token refresh continuing the same session, or the very
+ * first login right after registration where there's nothing else yet to
+ * revoke. Bumps Player.sessionVersion (embedded in every access token's
+ * `sv` claim) and revokes every other still-valid refresh token for this
+ * player, so any other device currently signed in is force-logged-out: its
+ * now-stale access token gets rejected by requireAuth on its very next
+ * request, and its refresh token is revoked so it can't silently renew
+ * instead. appEvents lets socket.server.ts push an immediate real-time kick
+ * on top of that, to any of that device's still-open socket connections.
+ */
+async function issueTokensForNewLogin(player: { id: string; externalId: string; username: string }): Promise<AuthTokens> {
+  const [updated] = await prisma.$transaction([
+    prisma.player.update({ where: { id: player.id }, data: { sessionVersion: { increment: 1 } } }),
+    prisma.refreshToken.updateMany({ where: { playerId: player.id, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ])
+  appEvents.emit("session:revoked", { playerExternalId: updated.externalId })
+  return issueTokens(updated)
 }
 
 export async function register(
@@ -94,7 +117,7 @@ export async function login(input: { phone: string; password: string }, context?
   }
 
   await recordLoginEvent({ playerId: player.id, phone: input.phone, method: "PASSWORD", result: "SUCCESS", context })
-  return issueTokens(player)
+  return issueTokensForNewLogin(player)
 }
 
 export async function refresh(refreshToken: string): Promise<AuthTokens> {
@@ -195,8 +218,9 @@ export async function verifyOtp(phone: string, code: string, referralCode?: stri
   // findOrCreate by phone: OTP is a first-class login method here, not just
   // a second factor on top of an email account, so verifying a new number
   // provisions an account the same way email+password registration does.
+  const existingPlayer = await prisma.player.findUnique({ where: { phone } })
   const player =
-    (await prisma.player.findUnique({ where: { phone } })) ??
+    existingPlayer ??
     (await prisma.player.create({
       data: {
         externalId: randomUUID(),
@@ -213,5 +237,8 @@ export async function verifyOtp(phone: string, code: string, referralCode?: stri
   }
 
   await recordLoginEvent({ playerId: player.id, phone, method: "OTP", result: "SUCCESS", context })
-  return issueTokens(player)
+  // A brand-new signup has no other session to revoke; only an OTP login
+  // into an already-existing account counts as a new login for
+  // single-session enforcement (same distinction register() draws above).
+  return existingPlayer ? issueTokensForNewLogin(player) : issueTokens(player)
 }
