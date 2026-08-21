@@ -1,7 +1,9 @@
 #!/bin/bash
 # One-time SSL bootstrap. Run this once from the repo root on the VPS,
-# after DNS for $DOMAIN already points at this server and before the first
-# `docker compose -f docker-compose.prod.yml up -d`.
+# after DNS for $DOMAIN AND www.$DOMAIN already point at this server (an A
+# or CNAME record for the "www" host is required — this script doesn't
+# create it, and the cert request below fails without it) and before the
+# first `docker compose -f docker-compose.prod.yml up -d`.
 #
 # Nginx refuses to start with `ssl_certificate` pointing at files that don't
 # exist yet, and Let's Encrypt's webroot challenge needs nginx already
@@ -49,10 +51,10 @@ $COMPOSE run --rm --entrypoint "rm -rf \
   /etc/letsencrypt/live/$DOMAIN /etc/letsencrypt/archive/$DOMAIN /etc/letsencrypt/renewal/$DOMAIN.conf \
   /etc/letsencrypt/live/$ADMIN_DOMAIN /etc/letsencrypt/archive/$ADMIN_DOMAIN /etc/letsencrypt/renewal/$ADMIN_DOMAIN.conf" certbot
 
-echo "== Requesting real certificate for $DOMAIN from Let's Encrypt =="
+echo "== Requesting real certificate for $DOMAIN (and www.$DOMAIN) from Let's Encrypt =="
 $COMPOSE run --rm --entrypoint "\
   certbot certonly --webroot -w /var/www/certbot \
-    -d $DOMAIN \
+    -d $DOMAIN -d www.$DOMAIN \
     --email $LETSENCRYPT_EMAIL --agree-tos --no-eff-email" certbot
 
 echo "== Requesting real certificate for $ADMIN_DOMAIN from Let's Encrypt =="
