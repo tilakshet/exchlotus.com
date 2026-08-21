@@ -17,8 +17,26 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
+
             cd ${{ secrets.DEPLOY_PATH }}
+
+            # Save any VPS-local changes before pulling
+            git stash push -u -m "auto-stash before deployment" || true
+
+            # Get latest code
             git pull origin main
-            docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build --remove-orphans
-            docker compose --env-file .env.production -f docker-compose.prod.yml exec -T backend npx prisma migrate deploy
+
+            # Rebuild and restart containers
+            docker compose \
+              --env-file .env.production \
+              -f docker-compose.prod.yml \
+              up -d --build --remove-orphans
+
+            # Run database migrations
+            docker compose \
+              --env-file .env.production \
+              -f docker-compose.prod.yml \
+              exec -T backend npx prisma migrate deploy
+
+            # Clean unused Docker images
             docker image prune -f
