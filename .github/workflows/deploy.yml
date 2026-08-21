@@ -7,6 +7,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -20,23 +21,29 @@ jobs:
 
             cd ${{ secrets.DEPLOY_PATH }}
 
-            # Save any VPS-local changes before pulling
+            # Protect any local VPS changes before pulling latest code
             git stash push -u -m "auto-stash before deployment" || true
 
-            # Get latest code
+            # Pull latest code
             git pull origin main
 
-            # Rebuild and restart containers
+            # Stop/remove existing containers and orphan containers
+            docker compose \
+              --env-file .env.production \
+              -f docker-compose.prod.yml \
+              down --remove-orphans || true
+
+            # Build and start the latest containers
             docker compose \
               --env-file .env.production \
               -f docker-compose.prod.yml \
               up -d --build --remove-orphans
 
-            # Run database migrations
+            # Apply database migrations
             docker compose \
               --env-file .env.production \
               -f docker-compose.prod.yml \
               exec -T backend npx prisma migrate deploy
 
-            # Clean unused Docker images
+            # Remove unused Docker images
             docker image prune -f
