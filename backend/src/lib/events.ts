@@ -2,6 +2,8 @@ import { EventEmitter } from "node:events"
 
 export interface AppEvents {
   "wallet:changed": (payload: { playerExternalId: string; balance: number }) => void
+  /** A new login elsewhere just revoked this player's other sessions (auth.service.ts) — socket.server.ts pushes an immediate kick to any of their still-open connections on top of requireAuth's per-request enforcement. */
+  "session:revoked": (payload: { playerExternalId: string }) => void
 }
 
 /**

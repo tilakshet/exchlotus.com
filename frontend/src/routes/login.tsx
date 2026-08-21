@@ -15,6 +15,8 @@ interface LoginSearch {
   view?: View;
   suspended?: boolean;
   idle?: boolean;
+  /** Set by useSocketConnection's session:revoked handler — a newer login elsewhere just kicked this device out (single-active-session enforcement, see Player.sessionVersion in schema.prisma). */
+  sessionRevoked?: boolean;
   /** Pre-fills Sign Up's promo code field — carried in via a shared referral link (see dashboard.refer-earn.tsx). */
   promo?: string;
 }
@@ -30,6 +32,7 @@ export const Route = createFileRoute("/login")({
         : undefined,
     suspended: search.suspended === "1" || search.suspended === true,
     idle: search.idle === "1" || search.idle === true,
+    sessionRevoked: search.sessionRevoked === "1" || search.sessionRevoked === true,
     promo: typeof search.promo === "string" && search.promo.trim() !== "" ? search.promo.trim().slice(0, 40) : undefined,
   }),
   component: LoginPage,
@@ -88,7 +91,7 @@ type View = "otp" | "password" | "register";
  * one (e.g. the seeded fixture player), not something Sign Up collects.
  */
 function LoginPage() {
-  const { redirect, view: initialView, suspended, idle, promo } = Route.useSearch();
+  const { redirect, view: initialView, suspended, idle, sessionRevoked, promo } = Route.useSearch();
   const navigate = useNavigate();
   // A shared referral link (?promo=CODE) jumps straight to Sign Up rather
   // than the default Login/OTP screen — the whole point of the link is to
@@ -168,7 +171,7 @@ function LoginPage() {
           >
             {view === "register" ? "Sign Up" : "Login"}
           </h1>
-          {redirect && view !== "register" && !suspended && !idle && (
+          {redirect && view !== "register" && !suspended && !idle && !sessionRevoked && (
             <p
               className="mt-1.5 text-xs"
               style={{ color: "var(--landing-text-secondary)" }}
@@ -193,6 +196,16 @@ function LoginPage() {
               style={{ color: "var(--landing-text-secondary)" }}
             >
               You were logged out after 10 minutes of inactivity. Log back in to continue.
+            </p>
+          )}
+
+          {sessionRevoked && !suspended && (
+            <p
+              role="status"
+              className="mt-3 rounded-(--landing-radius-sm) border border-(--landing-border) bg-(--landing-glass) px-3 py-2 text-xs"
+              style={{ color: "var(--landing-text-secondary)" }}
+            >
+              You were logged out because your account was signed in on another device.
             </p>
           )}
 

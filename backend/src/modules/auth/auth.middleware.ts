@@ -34,9 +34,16 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   // that player's next login, so every authenticated request re-checks
   // current status rather than trusting whatever the token carried at
   // issuance (see backend Player.status doc comment in schema.prisma).
-  const player = await prisma.player.findUnique({ where: { id: auth.sub }, select: { status: true } })
+  const player = await prisma.player.findUnique({ where: { id: auth.sub }, select: { status: true, sessionVersion: true } })
   if (!player || player.status === "SUSPENDED") {
     return res.status(403).json({ error: "ACCOUNT_SUSPENDED" })
+  }
+  // Single-session enforcement (see Player.sessionVersion doc comment) — a
+  // newer login elsewhere already bumped this past what the token carries,
+  // so this device's session is stale even though the token itself hasn't
+  // expired yet.
+  if (player.sessionVersion !== auth.sv) {
+    return res.status(401).json({ error: "SESSION_REVOKED" })
   }
 
   req.auth = auth

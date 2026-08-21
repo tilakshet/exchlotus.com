@@ -57,6 +57,20 @@ export function createSocketServer(httpServer: HttpServer) {
     io.to(playerRoom(playerExternalId)).emit("wallet:update", { balance })
   })
 
+  // Single-session enforcement (see Player.sessionVersion in schema.prisma
+  // and auth.service.ts's issueTokensForNewLogin) — a new login elsewhere
+  // already invalidated this player's other access/refresh tokens server-
+  // side; this is just the real-time push so an already-open tab/app on the
+  // old device finds out immediately instead of only on its next request.
+  // disconnectSockets closes the room's live connections right after the
+  // event is written to each socket, forcing a real reconnect (with a fresh
+  // token) rather than leaving a socket alive on a session the REST API
+  // would now reject anyway.
+  appEvents.on("session:revoked", ({ playerExternalId }) => {
+    io.to(playerRoom(playerExternalId)).emit("session:revoked")
+    io.in(playerRoom(playerExternalId)).disconnectSockets(true)
+  })
+
   // Subscriber needs its own connection — ioredis puts a client that has
   // called .subscribe() into a mode where it can no longer run other
   // commands, so this can't reuse the shared `redis` client from lib/redis.ts.

@@ -16,21 +16,58 @@ export function CategoryRowSkeleton() {
 }
 
 /**
+ * Pulsing green "live" dot — same ping+dot treatment as the "N Playing"
+ * badge on GameCard (useLivePlayingCount.ts), reused here as a live-casino
+ * shelf indicator instead of a social-proof count.
+ */
+function LiveDot() {
+  return (
+    <span aria-hidden="true" className="relative flex size-2.5 shrink-0">
+      <span className="absolute inline-flex size-full animate-ping rounded-full bg-[color:var(--brand-green-text)] opacity-75" />
+      <span className="relative inline-flex size-2.5 rounded-full bg-[color:var(--brand-green-text)]" />
+    </span>
+  )
+}
+
+/**
  * One horizontally-scrolling shelf for a real backend category, with a
  * "More" link to the paginated category-detail page
  * (routes/dashboard.category.$categoryCode.tsx) — the reachable "view all"
  * action every category row needs, not just the first 12 games shown here.
+ *
+ * `heading` overrides just the visible H3 text (falls back to `name`) — used
+ * by the /dashboard/live-casino hub to show "Live Casino" on every shelf
+ * regardless of the underlying category, while `name` still drives the
+ * "More" link's aria-label and the empty-state message so those stay
+ * specific to the real category. `live` adds the green pulsing dot next to
+ * the heading — GameCard adds that same dot to individual cards on its own
+ * (derived from each game's real category), so this only ever needs to
+ * carry the heading-level flag.
  */
-export function CategoryRow({ code, name, onPlay }: { code: string; name: string; onPlay: (game: Game) => void }) {
+export function CategoryRow({
+  code,
+  name,
+  heading,
+  live,
+  onPlay,
+}: {
+  code: string
+  name: string
+  heading?: string
+  live?: boolean
+  onPlay: (game: Game) => void
+}) {
   const { data, isLoading } = useGames({ category: code, pageSize: 12 })
   const games = data?.data
+  const label = heading ?? name
 
   if (isLoading) {
     return (
       <div>
         <h3 className="mb-3 flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-[color:var(--sb-text-primary)]">
           <span aria-hidden="true" className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: "linear-gradient(180deg, var(--sb-accent-gold), transparent)" }} />
-          {name}
+          {label}
+          {live && <LiveDot />}
         </h3>
         <CategoryRowSkeleton />
       </div>
@@ -45,7 +82,8 @@ export function CategoryRow({ code, name, onPlay }: { code: string; name: string
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-[color:var(--sb-text-primary)]">
           <span aria-hidden="true" className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: "linear-gradient(180deg, var(--sb-accent-gold), transparent)" }} />
-          {name}
+          {label}
+          {live && <LiveDot />}
         </h3>
         <Link
           to="/dashboard/category/$categoryCode"

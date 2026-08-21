@@ -40,7 +40,15 @@ export function CategoryGameRows() {
 
       {!isLoading &&
         !isError &&
-        categories?.map((category) => <CategoryRow key={category.id} code={category.code} name={category.name} onPlay={setLaunchingGame} />)}
+        categories?.map((category) => (
+          <CategoryRow
+            key={category.id}
+            code={category.code}
+            name={category.name}
+            heading={category.code === "andarbahar" ? "Live Games" : undefined}
+            onPlay={setLaunchingGame}
+          />
+        ))}
 
       {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
     </div>

@@ -7,6 +7,12 @@
  * studio behind most of this genre) where more than one option existed.
  * Some requested titles don't exist verbatim in the real catalog — noted
  * inline where a close substitute was used instead of dropping the slot.
+ *
+ * The block below adds the real Live Casino / Casino table games most
+ * played in the Indian exchange market alongside the crash/instant-win
+ * picks above — Andar Bahar, Teen Patti, Dragon Tiger, Lightning Roulette
+ * and Crazy Time are consistently the most-searched live titles here, so
+ * Trending Games surfaces them too instead of only the crash genre.
  */
 export const TRENDING_GAME_IDS = [
   "cmsgedoms0mwwuz1dlk6texzt", // Aviator (avigroup)
@@ -29,4 +35,12 @@ export const TRENDING_GAME_IDS = [
   "cmsge9isr0j4yuz1dpt6awf08", // Chicken Road 2.0 (in-out)
   "cmsge0to30c14uz1du5dsnxim", // Crash (galaxsys)
   "cmsge9bhi0ixyuz1d9uj0apn9", // Cricket War (ezugi)
+  "cmsge9b1o0ixiuz1dy3qmlbgt", // Andar Bahar (ezugiZ)
+  "cmsge96sp0itcuz1dmw3f7q84", // Teen Patti Auto (jacktop)
+  "cmsgdv5kr06f8uz1dn7vxt2ti", // Dragon Tiger (pragmatic-live)
+  "cmsge2ank0dgwuz1d0186lyqh", // Lightning Roulette (evolutionWCX)
+  "cmsge2bh50dhsuz1djcyonmyr", // First Person Baccarat (evolutionWC)
+  "cmsge2bqd0di2uz1d80gy4dv3", // First Person Blackjack (evolutionWCX)
+  "cmsge29nn0dfsuz1dcsmbak97", // Casino Hold'em (evolutionWCX)
+  "cmsge291n0df4uz1dibolvt3o", // Crazy Time (evolutionWCX)
 ] as const
