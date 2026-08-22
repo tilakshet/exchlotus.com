@@ -66,6 +66,20 @@ model Player {
   /// device also has a live socket connection — see socket.server.ts's
   /// session:revoked push), enforcing one active session per account.
   sessionVersion Int          @default(0)
+  /// Set the first time this phone number is proven via a correct OTP —
+  /// either at OTP login/signup (auth.service.ts verifyOtp) or via the
+  /// dedicated confirm-phone step KYC requires (kyc.controller.ts), which
+  /// exists because a password-signup account (register()) never goes
+  /// through OTP at all otherwise. submitKyc refuses to accept documents
+  /// until this is set — a PAN card is not proof of *this* phone number.
+  phoneVerifiedAt DateTime?
+  /// Denormalized "current" status — the one thing requestWithdrawal
+  /// (wallet.service.ts) actually checks. KycSubmission below is the
+  /// history/audit trail of every attempt; this column is always kept in
+  /// sync with that history's latest reviewed outcome (see kyc.service.ts
+  /// submitKyc/admin's reviewKyc, both of which update both together in one
+  /// transaction) so the withdrawal gate never has to join/query history.
+  kycStatus      KycStatus    @default(NOT_SUBMITTED)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -77,8 +91,48 @@ model Player {
   withdrawalRequests WithdrawalRequest[]
   tickets            SupportTicket[]
   loginEvents        LoginEvent[]
+  kycSubmissions     KycSubmission[]
 
   @@map("players")
+}
+
+enum KycStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// One row per submission attempt (a rejected player can resubmit) — the
+/// durable history/audit trail. Player.kycStatus above is the fast-path
+/// "current status" read, kept in sync with whichever row here is latest.
+model KycSubmission {
+  id            String    @id @default(uuid())
+  playerId      String
+  player        Player    @relation(fields: [playerId], references: [id])
+  panNumber     String
+  /// Filenames only (see backend/src/lib/uploads.ts KYC_UPLOAD_DIR) — never
+  /// served publicly, unlike support-ticket attachments. Only readable
+  /// through admin/backend's authenticated document-streaming route, which
+  /// reads them off the same shared uploads volume the player backend wrote
+  /// them to (see docker-compose.prod.yml).
+  panCardFile   String
+  photoFile     String
+  status        KycStatus @default(PENDING)
+  /// Set only on REJECTED — shown back to the player so they know what to
+  /// fix before resubmitting.
+  rejectionReason   String?
+  /// AdminUser.id from admin/backend's schema — no FK, same reasoning as
+  /// LedgerEntry.actorAdminId: this table must stay readable even if that
+  /// admin account is later deleted.
+  reviewedByAdminId String?
+  reviewedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([playerId, createdAt])
+  @@index([status])
+  @@map("kyc_submissions")
 }
 
 model RefreshToken {

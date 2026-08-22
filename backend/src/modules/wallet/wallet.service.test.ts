@@ -15,6 +15,10 @@ describe("wallet.service requestWithdrawal", () => {
       data: {
         externalId,
         username: "withdraw-test",
+        // These tests are about the balance/bank-account logic, not the KYC
+        // gate — approved up front so they exercise what they're meant to.
+        // The gate itself is covered by its own test below.
+        kycStatus: "APPROVED",
         wallet: { create: { balance: 1000, currency: "INR" } },
       },
     })
@@ -67,5 +71,17 @@ describe("wallet.service requestWithdrawal", () => {
 
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
     expect(wallet.balance.toNumber()).toBe(1000)
+  })
+
+  it("rejects a withdrawal from a player who isn't KYC-approved", async () => {
+    await prisma.player.update({ where: { id: playerId }, data: { kycStatus: "PENDING" } })
+
+    const error = await requestWithdrawal(externalId, bankAccountId, 100).catch((e) => e)
+    expect(error).toBeInstanceOf(WalletError)
+    expect(error.code).toBe("KYC_REQUIRED")
+
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
+    expect(wallet.balance.toNumber()).toBe(1000)
+    expect(wallet.lockedBalance.toNumber()).toBe(0)
   })
 })

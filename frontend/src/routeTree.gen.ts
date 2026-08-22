@@ -34,6 +34,7 @@ import { Route as DashboardAccountIndexRouteImport } from './routes/dashboard.ac
 import { Route as DashboardAccountAddBankRouteImport } from './routes/dashboard.account.add-bank'
 import { Route as DashboardAccountDepositRouteImport } from './routes/dashboard.account.deposit'
 import { Route as DashboardAccountHistoryRouteImport } from './routes/dashboard.account.history'
+import { Route as DashboardAccountKycRouteImport } from './routes/dashboard.account.kyc'
 import { Route as DashboardAccountLoyaltyRouteImport } from './routes/dashboard.account.loyalty'
 import { Route as DashboardAccountProfileRouteImport } from './routes/dashboard.account.profile'
 import { Route as DashboardAccountSupportRouteImport } from './routes/dashboard.account.support'
@@ -168,6 +169,11 @@ const DashboardAccountHistoryRoute = DashboardAccountHistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => DashboardAccountRoute,
 } as any)
+const DashboardAccountKycRoute = DashboardAccountKycRouteImport.update({
+  id: '/kyc',
+  path: '/kyc',
+  getParentRoute: () => DashboardAccountRoute,
+} as any)
 const DashboardAccountLoyaltyRoute = DashboardAccountLoyaltyRouteImport.update({
   id: '/loyalty',
   path: '/loyalty',
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/account/add-bank': typeof DashboardAccountAddBankRoute
   '/dashboard/account/deposit': typeof DashboardAccountDepositRoute
   '/dashboard/account/history': typeof DashboardAccountHistoryRoute
+  '/dashboard/account/kyc': typeof DashboardAccountKycRoute
   '/dashboard/account/loyalty': typeof DashboardAccountLoyaltyRoute
   '/dashboard/account/profile': typeof DashboardAccountProfileRoute
   '/dashboard/account/support': typeof DashboardAccountSupportRouteWithChildren
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/dashboard/account/add-bank': typeof DashboardAccountAddBankRoute
   '/dashboard/account/deposit': typeof DashboardAccountDepositRoute
   '/dashboard/account/history': typeof DashboardAccountHistoryRoute
+  '/dashboard/account/kyc': typeof DashboardAccountKycRoute
   '/dashboard/account/loyalty': typeof DashboardAccountLoyaltyRoute
   '/dashboard/account/profile': typeof DashboardAccountProfileRoute
   '/dashboard/account/withdraw': typeof DashboardAccountWithdrawRoute
@@ -306,6 +314,7 @@ export interface FileRoutesById {
   '/dashboard/account/add-bank': typeof DashboardAccountAddBankRoute
   '/dashboard/account/deposit': typeof DashboardAccountDepositRoute
   '/dashboard/account/history': typeof DashboardAccountHistoryRoute
+  '/dashboard/account/kyc': typeof DashboardAccountKycRoute
   '/dashboard/account/loyalty': typeof DashboardAccountLoyaltyRoute
   '/dashboard/account/profile': typeof DashboardAccountProfileRoute
   '/dashboard/account/support': typeof DashboardAccountSupportRouteWithChildren
@@ -343,6 +352,7 @@ export interface FileRouteTypes {
     | '/dashboard/account/add-bank'
     | '/dashboard/account/deposit'
     | '/dashboard/account/history'
+    | '/dashboard/account/kyc'
     | '/dashboard/account/loyalty'
     | '/dashboard/account/profile'
     | '/dashboard/account/support'
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
     | '/dashboard/account/add-bank'
     | '/dashboard/account/deposit'
     | '/dashboard/account/history'
+    | '/dashboard/account/kyc'
     | '/dashboard/account/loyalty'
     | '/dashboard/account/profile'
     | '/dashboard/account/withdraw'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/dashboard/account/add-bank'
     | '/dashboard/account/deposit'
     | '/dashboard/account/history'
+    | '/dashboard/account/kyc'
     | '/dashboard/account/loyalty'
     | '/dashboard/account/profile'
     | '/dashboard/account/support'
@@ -612,6 +624,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAccountHistoryRouteImport
       parentRoute: typeof DashboardAccountRoute
     }
+    '/dashboard/account/kyc': {
+      id: '/dashboard/account/kyc'
+      path: '/kyc'
+      fullPath: '/dashboard/account/kyc'
+      preLoaderRoute: typeof DashboardAccountKycRouteImport
+      parentRoute: typeof DashboardAccountRoute
+    }
     '/dashboard/account/loyalty': {
       id: '/dashboard/account/loyalty'
       path: '/loyalty'
@@ -691,6 +710,7 @@ interface DashboardAccountRouteChildren {
   DashboardAccountAddBankRoute: typeof DashboardAccountAddBankRoute
   DashboardAccountDepositRoute: typeof DashboardAccountDepositRoute
   DashboardAccountHistoryRoute: typeof DashboardAccountHistoryRoute
+  DashboardAccountKycRoute: typeof DashboardAccountKycRoute
   DashboardAccountLoyaltyRoute: typeof DashboardAccountLoyaltyRoute
   DashboardAccountProfileRoute: typeof DashboardAccountProfileRoute
   DashboardAccountSupportRoute: typeof DashboardAccountSupportRouteWithChildren
@@ -702,6 +722,7 @@ const DashboardAccountRouteChildren: DashboardAccountRouteChildren = {
   DashboardAccountAddBankRoute: DashboardAccountAddBankRoute,
   DashboardAccountDepositRoute: DashboardAccountDepositRoute,
   DashboardAccountHistoryRoute: DashboardAccountHistoryRoute,
+  DashboardAccountKycRoute: DashboardAccountKycRoute,
   DashboardAccountLoyaltyRoute: DashboardAccountLoyaltyRoute,
   DashboardAccountProfileRoute: DashboardAccountProfileRoute,
   DashboardAccountSupportRoute: DashboardAccountSupportRouteWithChildren,

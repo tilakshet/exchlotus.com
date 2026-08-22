@@ -157,7 +157,7 @@ export async function listTransactionHistory(
 
 export class WalletError extends Error {
   constructor(
-    public readonly code: "BANK_ACCOUNT_NOT_FOUND",
+    public readonly code: "BANK_ACCOUNT_NOT_FOUND" | "KYC_REQUIRED",
     message: string
   ) {
     super(message)
@@ -190,8 +190,8 @@ export async function applyManualDeposit(playerExternalId: string, amount: numbe
  * a PENDING WithdrawalRequest — no money actually leaves and no ledger entry
  * is written yet. An admin approving it in admin/backend is what calls the
  * real payout API and writes the WITHDRAWAL ledger entry; rejecting it
- * releases the lock back to balance. See the payments plan for why: there's
- * no KYC/fraud review today, so nothing pays out unattended.
+ * releases the lock back to balance. Gated on Player.kycStatus === APPROVED
+ * (see kyc.service.ts) — nothing pays out to an unverified identity.
  */
 export async function requestWithdrawal(
   playerExternalId: string,
@@ -201,6 +201,10 @@ export async function requestWithdrawal(
   const player = await prisma.player.findUnique({ where: { externalId: playerExternalId } })
   if (!player) {
     throw new GamingApiError("INVALID_USER", `No player found for user_id ${playerExternalId}`)
+  }
+
+  if (player.kycStatus !== "APPROVED") {
+    throw new WalletError("KYC_REQUIRED", "Complete KYC verification before withdrawing")
   }
 
   const bankAccount = await prisma.bankAccount.findFirst({ where: { id: bankAccountId, playerId: player.id } })

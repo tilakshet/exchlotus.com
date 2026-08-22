@@ -46,6 +46,13 @@ export const WITHDRAWAL_STATUS_CONFIG: Record<string, StatusConfig> = {
   FAILED: { label: "Failed", tone: "destructive", icon: XCircle },
 }
 
+export const KYC_STATUS_CONFIG: Record<string, StatusConfig> = {
+  NOT_SUBMITTED: { label: "Not submitted", tone: "default", icon: Circle },
+  PENDING: { label: "Pending review", tone: "warning", icon: Clock },
+  APPROVED: { label: "Approved", tone: "success", icon: CheckCircle2 },
+  REJECTED: { label: "Rejected", tone: "destructive", icon: XCircle },
+}
+
 export const TICKET_STATUS_CONFIG: Record<string, StatusConfig> = {
   OPEN: { label: "Open", tone: "warning", icon: Clock },
   IN_PROGRESS: { label: "In progress", tone: "default", icon: Loader2 },

@@ -5,6 +5,7 @@ import {
   Gamepad2,
   Gauge,
   History,
+  IdCard,
   KeyRound,
   Landmark,
   LayoutDashboard,
@@ -40,6 +41,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Operations",
     items: [
       { label: "Users", to: "/users", permission: "users.view", icon: UsersIcon },
+      { label: "KYC Verification", to: "/kyc", permission: "kyc.view", icon: IdCard },
       { label: "Login Activity", to: "/login-activity", permission: "users.view", icon: History },
       { label: "Support", to: "/support", permission: "support.view", icon: LifeBuoy },
       { label: "Games", to: "/games", permission: "games.view", icon: Gamepad2 },

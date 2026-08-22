@@ -15,6 +15,8 @@ function serializePlayer(player: {
   dateOfBirth: Date | null
   currency: string
   createdAt: Date
+  kycStatus: string
+  phoneVerifiedAt: Date | null
 }) {
   return {
     username: player.username,
@@ -25,6 +27,8 @@ function serializePlayer(player: {
     dateOfBirth: player.dateOfBirth ? player.dateOfBirth.toISOString().slice(0, 10) : null,
     currency: player.currency,
     memberSince: player.createdAt.toISOString(),
+    kycStatus: player.kycStatus,
+    phoneVerified: player.phoneVerifiedAt !== null,
   }
 }
 

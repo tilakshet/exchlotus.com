@@ -15,10 +15,17 @@ import { env } from "./env"
  */
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads")
 export const SUPPORT_UPLOAD_DIR = path.join(UPLOAD_ROOT, "support")
+/// PAN card scans + KYC selfies — unlike SUPPORT_UPLOAD_DIR, never exposed
+/// through a public static route (see app.ts). admin-backend reads these
+/// off the same exchlotus_uploads volume through its own authenticated
+/// document-streaming route (admin/backend's kyc.controller.ts), not by
+/// asking this process for them.
+export const KYC_UPLOAD_DIR = path.join(UPLOAD_ROOT, "kyc")
 // multer's diskStorage doesn't create its destination — without this, the
 // first upload after a fresh volume/checkout (see docker-compose.prod.yml's
 // exchlotus_uploads volume) fails with ENOENT.
 fs.mkdirSync(SUPPORT_UPLOAD_DIR, { recursive: true })
+fs.mkdirSync(KYC_UPLOAD_DIR, { recursive: true })
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"])
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -63,4 +70,45 @@ export function parseSupportImageUpload(req: import("express").Request, res: imp
 /** Builds the absolute, publicly-fetchable URL for an uploaded support image — see SupportMessage.attachmentUrl in schema.prisma for why this must be absolute (admin/frontend is a different domain). */
 export function supportImageUrl(filename: string): string {
   return `${env.PUBLIC_BASE_URL}/api/uploads/support/${filename}`
+}
+
+const kycStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, KYC_UPLOAD_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase()
+    cb(null, `${crypto.randomUUID()}${ext}`)
+  },
+})
+
+const kycUpload = multer({
+  storage: kycStorage,
+  limits: { fileSize: MAX_IMAGE_BYTES, files: 2 },
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_IMAGE_MIME_TYPES.has(file.mimetype)) return cb(new UnsupportedImageTypeError())
+    cb(null, true)
+  },
+}).fields([
+  { name: "panCard", maxCount: 1 },
+  { name: "photo", maxCount: 1 },
+])
+
+/** Same wrapping approach as parseSupportImageUpload — see its doc comment. */
+export function parseKycUpload(
+  req: import("express").Request,
+  res: import("express").Response
+): Promise<{ error?: string; files?: { panCard: string; photo: string } }> {
+  return new Promise((resolve) => {
+    kycUpload(req, res, (err: unknown) => {
+      if (err instanceof UnsupportedImageTypeError) return resolve({ error: "Only JPEG, PNG, WEBP, or GIF images are allowed." })
+      if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") return resolve({ error: `Each image must be under ${MAX_IMAGE_BYTES / 1024 / 1024}MB.` })
+      if (err) return resolve({ error: "Could not process the uploaded images." })
+
+      const files = req.files as { panCard?: Express.Multer.File[]; photo?: Express.Multer.File[] } | undefined
+      const panCard = files?.panCard?.[0]
+      const photo = files?.photo?.[0]
+      if (!panCard || !photo) return resolve({ error: "Both a PAN card image and a profile photo are required." })
+
+      resolve({ files: { panCard: panCard.filename, photo: photo.filename } })
+    })
+  })
 }

@@ -1,3 +1,5 @@
+export type KycStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED"
+
 export interface Profile {
   username: string
   email: string | null
@@ -8,6 +10,8 @@ export interface Profile {
   dateOfBirth: string | null
   currency: string
   memberSince: string
+  kycStatus: KycStatus
+  phoneVerified: boolean
 }
 
 export interface UpdateProfileInput {

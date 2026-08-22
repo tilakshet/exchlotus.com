@@ -71,6 +71,13 @@ services:
     restart: unless-stopped
     env_file:
       - admin/backend/.env.production
+    volumes:
+      # Same volume `backend` writes KYC documents to (see its own volumes
+      # comment above) — mounted read-only here since this container only
+      # ever streams them back for admin review (kyc.controller.ts), never
+      # writes. This is how a KYC document uploaded by the player backend
+      # becomes visible to admin review without a cross-service file API.
+      - exchlotus_uploads:/app/uploads:ro
     depends_on:
       postgres:
         condition: service_healthy

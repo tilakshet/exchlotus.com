@@ -191,29 +191,43 @@ export async function requestOtp(phone: string): Promise<{ devCode?: string }> {
   return env.NODE_ENV === "production" ? {} : { devCode: code }
 }
 
-export async function verifyOtp(phone: string, code: string, referralCode?: string, context?: LoginEventContext): Promise<AuthTokens> {
+/**
+ * The actual "is this the right code" check, with no knowledge of what it's
+ * being used for — verifyOtp (login/signup) below is one caller; the KYC
+ * module's confirm-phone step (kyc.service.ts) is the other, for accounts
+ * that signed up with a password and so never proved phone ownership via
+ * OTP at all. Throws AuthError("OTP_INVALID", ...) on any failure, marks
+ * the code consumed on success.
+ */
+export async function checkOtpCode(phone: string, code: string): Promise<void> {
   const record = await prisma.otpCode.findFirst({
     where: { phone, consumedAt: null },
     orderBy: { createdAt: "desc" },
   })
 
   if (!record || record.expiresAt < new Date()) {
-    await recordLoginEvent({ phone, method: "OTP", result: "FAILURE", reason: "OTP_INVALID", context })
     throw new AuthError("OTP_INVALID", "No valid code found for that number — request a new one")
   }
   if (record.attempts >= OTP_MAX_ATTEMPTS) {
-    await recordLoginEvent({ phone, method: "OTP", result: "FAILURE", reason: "OTP_INVALID", context })
     throw new AuthError("OTP_INVALID", "Too many incorrect attempts — request a new code")
   }
 
   const valid = await verifyPassword(code, record.codeHash)
   if (!valid) {
     await prisma.otpCode.update({ where: { id: record.id }, data: { attempts: { increment: 1 } } })
-    await recordLoginEvent({ phone, method: "OTP", result: "FAILURE", reason: "OTP_INVALID", context })
     throw new AuthError("OTP_INVALID", "Incorrect code")
   }
 
   await prisma.otpCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } })
+}
+
+export async function verifyOtp(phone: string, code: string, referralCode?: string, context?: LoginEventContext): Promise<AuthTokens> {
+  try {
+    await checkOtpCode(phone, code)
+  } catch (err) {
+    await recordLoginEvent({ phone, method: "OTP", result: "FAILURE", reason: "OTP_INVALID", context })
+    throw err
+  }
 
   // findOrCreate by phone: OTP is a first-class login method here, not just
   // a second factor on top of an email account, so verifying a new number
@@ -234,6 +248,12 @@ export async function verifyOtp(phone: string, code: string, referralCode?: stri
   if (player.status === "SUSPENDED") {
     await recordLoginEvent({ playerId: player.id, phone, method: "OTP", result: "FAILURE", reason: "ACCOUNT_SUSPENDED", context })
     throw new AuthError("ACCOUNT_SUSPENDED", "This account has been suspended")
+  }
+
+  // A successful OTP is proof of phone ownership regardless of why it was
+  // requested — set once, on whichever flow first establishes it.
+  if (!player.phoneVerifiedAt) {
+    await prisma.player.update({ where: { id: player.id }, data: { phoneVerifiedAt: new Date() } })
   }
 
   await recordLoginEvent({ playerId: player.id, phone, method: "OTP", result: "SUCCESS", context })
