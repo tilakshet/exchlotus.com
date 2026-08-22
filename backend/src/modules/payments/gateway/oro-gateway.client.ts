@@ -44,6 +44,14 @@ class OroGatewayClient implements PaymentGateway {
       throw new Error(`PayIn order creation failed with status ${res.status}${json.message ? `: ${json.message}` : ""}`)
     }
 
+    // A "success" response is not the same as a *usable* one — the gateway
+    // has been observed returning a payment_url that isn't a real UPI
+    // intent (players report it opening WhatsApp instead of a UPI app on
+    // iOS/macOS). Logging the actual value on every order, not just
+    // failures, is what makes that diagnosable — there was previously no
+    // record anywhere of what the gateway actually sent back on success.
+    logger.info({ orderId: input.orderId, paymentUrl: json.payment_url, trxId: json.trx_id }, "PayIn order created")
+
     return {
       paymentUrl: json.payment_url,
       gatewayTrxId: json.trx_id ?? "",
