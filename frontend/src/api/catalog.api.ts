@@ -1,8 +1,13 @@
 import { apiRequest } from "./http"
-import type { Category } from "@/types/catalog"
+import type { Category, HomeFeedShelf } from "@/types/catalog"
 
 export function getCategories(): Promise<Category[]> {
   return apiRequest<Category[]>("/api/catalog/categories")
+}
+
+/** Every category's first page of games in one request — see backend catalog.service.ts's listHomeFeed doc comment for why this replaced one /games request per category. */
+export function getHomeFeed(): Promise<HomeFeedShelf[]> {
+  return apiRequest<HomeFeedShelf[]>("/api/catalog/home-feed")
 }
 
 export interface SyncCatalogResult {

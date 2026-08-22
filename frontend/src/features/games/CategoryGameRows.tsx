@@ -1,6 +1,6 @@
 import { useState } from "react"
-import { useCategories } from "@/hooks/useCategories"
-import { CategoryRow, CategoryRowSkeleton } from "./CategoryRow"
+import { useHomeFeed } from "@/hooks/useCategories"
+import { CategoryRowView, CategoryRowSkeleton } from "./CategoryRow"
 import { GameLaunchModal } from "./GameLaunchModal"
 import type { Game } from "@/types/catalog"
 
@@ -15,9 +15,14 @@ import type { Game } from "@/types/catalog"
  * CategoryRow.tsx) — the Casino/Live Casino hub pages
  * (features/games/CategoryHubPage.tsx) render a filtered subset of the
  * same rows.
+ *
+ * Fed from one batched useHomeFeed() request instead of each row fetching
+ * its own category — ~30 categories firing ~30 simultaneous requests on
+ * every Home page load was the actual cause of the page's slow load (see
+ * backend catalog.service.ts's listHomeFeed doc comment).
  */
 export function CategoryGameRows() {
-  const { data: categories, isLoading, isError, refetch } = useCategories()
+  const { data: shelves, isLoading, isError, refetch } = useHomeFeed()
   const [launchingGame, setLaunchingGame] = useState<Game | null>(null)
 
   return (
@@ -40,14 +45,8 @@ export function CategoryGameRows() {
 
       {!isLoading &&
         !isError &&
-        categories?.map((category) => (
-          <CategoryRow
-            key={category.id}
-            code={category.code}
-            name={category.name}
-            heading={category.code === "andarbahar" ? "Live Games" : undefined}
-            onPlay={setLaunchingGame}
-          />
+        shelves?.map((shelf) => (
+          <CategoryRowView key={shelf.id} code={shelf.code} name={shelf.name} games={shelf.games} onPlay={setLaunchingGame} />
         ))}
 
       {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
