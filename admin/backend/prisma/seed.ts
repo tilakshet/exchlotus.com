@@ -32,6 +32,8 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
       "reports.export",
       "support.view",
       "support.manage",
+      "kyc.view",
+      "kyc.manage",
     ],
   },
   {
@@ -50,6 +52,8 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
       "reports.export",
       "withdrawals.view",
       "withdrawals.approve",
+      "kyc.view",
+      "kyc.manage",
     ],
   },
   {
@@ -64,6 +68,7 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
       "notifications.view",
       "support.view",
       "support.manage",
+      "kyc.view",
     ],
   },
   {
@@ -84,6 +89,7 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
       "games.export",
       "reports.export",
       "support.view",
+      "kyc.view",
     ],
   },
 ]

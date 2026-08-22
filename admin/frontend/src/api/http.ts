@@ -123,3 +123,31 @@ export async function downloadFile(path: string, query?: RequestOptions["query"]
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+/**
+ * Same auth problem as downloadFile above, but for displaying an image
+ * inline (`<img src>`) rather than triggering a save-to-disk — used for KYC
+ * document review, where the file must never be reachable via a plain
+ * unauthenticated URL. Caller owns the returned object URL and must
+ * URL.revokeObjectURL() it when done (see useEffect cleanup in the KYC
+ * review component) to avoid leaking memory across re-renders.
+ */
+export async function fetchAuthenticatedImageUrl(path: string): Promise<string> {
+  const accessToken = store.getState().adminAuth.accessToken
+  let res = await rawRequest(path, {}, accessToken)
+
+  if (res.status === 401 && store.getState().adminAuth.refreshToken) {
+    refreshInFlight ??= performRefresh().finally(() => {
+      refreshInFlight = null
+    })
+    const newToken = await refreshInFlight
+    if (newToken) res = await rawRequest(path, {}, newToken)
+  }
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => null)
+    throw new ApiError(res.status, json?.error ?? "UNKNOWN_ERROR", json?.message ?? res.statusText, json?.issues)
+  }
+
+  return URL.createObjectURL(await res.blob())
+}

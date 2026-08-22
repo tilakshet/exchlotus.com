@@ -30,6 +30,8 @@ export const PERMISSION_CODES = [
   "reports.export",
   "support.view",
   "support.manage",
+  "kyc.view",
+  "kyc.manage",
 ] as const
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number]

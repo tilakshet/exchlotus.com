@@ -73,6 +73,9 @@ walletRouter.post("/withdraw", async (req, res) => {
     if (err instanceof WalletError && err.code === "BANK_ACCOUNT_NOT_FOUND") {
       return res.status(404).json({ error: err.code, message: err.message })
     }
+    if (err instanceof WalletError && err.code === "KYC_REQUIRED") {
+      return res.status(403).json({ error: err.code, message: err.message })
+    }
     throw err
   }
 })

@@ -18,6 +18,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDepositsRouteImport } from './routes/_authenticated.deposits'
 import { Route as AuthenticatedGameActivityRouteImport } from './routes/_authenticated.game-activity'
 import { Route as AuthenticatedGamesRouteImport } from './routes/_authenticated.games'
+import { Route as AuthenticatedKycRouteImport } from './routes/_authenticated.kyc'
 import { Route as AuthenticatedLoginActivityRouteImport } from './routes/_authenticated.login-activity'
 import { Route as AuthenticatedMonitoringRouteImport } from './routes/_authenticated.monitoring'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated.reports'
@@ -28,6 +29,8 @@ import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated.
 import { Route as AuthenticatedWithdrawalsRouteImport } from './routes/_authenticated.withdrawals'
 import { Route as AuthenticatedGamesIndexRouteImport } from './routes/_authenticated.games.index'
 import { Route as AuthenticatedGamesIdRouteImport } from './routes/_authenticated.games.$id'
+import { Route as AuthenticatedKycIndexRouteImport } from './routes/_authenticated.kyc.index'
+import { Route as AuthenticatedKycIdRouteImport } from './routes/_authenticated.kyc.$id'
 import { Route as AuthenticatedSupportIndexRouteImport } from './routes/_authenticated.support.index'
 import { Route as AuthenticatedSupportIdRouteImport } from './routes/_authenticated.support.$id'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated.users.index'
@@ -76,6 +79,11 @@ const AuthenticatedGameActivityRoute =
 const AuthenticatedGamesRoute = AuthenticatedGamesRouteImport.update({
   id: '/games',
   path: '/games',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedKycRoute = AuthenticatedKycRouteImport.update({
+  id: '/kyc',
+  path: '/kyc',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedLoginActivityRoute =
@@ -131,6 +139,16 @@ const AuthenticatedGamesIdRoute = AuthenticatedGamesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedGamesRoute,
 } as any)
+const AuthenticatedKycIndexRoute = AuthenticatedKycIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedKycRoute,
+} as any)
+const AuthenticatedKycIdRoute = AuthenticatedKycIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedKycRoute,
+} as any)
 const AuthenticatedSupportIndexRoute =
   AuthenticatedSupportIndexRouteImport.update({
     id: '/',
@@ -162,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/deposits': typeof AuthenticatedDepositsRoute
   '/game-activity': typeof AuthenticatedGameActivityRoute
   '/games': typeof AuthenticatedGamesRouteWithChildren
+  '/kyc': typeof AuthenticatedKycRouteWithChildren
   '/login-activity': typeof AuthenticatedLoginActivityRoute
   '/monitoring': typeof AuthenticatedMonitoringRoute
   '/reports': typeof AuthenticatedReportsRoute
@@ -171,9 +190,11 @@ export interface FileRoutesByFullPath {
   '/users': typeof AuthenticatedUsersRouteWithChildren
   '/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/games/$id': typeof AuthenticatedGamesIdRoute
+  '/kyc/$id': typeof AuthenticatedKycIdRoute
   '/support/$id': typeof AuthenticatedSupportIdRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
   '/games/': typeof AuthenticatedGamesIndexRoute
+  '/kyc/': typeof AuthenticatedKycIndexRoute
   '/support/': typeof AuthenticatedSupportIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
 }
@@ -192,9 +213,11 @@ export interface FileRoutesByTo {
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/games/$id': typeof AuthenticatedGamesIdRoute
+  '/kyc/$id': typeof AuthenticatedKycIdRoute
   '/support/$id': typeof AuthenticatedSupportIdRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
   '/games': typeof AuthenticatedGamesIndexRoute
+  '/kyc': typeof AuthenticatedKycIndexRoute
   '/support': typeof AuthenticatedSupportIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
 }
@@ -209,6 +232,7 @@ export interface FileRoutesById {
   '/_authenticated/deposits': typeof AuthenticatedDepositsRoute
   '/_authenticated/game-activity': typeof AuthenticatedGameActivityRoute
   '/_authenticated/games': typeof AuthenticatedGamesRouteWithChildren
+  '/_authenticated/kyc': typeof AuthenticatedKycRouteWithChildren
   '/_authenticated/login-activity': typeof AuthenticatedLoginActivityRoute
   '/_authenticated/monitoring': typeof AuthenticatedMonitoringRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
@@ -218,9 +242,11 @@ export interface FileRoutesById {
   '/_authenticated/users': typeof AuthenticatedUsersRouteWithChildren
   '/_authenticated/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/_authenticated/games/$id': typeof AuthenticatedGamesIdRoute
+  '/_authenticated/kyc/$id': typeof AuthenticatedKycIdRoute
   '/_authenticated/support/$id': typeof AuthenticatedSupportIdRoute
   '/_authenticated/users/$id': typeof AuthenticatedUsersIdRoute
   '/_authenticated/games/': typeof AuthenticatedGamesIndexRoute
+  '/_authenticated/kyc/': typeof AuthenticatedKycIndexRoute
   '/_authenticated/support/': typeof AuthenticatedSupportIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
 }
@@ -235,6 +261,7 @@ export interface FileRouteTypes {
     | '/deposits'
     | '/game-activity'
     | '/games'
+    | '/kyc'
     | '/login-activity'
     | '/monitoring'
     | '/reports'
@@ -244,9 +271,11 @@ export interface FileRouteTypes {
     | '/users'
     | '/withdrawals'
     | '/games/$id'
+    | '/kyc/$id'
     | '/support/$id'
     | '/users/$id'
     | '/games/'
+    | '/kyc/'
     | '/support/'
     | '/users/'
   fileRoutesByTo: FileRoutesByTo
@@ -265,9 +294,11 @@ export interface FileRouteTypes {
     | '/transactions'
     | '/withdrawals'
     | '/games/$id'
+    | '/kyc/$id'
     | '/support/$id'
     | '/users/$id'
     | '/games'
+    | '/kyc'
     | '/support'
     | '/users'
   id:
@@ -281,6 +312,7 @@ export interface FileRouteTypes {
     | '/_authenticated/deposits'
     | '/_authenticated/game-activity'
     | '/_authenticated/games'
+    | '/_authenticated/kyc'
     | '/_authenticated/login-activity'
     | '/_authenticated/monitoring'
     | '/_authenticated/reports'
@@ -290,9 +322,11 @@ export interface FileRouteTypes {
     | '/_authenticated/users'
     | '/_authenticated/withdrawals'
     | '/_authenticated/games/$id'
+    | '/_authenticated/kyc/$id'
     | '/_authenticated/support/$id'
     | '/_authenticated/users/$id'
     | '/_authenticated/games/'
+    | '/_authenticated/kyc/'
     | '/_authenticated/support/'
     | '/_authenticated/users/'
   fileRoutesById: FileRoutesById
@@ -368,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGamesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/kyc': {
+      id: '/_authenticated/kyc'
+      path: '/kyc'
+      fullPath: '/kyc'
+      preLoaderRoute: typeof AuthenticatedKycRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/login-activity': {
       id: '/_authenticated/login-activity'
       path: '/login-activity'
@@ -438,6 +479,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGamesIdRouteImport
       parentRoute: typeof AuthenticatedGamesRoute
     }
+    '/_authenticated/kyc/': {
+      id: '/_authenticated/kyc/'
+      path: '/'
+      fullPath: '/kyc/'
+      preLoaderRoute: typeof AuthenticatedKycIndexRouteImport
+      parentRoute: typeof AuthenticatedKycRoute
+    }
+    '/_authenticated/kyc/$id': {
+      id: '/_authenticated/kyc/$id'
+      path: '/$id'
+      fullPath: '/kyc/$id'
+      preLoaderRoute: typeof AuthenticatedKycIdRouteImport
+      parentRoute: typeof AuthenticatedKycRoute
+    }
     '/_authenticated/support/': {
       id: '/_authenticated/support/'
       path: '/'
@@ -482,6 +537,19 @@ const AuthenticatedGamesRouteChildren: AuthenticatedGamesRouteChildren = {
 const AuthenticatedGamesRouteWithChildren =
   AuthenticatedGamesRoute._addFileChildren(AuthenticatedGamesRouteChildren)
 
+interface AuthenticatedKycRouteChildren {
+  AuthenticatedKycIdRoute: typeof AuthenticatedKycIdRoute
+  AuthenticatedKycIndexRoute: typeof AuthenticatedKycIndexRoute
+}
+
+const AuthenticatedKycRouteChildren: AuthenticatedKycRouteChildren = {
+  AuthenticatedKycIdRoute: AuthenticatedKycIdRoute,
+  AuthenticatedKycIndexRoute: AuthenticatedKycIndexRoute,
+}
+
+const AuthenticatedKycRouteWithChildren =
+  AuthenticatedKycRoute._addFileChildren(AuthenticatedKycRouteChildren)
+
 interface AuthenticatedSupportRouteChildren {
   AuthenticatedSupportIdRoute: typeof AuthenticatedSupportIdRoute
   AuthenticatedSupportIndexRoute: typeof AuthenticatedSupportIndexRoute
@@ -515,6 +583,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDepositsRoute: typeof AuthenticatedDepositsRoute
   AuthenticatedGameActivityRoute: typeof AuthenticatedGameActivityRoute
   AuthenticatedGamesRoute: typeof AuthenticatedGamesRouteWithChildren
+  AuthenticatedKycRoute: typeof AuthenticatedKycRouteWithChildren
   AuthenticatedLoginActivityRoute: typeof AuthenticatedLoginActivityRoute
   AuthenticatedMonitoringRoute: typeof AuthenticatedMonitoringRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
@@ -532,6 +601,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDepositsRoute: AuthenticatedDepositsRoute,
   AuthenticatedGameActivityRoute: AuthenticatedGameActivityRoute,
   AuthenticatedGamesRoute: AuthenticatedGamesRouteWithChildren,
+  AuthenticatedKycRoute: AuthenticatedKycRouteWithChildren,
   AuthenticatedLoginActivityRoute: AuthenticatedLoginActivityRoute,
   AuthenticatedMonitoringRoute: AuthenticatedMonitoringRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,

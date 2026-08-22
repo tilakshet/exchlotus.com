@@ -3,9 +3,10 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { CheckCircle2, CreditCard, IndianRupee, Landmark, Plus, Trash2, Wallet as WalletIcon } from "lucide-react"
+import { CheckCircle2, Clock, CreditCard, IndianRupee, Landmark, Plus, ShieldAlert, Trash2, Wallet as WalletIcon } from "lucide-react"
 import { useWallet, useWithdraw } from "@/hooks/useWallet"
 import { useBankAccounts } from "@/hooks/useBankAccounts"
+import { useProfile } from "@/hooks/useProfile"
 import { ApiError, friendlyErrorMessage } from "@/api/api-error"
 import { ComingSoon } from "@/features/account/ComingSoon"
 import { StepHeading } from "@/features/account/StepHeading"
@@ -31,6 +32,7 @@ function maskAccountNumber(accountNumber: string) {
 
 function WithdrawPage() {
   const { data: wallet } = useWallet()
+  const { data: profile } = useProfile()
   const withdraw = useWithdraw()
   const { accounts, removeAccount } = useBankAccounts()
   const [payoutNote, setPayoutNote] = useState<string | null>(null)
@@ -94,6 +96,32 @@ function WithdrawPage() {
         <span className="text-[28px] font-bold">{formatInr(availableBalance)}</span>
       </div>
 
+      {profile && profile.kycStatus !== "APPROVED" ? (
+        <div
+          className="flex flex-col items-start gap-3 rounded-[var(--acc-radius-lg)] px-7 py-6 sm:flex-row sm:items-center sm:justify-between"
+          style={profile.kycStatus === "PENDING" ? { background: "var(--acc-pending-bg)", color: "var(--acc-pending-fg)" } : { background: "var(--acc-danger-bg)", color: "var(--acc-danger)" }}
+        >
+          <span className="flex items-center gap-3 text-lg font-medium">
+            {profile.kycStatus === "PENDING" ? (
+              <Clock className="size-7.5 shrink-0" aria-hidden="true" strokeWidth={2.1} />
+            ) : (
+              <ShieldAlert className="size-7.5 shrink-0" aria-hidden="true" strokeWidth={2.1} />
+            )}
+            {profile.kycStatus === "PENDING"
+              ? "Your KYC verification is under review — withdrawals unlock once it's approved."
+              : "Complete KYC verification before you can withdraw."}
+          </span>
+          {profile.kycStatus !== "PENDING" && (
+            <Link
+              to="/dashboard/account/kyc"
+              className="flex h-11 shrink-0 items-center rounded-[var(--acc-radius-md)] px-6 text-sm font-bold whitespace-nowrap outline-none transition-opacity hover:opacity-90"
+              style={{ background: "var(--acc-danger)", color: "white" }}
+            >
+              Verify Now
+            </Link>
+          )}
+        </div>
+      ) : (
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr] lg:items-start">
           <section className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
@@ -251,6 +279,7 @@ function WithdrawPage() {
           </section>
         </div>
       </form>
+      )}
 
       <section className="hidden lg:block">
         <h3 className="mb-4 text-center text-xl font-bold" style={{ color: "var(--acc-accent)" }}>

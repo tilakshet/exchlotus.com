@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useMatchRoute, useNavigate, useRouterState } from "@tanstack/react-router"
-import { ArrowDownLeft, ArrowUpRight, Briefcase, Gift, History as HistoryIcon, LifeBuoy, LogOut, Star, User } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, Briefcase, Gift, History as HistoryIcon, LifeBuoy, LogOut, ShieldCheck, Star, User } from "lucide-react"
 import { store } from "@/store"
 import { useAuth } from "@/hooks/useAuth"
 import { UserAvatar } from "@/components/shared/UserAvatar"
@@ -54,6 +54,7 @@ const sideNav = [
   { to: "/dashboard/account", label: "Account", icon: Briefcase, exact: true },
   { to: "/dashboard/account/history", label: "History", icon: HistoryIcon, exact: false },
   { to: "/dashboard/account/profile", label: "My Profile", icon: User, exact: false },
+  { to: "/dashboard/account/kyc", label: "KYC Verification", icon: ShieldCheck, exact: false },
 ] as const
 
 const topTabs = [
@@ -82,6 +83,7 @@ const pageHeadings: { match: string; exact: boolean; title: string; subtitle: st
   { match: "/dashboard/account/history", exact: false, title: "Transaction History", subtitle: "Every deposit, withdrawal and game transaction on your account." },
   { match: "/dashboard/account/support", exact: false, title: "Support", subtitle: "Raise a query and track your conversation with our team." },
   { match: "/dashboard/account/profile", exact: false, title: "My Profile", subtitle: "Manage your personal details and security." },
+  { match: "/dashboard/account/kyc", exact: false, title: "KYC Verification", subtitle: "Verify your identity to unlock withdrawals." },
   { match: "/dashboard/account", exact: true, title: "Account", subtitle: "Manage your wallet, deposits, withdrawals and rewards." },
 ]
 

@@ -18,6 +18,8 @@ export type AdminApiErrorCode =
   | "DUPLICATE_ADJUSTMENT"
   | "WITHDRAWAL_NOT_PENDING"
   | "GATEWAY_ERROR"
+  | "KYC_NOT_PENDING"
+  | "REASON_REQUIRED"
 
 export class AdminApiError extends Error {
   constructor(
@@ -49,6 +51,8 @@ const STATUS_BY_CODE: Record<AdminApiErrorCode, number> = {
   DUPLICATE_ADJUSTMENT: 409,
   WITHDRAWAL_NOT_PENDING: 409,
   GATEWAY_ERROR: 502,
+  KYC_NOT_PENDING: 409,
+  REASON_REQUIRED: 422,
 }
 
 export function statusForError(err: AdminApiError): number {
