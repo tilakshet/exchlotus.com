@@ -27,9 +27,11 @@ and `GET /v1/catalog/games` are confirmed against it — both return real
 data through our own `syncCatalog()` code path, not just a raw curl check
 (189 providers, ~15.1k games, upserted into Postgres with provider→category
 links intact). `POST /v1/sessions/launch` also responds with the documented
-`{ game_url, session }` shape, but the `game_url` it returns currently
-errors for every game tried — see "Provider integration — v2 endpoint set"
-below for exactly what's confirmed vs. still broken/unconfirmed.
+`{ game_url, session }` shape, and as of 2026-08-22 `game_url` itself
+resolves to an actual working game client (confirmed via a real browser
+load in both `fun` and `real` mode) — an earlier issue where it pointed at
+a broken error page was on the provider's side and has been fixed; see
+"Provider integration — v2 endpoint set" below for the full history.
 
 ## Stack
 
@@ -309,17 +311,32 @@ integration doc would normally include:
   demo data, not something to trust at real scale.
 - **Rate limiting / brute-force protection** on `/api/auth/login` and the
   webhook endpoint — neither exists yet.
-- **Session launch doesn't actually produce a playable game.** Confirmed
-  live against `https://igaming-one-psi.vercel.app/api` (2026-08-13):
-  `POST /v1/sessions/launch` returns `200` with the documented
+- ~~Session launch doesn't actually produce a playable game~~ **Fixed by the
+  provider, confirmed 2026-08-22.** The 2026-08-13 issue below was on their
+  side (a regional deployment change adding latency to a pre-launch
+  validation step, causing intermittent timeouts) — reverted on their end.
+  Retested `POST /v1/sessions/launch` against a real synced game
+  (dreamplay's "Wolf Street") in both `fun` and `real` mode: both return
+  `200` with a `game_url` that now actually loads a working game client
+  (confirmed via a real browser load, not just an HTTP status check — the
+  provider's own game wrapper UI renders correctly, no `game-error`
+  redirect). The frontend's "Play" button was already wired to trust this
+  response; that was previously a real risk given the bug below, now
+  resolved. If a *specific* `game_id` still comes back broken, the provider
+  asked to be sent that id + a timestamp for them to check individually —
+  it's no longer a systemic issue.
+
+  <details>
+  <summary>Original 2026-08-13 finding (kept for history)</summary>
+
+  Confirmed live against `https://igaming-one-psi.vercel.app/api`:
+  `POST /v1/sessions/launch` returned `200` with the documented
   `{ game_url, session }` shape for every game/provider tried, but
-  `game_url` itself resolves to `https://gator.drakon.casino/game-error` —
+  `game_url` itself resolved to `https://gator.drakon.casino/game-error` —
   not a 4xx/5xx we could catch and retry, a "success" response pointing at
   a broken game. Tried across two different providers (rubyplay, mancala)
-  in `fun` mode, same result both times. This is on the provider's side —
-  likely an account/agent activation step we don't have documented — not
-  something fixable from this codebase. Don't wire the frontend's "Play"
-  button to trust this response until it's resolved with the provider.
+  in `fun` mode, same result both times.
+  </details>
 - **Campaigns (free-spins) have no consumer.** The client methods exist
   and are mock-verified; there's no Prisma model, service, or REST route
   exposing this to the frontend yet.
