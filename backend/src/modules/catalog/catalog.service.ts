@@ -233,3 +233,47 @@ export async function listCategories() {
   )
   return mergeCategoryGroups(categories)
 }
+
+const HOME_FEED_GAMES_PER_CATEGORY = 12
+
+export interface HomeFeedShelf {
+  id: string
+  code: string
+  name: string
+  games: Awaited<ReturnType<typeof prisma.game.findMany>>
+}
+
+/**
+ * The Home page's real bottleneck wasn't any single slow query — it was
+ * shape: one shelf per real category (~30 of them), each firing its own
+ * `useGames` request from the browser (see frontend CategoryGameRows.tsx),
+ * all at once, on every load. Even with each individually fast and
+ * Redis-cached, ~30 simultaneous requests stack up against nginx's per-IP
+ * burst limit and this process's own per-request overhead. This collapses
+ * all of it into one request: every category's first page, fetched via
+ * Promise.all *inside* this one call instead of ~30 separate browser round
+ * trips, with the assembled result cached under a single Redis key — a warm
+ * cache serves the whole Home page's game data with zero Postgres round
+ * trips. No pagination metadata needed here (unlike listGames) since each
+ * shelf only ever shows its first page.
+ */
+export async function listHomeFeed(): Promise<HomeFeedShelf[]> {
+  const version = await getCatalogVersion()
+  return getOrSetCache(`catalog:v${version}:home-feed`, 60, async () => {
+    const categories = await listCategories()
+    const shelves = await Promise.all(
+      categories.map(async (category) => {
+        const group = findMergeGroup(category.code)
+        const games = await prisma.game.findMany({
+          where: { enabled: true, category: { code: group ? { in: group.sourceCodes } : category.code } },
+          include: { provider: true, category: true },
+          orderBy: [{ gameName: "asc" }, { id: "asc" }],
+          take: HOME_FEED_GAMES_PER_CATEGORY,
+        })
+        return { id: category.id, code: category.code, name: category.name, games }
+      })
+    )
+    // Same rule CategoryRow already applies client-side — skip shelves with nothing synced yet.
+    return shelves.filter((shelf) => shelf.games.length > 0)
+  })
+}

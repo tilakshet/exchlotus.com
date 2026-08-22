@@ -49,3 +49,11 @@ export interface GamesPage {
   data: Game[]
   pagination: GamesPagination
 }
+
+/** One category's first page of games, as returned by GET /api/catalog/home-feed — see backend catalog.service.ts's listHomeFeed. */
+export interface HomeFeedShelf {
+  id: string
+  code: string
+  name: string
+  games: Game[]
+}

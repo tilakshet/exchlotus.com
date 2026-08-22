@@ -30,10 +30,15 @@ function LiveDot() {
 }
 
 /**
- * One horizontally-scrolling shelf for a real backend category, with a
- * "More" link to the paginated category-detail page
- * (routes/dashboard.category.$categoryCode.tsx) — the reachable "view all"
- * action every category row needs, not just the first 12 games shown here.
+ * Pure presentation — no fetching of its own. Renders one horizontally-
+ * scrolling shelf from games already in hand, with a "More" link to the
+ * paginated category-detail page (routes/dashboard.category.$categoryCode.tsx).
+ * Used directly by CategoryGameRows.tsx (fed from the single batched
+ * useHomeFeed() request — see its doc comment for why per-row fetching was
+ * replaced there) and wrapped by CategoryRow below (which still fetches its
+ * own single category — CategoryHubPage.tsx only ever renders a handful of
+ * rows per hub, so that per-row request isn't the N-requests problem
+ * useHomeFeed solves on the Home page).
  *
  * `heading` overrides just the visible H3 text (falls back to `name`) — used
  * by the /dashboard/live-casino hub to show "Live Casino" on every shelf
@@ -44,38 +49,25 @@ function LiveDot() {
  * (derived from each game's real category), so this only ever needs to
  * carry the heading-level flag.
  */
-export function CategoryRow({
+export function CategoryRowView({
   code,
   name,
+  games,
   heading,
   live,
   onPlay,
 }: {
   code: string
   name: string
+  games: Game[]
   heading?: string
   live?: boolean
   onPlay: (game: Game) => void
 }) {
-  const { data, isLoading } = useGames({ category: code, pageSize: 12 })
-  const games = data?.data
   const label = heading ?? name
 
-  if (isLoading) {
-    return (
-      <div>
-        <h3 className="mb-3 flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-[color:var(--sb-text-primary)]">
-          <span aria-hidden="true" className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: "linear-gradient(180deg, var(--sb-accent-gold), transparent)" }} />
-          {label}
-          {live && <LiveDot />}
-        </h3>
-        <CategoryRowSkeleton />
-      </div>
-    )
-  }
-
   // Skip categories with nothing synced yet rather than showing an empty shelf.
-  if (!games || games.length === 0) return null
+  if (games.length === 0) return null
 
   return (
     <div>
@@ -103,4 +95,41 @@ export function CategoryRow({
       </ul>
     </div>
   )
+}
+
+/**
+ * Fetching wrapper around CategoryRowView for a single category — used by
+ * CategoryHubPage.tsx (Casino/Live Casino hubs), where each page only ever
+ * renders a handful of rows, so a per-row request is fine.
+ */
+export function CategoryRow({
+  code,
+  name,
+  heading,
+  live,
+  onPlay,
+}: {
+  code: string
+  name: string
+  heading?: string
+  live?: boolean
+  onPlay: (game: Game) => void
+}) {
+  const { data, isLoading } = useGames({ category: code, pageSize: 12 })
+
+  if (isLoading) {
+    const label = heading ?? name
+    return (
+      <div>
+        <h3 className="mb-3 flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-[color:var(--sb-text-primary)]">
+          <span aria-hidden="true" className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: "linear-gradient(180deg, var(--sb-accent-gold), transparent)" }} />
+          {label}
+          {live && <LiveDot />}
+        </h3>
+        <CategoryRowSkeleton />
+      </div>
+    )
+  }
+
+  return <CategoryRowView code={code} name={name} games={data?.data ?? []} heading={heading} live={live} onPlay={onPlay} />
 }

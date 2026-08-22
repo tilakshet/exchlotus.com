@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { z } from "zod"
 import { env } from "../../lib/env"
-import { getGameByIdentifier, listCategories, listGames, listProviders, syncCatalog } from "./catalog.service"
+import { getGameByIdentifier, listCategories, listGames, listHomeFeed, listProviders, syncCatalog } from "./catalog.service"
 
 export const catalogRouter = Router()
 
@@ -11,6 +11,13 @@ catalogRouter.get("/providers", async (_req, res) => {
 
 catalogRouter.get("/categories", async (_req, res) => {
   res.json(await listCategories())
+})
+
+// Batched replacement for "one /games request per category" (see
+// listHomeFeed's doc comment) — the Home page's category rows fetch from
+// this instead of each firing their own request.
+catalogRouter.get("/home-feed", async (_req, res) => {
+  res.json(await listHomeFeed())
 })
 
 const listGamesQuerySchema = z.object({
