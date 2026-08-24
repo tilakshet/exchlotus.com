@@ -38,9 +38,16 @@ import type {
 class GamingProviderClient {
   private readonly MAX_PAGE_SIZE = 200
 
+  // Without this, a provider request that never responds (rather than
+  // erroring) hangs the calling request indefinitely — under concurrent
+  // real launch-day traffic that ties up connections instead of failing
+  // fast, which is worse than a clean error the player can retry from.
+  private readonly REQUEST_TIMEOUT_MS = 15_000
+
   private async authorizedFetch(path: string, init?: RequestInit): Promise<Response> {
     const res = await fetch(`${env.GAMING_PROVIDER_BASE_URL}${path}`, {
       ...init,
+      signal: AbortSignal.timeout(this.REQUEST_TIMEOUT_MS),
       headers: {
         ...init?.headers,
         Authorization: `Bearer ${env.GAMING_PROVIDER_API_KEY}`,
@@ -104,19 +111,35 @@ class GamingProviderClient {
     return this.fetchAllPages<GameV2>("/v1/catalog/games", query, "games")
   }
 
+  // A burst of real players launching games at once (e.g. right as a big
+  // match starts) can trip the provider's own rate limiter — that's a
+  // transient condition on their end, not a real per-game problem, so it's
+  // worth one short retry before surfacing "unavailable" to the player.
+  private static readonly LAUNCH_RETRY_DELAYS_MS = [300, 800]
+
   async launchSession(input: LaunchSessionInput): Promise<LaunchSessionResponse> {
-    const res = await this.authorizedFetch("/v1/sessions/launch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    })
-    if (!res.ok) {
+    for (let attempt = 0; ; attempt++) {
+      const res = await this.authorizedFetch("/v1/sessions/launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      })
+      if (res.ok) {
+        return res.json() as Promise<LaunchSessionResponse>
+      }
+
       const body = await res.json().catch(() => ({}))
-      logger.error({ status: res.status, gameId: input.game_id, mode: input.mode, body }, "Session launch failed")
       const message = typeof (body as { error?: unknown }).error === "string" ? (body as { error: string }).error : undefined
+
+      if (res.status === 429 && attempt < GamingProviderClient.LAUNCH_RETRY_DELAYS_MS.length) {
+        logger.warn({ gameId: input.game_id, mode: input.mode, attempt }, "Gaming provider rate-limited a session launch, retrying")
+        await new Promise((resolve) => setTimeout(resolve, GamingProviderClient.LAUNCH_RETRY_DELAYS_MS[attempt]))
+        continue
+      }
+
+      logger.error({ status: res.status, gameId: input.game_id, mode: input.mode, body }, "Session launch failed")
       throw new Error(`Session launch failed with status ${res.status}${message ? `: ${message}` : ""}`)
     }
-    return res.json() as Promise<LaunchSessionResponse>
   }
 
   async listCampaigns(): Promise<Campaign[]> {
