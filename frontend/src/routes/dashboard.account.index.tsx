@@ -23,23 +23,23 @@ function AccountOverviewPage() {
   const { items, isLoading: txLoading, isError: txError, refetch: refetchTx, hasNext, hasPrev, nextPage, prevPage } = useTransactionPage(5)
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-5">
       <div
-        className="flex items-center justify-between rounded-[var(--acc-radius-lg)] px-7 py-6"
+        className="flex items-center justify-between rounded-[var(--acc-radius-lg)] px-5 py-4"
         style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <span aria-hidden="true" className="flex size-14 items-center justify-center rounded-full" style={{ background: "rgb(255 255 255 / 22%)" }}>
             <WalletIcon className="size-8.75" aria-hidden="true" strokeWidth={2} />
           </span>
           <div>
-            <p className="text-base opacity-90">Total Balance</p>
+            <p className="text-sm opacity-90">Total Balance</p>
             {isLoading ? (
-              <span className="mt-1 inline-block h-9 w-32 animate-pulse rounded bg-white/30" aria-label="Loading balance" />
+              <span className="mt-1 inline-block h-7 w-28 animate-pulse rounded bg-white/30" aria-label="Loading balance" />
             ) : isError ? (
-              <span className="text-base">Couldn't load balance.</span>
+              <span className="text-sm">Couldn't load balance.</span>
             ) : (
-              <p className="text-[32px] leading-tight font-bold">{formatInr(wallet?.balance ?? 0)}</p>
+              <p className="text-2xl leading-tight font-semibold">{formatInr(wallet?.balance ?? 0)}</p>
             )}
           </div>
         </div>
@@ -54,7 +54,7 @@ function AccountOverviewPage() {
       </div>
 
       {isError && (
-        <div role="alert" className="flex items-center justify-between gap-2 rounded-[var(--acc-radius-md)] px-4 py-3 text-base" style={{ background: "var(--acc-danger-bg)", color: "var(--acc-danger)" }}>
+        <div role="alert" className="flex items-center justify-between gap-2 rounded-[var(--acc-radius-md)] px-4 py-2.5 text-sm" style={{ background: "var(--acc-danger-bg)", color: "var(--acc-danger)" }}>
           <span className="flex items-center gap-2">
             <AlertCircle className="size-5.5 shrink-0" aria-hidden="true" />
             Couldn't load wallet.
@@ -80,10 +80,10 @@ function AccountOverviewPage() {
       </div>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-[color:var(--acc-text-primary)]">Recent Transactions</h2>
+        <h2 className="text-base font-semibold text-[color:var(--acc-text-primary)]">Recent Transactions</h2>
         <Link
           to="/dashboard/account/history"
-          className="rounded-sm text-base font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
+          className="rounded-sm text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
           style={{ color: "var(--acc-accent)" }}
         >
           View All Transactions

@@ -108,13 +108,13 @@ function AccountLayout() {
           mobile fallback the way it might otherwise. */}
       <aside className="hidden lg:flex lg:h-full lg:w-72 lg:shrink-0 lg:flex-col lg:gap-4 lg:overflow-y-auto lg:pr-4">
         <div
-          className="shrink-0 rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] p-5"
+          className="shrink-0 rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] p-4"
           style={{ background: "linear-gradient(135deg, var(--acc-accent-soft), var(--acc-surface) 70%)" }}
         >
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3">
             <UserAvatar sizeClassName="size-14" background="var(--acc-accent)" color="var(--acc-accent-fg)" />
             <div>
-              <p className="text-lg font-semibold text-[color:var(--acc-text-primary)]">{user?.username ?? "Guest"}</p>
+              <p className="text-sm font-medium text-[color:var(--acc-text-primary)]">{user?.username ?? "Guest"}</p>
               <div className="mt-1 flex gap-0.5" aria-label={`${CURRENT_LOYALTY_TIER.name} tier`}>
                 {Array.from({ length: 4 }).map((_, i) => (
                   <Star
@@ -135,8 +135,8 @@ function AccountLayout() {
             column's height (default flex `align-items: stretch` on the row
             below), so Log Out sits at the bottom of the sidebar the way it
             does in the reference mockups, not immediately under the nav. */}
-        <div className="flex flex-1 flex-col rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-3">
-          <nav aria-label="Account sections" className="flex flex-col gap-1.5">
+        <div className="flex flex-1 flex-col rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-2.5">
+          <nav aria-label="Account sections" className="flex flex-col gap-1">
             {sideNav.map(({ to, label, icon: Icon, exact }) => {
               const active = !!matchRoute({ to, fuzzy: !exact })
               return (
@@ -144,7 +144,7 @@ function AccountLayout() {
                   key={to}
                   to={to}
                   aria-current={active ? "page" : undefined}
-                  className={`flex items-center gap-3 rounded-[var(--acc-radius-md)] px-4 py-3 text-base font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)] ${
+                  className={`flex items-center gap-2.5 rounded-[var(--acc-radius-md)] px-3 py-2.5 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)] ${
                     active ? "text-[color:var(--acc-accent)]" : "text-[color:var(--acc-text-primary)] hover:bg-[color:var(--acc-bg)]"
                   }`}
                   style={active ? { background: "var(--acc-accent-soft)" } : undefined}
@@ -161,7 +161,7 @@ function AccountLayout() {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-[var(--acc-radius-md)] px-4 py-3 text-base font-medium text-[color:var(--acc-text-secondary)] outline-none transition-colors hover:bg-[color:var(--acc-bg)] hover:text-[color:var(--acc-text-primary)] focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
+              className="flex w-full items-center gap-2.5 rounded-[var(--acc-radius-md)] px-3 py-2.5 text-sm font-medium text-[color:var(--acc-text-secondary)] outline-none transition-colors hover:bg-[color:var(--acc-bg)] hover:text-[color:var(--acc-text-primary)] focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
             >
               <LogOut className="size-6.5" aria-hidden="true" strokeWidth={2.1} />
               Log Out
@@ -176,13 +176,13 @@ function AccountLayout() {
       <div aria-hidden="true" className="hidden shrink-0 lg:block lg:w-px lg:self-stretch" style={{ background: "var(--acc-border)" }} />
 
       <div className="min-w-0 flex-1 pb-24 lg:h-full lg:overflow-y-auto lg:pr-2 lg:pb-0 lg:pl-6">
-        <div className="mb-6">
-          <h1 className="text-[28px] font-bold leading-tight text-[color:var(--acc-text-primary)] sm:text-[32px]">{heading.title}</h1>
-          <p className="mt-1 text-base text-[color:var(--acc-text-secondary)]">{heading.subtitle}</p>
+        <div className="mb-5">
+          <h1 className="text-xl font-semibold leading-tight text-[color:var(--acc-text-primary)] sm:text-2xl">{heading.title}</h1>
+          <p className="mt-1 text-sm text-[color:var(--acc-text-secondary)]">{heading.subtitle}</p>
         </div>
 
         {/* Desktop only — mobile navigates this section via the BottomNavBar below instead. */}
-        <div role="tablist" aria-label="Account, Deposit, Withdraw, Loyalty, or History" className="mb-6 hidden flex-wrap gap-2.5 lg:flex">
+        <div role="tablist" aria-label="Account, Deposit, Withdraw, Loyalty, or History" className="mb-5 hidden flex-wrap gap-2 lg:flex">
           {topTabs.map(({ to, label, icon: Icon, exact }) => {
             const active = !!matchRoute({ to, fuzzy: !exact })
             return (
@@ -191,7 +191,7 @@ function AccountLayout() {
                 to={to}
                 role="tab"
                 aria-selected={active}
-                className="flex h-12 items-center gap-2 rounded-[var(--acc-radius-full)] border px-5 text-base font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
+                className="flex h-9 items-center gap-1.5 rounded-[var(--acc-radius-full)] border px-4 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
                 style={
                   active
                     ? { background: "var(--acc-accent)", borderColor: "var(--acc-accent)", color: "var(--acc-accent-fg)" }
