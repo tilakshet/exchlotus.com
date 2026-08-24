@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react"
 import { useAuth } from "./useAuth"
 import { ApiError, friendlyErrorMessage } from "@/api/api-error"
+import type { Gender } from "@/types/profile"
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -61,10 +62,10 @@ export function usePhoneOtpFlow() {
   }, [cooldown, phone, requestOtp, startCooldown])
 
   const verify = useCallback(
-    async (code: string, referralCode: string | undefined, onSuccess: () => void) => {
+    async (code: string, referralCode: string | undefined, onSuccess: () => void, gender?: Gender) => {
       setFormError(null)
       try {
-        await verifyOtp(phone, code, referralCode)
+        await verifyOtp(phone, code, referralCode, gender)
         onSuccess()
       } catch (err) {
         setFormError(friendlyErrorMessage(err instanceof ApiError ? err : err))

@@ -23,23 +23,23 @@ function AccountOverviewPage() {
   const { items, isLoading: txLoading, isError: txError, refetch: refetchTx, hasNext, hasPrev, nextPage, prevPage } = useTransactionPage(5)
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div
-        className="flex items-center justify-between rounded-[var(--acc-radius-lg)] px-5 py-4"
+        className="flex items-center justify-between rounded-[var(--acc-radius-lg)] px-4 py-3.5"
         style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
       >
-        <div className="flex items-center gap-3">
-          <span aria-hidden="true" className="flex size-14 items-center justify-center rounded-full" style={{ background: "rgb(255 255 255 / 22%)" }}>
-            <WalletIcon className="size-8.75" aria-hidden="true" strokeWidth={2} />
+        <div className="flex items-center gap-2.5">
+          <span aria-hidden="true" className="flex size-11 items-center justify-center rounded-full" style={{ background: "rgb(255 255 255 / 22%)" }}>
+            <WalletIcon className="size-6.5" aria-hidden="true" strokeWidth={2} />
           </span>
           <div>
-            <p className="text-sm opacity-90">Total Balance</p>
+            <p className="text-xs opacity-90">Total Balance</p>
             {isLoading ? (
-              <span className="mt-1 inline-block h-7 w-28 animate-pulse rounded bg-white/30" aria-label="Loading balance" />
+              <span className="mt-1 inline-block h-6 w-24 animate-pulse rounded bg-white/30" aria-label="Loading balance" />
             ) : isError ? (
               <span className="text-sm">Couldn't load balance.</span>
             ) : (
-              <p className="text-2xl leading-tight font-semibold">{formatInr(wallet?.balance ?? 0)}</p>
+              <p className="text-xl leading-tight font-semibold">{formatInr(wallet?.balance ?? 0)}</p>
             )}
           </div>
         </div>
@@ -47,9 +47,9 @@ function AccountOverviewPage() {
           type="button"
           onClick={() => refetch()}
           aria-label="Refresh balance"
-          className="rounded-full p-2.5 outline-none hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white"
+          className="rounded-full p-2 outline-none hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white"
         >
-          <RefreshCw className={`size-5.5 ${isFetching ? "animate-spin" : ""}`} aria-hidden="true" strokeWidth={2.1} />
+          <RefreshCw className={`size-5 ${isFetching ? "animate-spin" : ""}`} aria-hidden="true" strokeWidth={2.1} />
         </button>
       </div>
 
@@ -65,7 +65,7 @@ function AccountOverviewPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <StatCard icon={WalletIcon} label="Total Balance" value={wallet?.balance ?? 0} description="Deposit + withdrawable + bonus" loading={isLoading} />
         <StatCard icon={ArrowDownLeft} label="Deposit Cash" value={(wallet?.balance ?? 0) - (wallet?.bonusBalance ?? 0)} description="Balance excluding bonus funds" loading={isLoading} />
         <StatCard icon={ArrowUpRight} label="Withdrawable Cash" value={(wallet?.balance ?? 0) - (wallet?.lockedBalance ?? 0)} description="Balance excluding locked funds" tone="success" loading={isLoading} />
@@ -73,14 +73,14 @@ function AccountOverviewPage() {
         <StatCard icon={Lock} label="Locked Bonus" value={wallet?.lockedBalance ?? 0} description="Pending wagering requirements" loading={isLoading} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {quickActions.map((action) => (
           <QuickActionCard key={action.to} {...action} />
         ))}
       </div>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-[color:var(--acc-text-primary)]">Recent Transactions</h2>
+        <h2 className="text-sm font-semibold text-[color:var(--acc-text-primary)]">Recent Transactions</h2>
         <Link
           to="/dashboard/account/history"
           className="rounded-sm text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"

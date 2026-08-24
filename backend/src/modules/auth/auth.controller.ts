@@ -11,11 +11,14 @@ export const authRouter = Router()
 
 const phoneSchema = z.string().regex(/^\+[1-9]\d{7,14}$/, "Enter a valid phone number, e.g. +919876543210")
 
+const genderSchema = z.enum(["MALE", "FEMALE", "OTHER"])
+
 const registerSchema = z.object({
   username: z.string().min(2).max(40),
   phone: phoneSchema,
   email: z.string().email().optional(),
   password: z.string().min(8).max(72), // bcrypt truncates beyond 72 bytes
+  gender: genderSchema,
 })
 
 const loginSchema = z.object({
@@ -35,6 +38,9 @@ const otpVerifySchema = z.object({
   phone: phoneSchema,
   code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
   referralCode: z.string().max(40).optional(),
+  // Only meaningful when this call provisions a brand-new account — an OTP
+  // login into an existing account ignores it (see verifyOtp/auth.service.ts).
+  gender: genderSchema.optional(),
 })
 
 function loginContext(req: import("express").Request): LoginEventContext {
@@ -130,7 +136,7 @@ authRouter.post("/otp/verify", authLimiter, async (req, res) => {
     return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   }
   try {
-    const tokens = await verifyOtp(parsed.data.phone, parsed.data.code, parsed.data.referralCode, loginContext(req))
+    const tokens = await verifyOtp(parsed.data.phone, parsed.data.code, parsed.data.referralCode, parsed.data.gender, loginContext(req))
     res.json(tokens)
   } catch (err) {
     sendAuthError(res, err)

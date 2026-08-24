@@ -34,8 +34,12 @@ function DashboardLayout() {
             <TopNavbar />
             <Sidebar />
 
-            <div className="flex flex-1 flex-col lg:pl-44">
-                <main id="main-content" className={`min-w-0 flex-1 px-4 py-5 sm:px-6 ${inAccountSection ? "" : "pb-24 lg:pb-5"}`}>
+            {/* pb-24 reserves clearance for the fixed mobile BottomNavBar — belongs
+                here (after the footer, the last thing in flow) rather than on
+                <main> or inside AccountLayout, since either of those leaves the
+                footer that follows them uncovered by the padding. */}
+            <div className="flex flex-1 flex-col pb-24 lg:pb-0 lg:pl-44">
+                <main id="main-content" className="min-w-0 flex-1 px-4 py-5 sm:px-6">
                     <Outlet />
                 </main>
 

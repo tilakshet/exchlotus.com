@@ -53,6 +53,7 @@ export async function register(
     phone: string
     email?: string
     password: string
+    gender: "MALE" | "FEMALE" | "OTHER"
   },
   context?: LoginEventContext
 ): Promise<AuthTokens> {
@@ -82,6 +83,7 @@ export async function register(
       phone: input.phone,
       email: input.email,
       passwordHash,
+      gender: input.gender,
       wallet: { create: { balance: 0, currency: "INR" } },
     },
   })
@@ -221,7 +223,13 @@ export async function checkOtpCode(phone: string, code: string): Promise<void> {
   await prisma.otpCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } })
 }
 
-export async function verifyOtp(phone: string, code: string, referralCode?: string, context?: LoginEventContext): Promise<AuthTokens> {
+export async function verifyOtp(
+  phone: string,
+  code: string,
+  referralCode?: string,
+  gender?: "MALE" | "FEMALE" | "OTHER",
+  context?: LoginEventContext
+): Promise<AuthTokens> {
   try {
     await checkOtpCode(phone, code)
   } catch (err) {
@@ -241,6 +249,7 @@ export async function verifyOtp(phone: string, code: string, referralCode?: stri
         username: `player_${phone.slice(-4)}`,
         phone,
         referredByCode: referralCode || null,
+        gender: gender ?? "OTHER",
         wallet: { create: { balance: 0, currency: "INR" } },
       },
     }))

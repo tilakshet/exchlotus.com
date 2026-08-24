@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 export const createDepositOrderSchema = z.object({
-  amount: z.number().positive(),
+  amount: z.number().min(100, "Minimum deposit amount is ₹100"),
 })
 
 /** No signature field — see payments.service.ts for how that's mitigated. */

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import * as authApi from "@/api/auth.api"
 import { store, useAppDispatch, useAppSelector } from "@/store"
 import { credentialsReceived, loggedOut } from "@/store/authSlice"
+import type { Gender } from "@/types/profile"
 
 /**
  * Facade over the Redux auth slice — same shape/call sites as the old
@@ -29,8 +30,8 @@ export function useAuth() {
   )
 
   const register = useCallback(
-    async (username: string, phone: string, password: string, email?: string) => {
-      const tokens = await authApi.registerAccount({ username, phone, email, password })
+    async (username: string, phone: string, password: string, gender: Gender, email?: string) => {
+      const tokens = await authApi.registerAccount({ username, phone, email, password, gender })
       dispatch(credentialsReceived({ user: { username, phone, email, currency: "INR" }, tokens }))
     },
     [dispatch]
@@ -39,8 +40,8 @@ export function useAuth() {
   const requestOtp = useCallback((phone: string) => authApi.requestOtp(phone), [])
 
   const verifyOtp = useCallback(
-    async (phone: string, code: string, referralCode?: string) => {
-      const tokens = await authApi.verifyOtp({ phone, code, referralCode })
+    async (phone: string, code: string, referralCode?: string, gender?: Gender) => {
+      const tokens = await authApi.verifyOtp({ phone, code, referralCode, gender })
       // Same reasoning as login() above: enough of a user object to render
       // immediately (matches the backend's own placeholder username for new
       // phone accounts), useProfile() corrects it on next render.

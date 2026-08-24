@@ -13,6 +13,7 @@ function serializePlayer(player: {
   firstName: string | null
   lastName: string | null
   dateOfBirth: Date | null
+  gender: string
   currency: string
   createdAt: Date
   kycStatus: string
@@ -25,6 +26,7 @@ function serializePlayer(player: {
     firstName: player.firstName,
     lastName: player.lastName,
     dateOfBirth: player.dateOfBirth ? player.dateOfBirth.toISOString().slice(0, 10) : null,
+    gender: player.gender,
     currency: player.currency,
     memberSince: player.createdAt.toISOString(),
     kycStatus: player.kycStatus,
@@ -47,6 +49,7 @@ const updateProfileSchema = z.object({
   firstName: z.string().max(60).nullable().optional(),
   lastName: z.string().max(60).nullable().optional(),
   dateOfBirth: z.string().date().nullable().optional(),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
 })
 
 profileRouter.patch("/", async (req, res) => {

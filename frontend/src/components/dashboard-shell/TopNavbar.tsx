@@ -1,15 +1,15 @@
 import { useNavigate } from "@tanstack/react-router"
 import { Link } from "@tanstack/react-router"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
-import { Bell, ChevronDown, LayoutDashboard, LogOut, Plus, Star, Wallet } from "lucide-react"
+import { Bell, Plus, Wallet } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { useWallet } from "@/hooks/useWallet"
+import { useProfile } from "@/hooks/useProfile"
 import { useAppDispatch, useAppSelector } from "@/store"
 import { notificationMarkedRead } from "@/store/notificationSlice"
 import { Logo } from "@/components/shared/Logo"
 import { UserAvatar } from "@/components/shared/UserAvatar"
 import { NavSearchBar } from "@/components/shared/NavSearchBar"
-import { CURRENT_LOYALTY_TIER } from "@/features/account/loyalty-tiers"
 
 /**
  * Top bar for the /dashboard shell — same `--landing-*` tokens/treatment as
@@ -75,28 +75,36 @@ function LoggedOutActions() {
 export function WalletChip() {
     const { data: wallet, isLoading: walletLoading } = useWallet()
     return (
-        <div className="flex items-center gap-2 rounded-(--landing-radius-full) border border-(--landing-border) bg-(--landing-bg-2) py-1.5 pr-1.5 pl-3.5 text-sm font-semibold text-(--landing-text-primary)">
-            <span className="flex items-center gap-2 sm:gap-2.5">
-                <Wallet
-                    className="size-5.5 shrink-0 text-(--landing-emerald) sm:size-6.5"
-                    aria-hidden="true"
-                    strokeWidth={2}
-                />
-                {walletLoading || !wallet ? (
-                    <span className="inline-block h-4 w-14 animate-pulse rounded bg-(--landing-border-strong)" aria-label="Loading wallet balance" />
-                ) : (
-                    <span aria-label={`Wallet balance ${wallet.balance.toLocaleString("en-IN")} rupees`} className="whitespace-nowrap">
-                        ₹{wallet.balance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                )}
-            </span>
-            <Link
-                to="/dashboard/account/deposit"
-                aria-label="Deposit"
-                className="landing-glow flex size-7 shrink-0 items-center justify-center rounded-full bg-(--landing-gold) text-(--landing-gold-fg) outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
-            >
-                <Plus className="size-4.5 sm:size-5.5" aria-hidden="true" strokeWidth={2.6} />
-            </Link>
+        <div className="group relative transition-transform duration-300 ease-out hover:-translate-y-1">
+            {/* Decorative multi-color ring, hidden until hover — bleeds past the
+                pill's edge via -inset-0.5 + blur, sits behind it via -z-10. */}
+            <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-0.5 -z-10 rounded-(--landing-radius-full) bg-gradient-to-r from-(--landing-gold) via-(--landing-purple) to-(--landing-emerald) opacity-0 blur-[3px] transition-opacity duration-300 group-hover:opacity-90"
+            />
+            <div className="flex items-center gap-2 rounded-(--landing-radius-full) border border-(--landing-border) bg-(--landing-bg-2) py-1.5 pr-1.5 pl-3.5 text-sm font-semibold text-(--landing-text-primary) transition-colors duration-300 group-hover:border-transparent group-hover:bg-(--landing-bg-3)">
+                <span className="flex items-center gap-2 sm:gap-2.5">
+                    <Wallet
+                        className="size-5.5 shrink-0 text-(--landing-emerald) sm:size-6.5"
+                        aria-hidden="true"
+                        strokeWidth={2}
+                    />
+                    {walletLoading || !wallet ? (
+                        <span className="inline-block h-4 w-14 animate-pulse rounded bg-(--landing-border-strong)" aria-label="Loading wallet balance" />
+                    ) : (
+                        <span aria-label={`Wallet balance ${wallet.balance.toLocaleString("en-IN")} rupees`} className="whitespace-nowrap">
+                            ₹{wallet.balance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    )}
+                </span>
+                <Link
+                    to="/dashboard/account/deposit"
+                    aria-label="Deposit"
+                    className="landing-glow flex size-7 shrink-0 items-center justify-center rounded-full bg-(--landing-gold) text-(--landing-gold-fg) outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
+                >
+                    <Plus className="size-4.5 sm:size-5.5" aria-hidden="true" strokeWidth={2.6} />
+                </Link>
+            </div>
         </div>
     )
 }
@@ -157,56 +165,26 @@ export function NotificationBell() {
     )
 }
 
+// No dropdown here (My Account/Log out used to live in one) — a direct
+// link straight to the account page, since Log out now lives as its own
+// row in Sidebar.tsx instead.
 export function ProfileChip() {
-    const { user, logout } = useAuth()
-    const navigate = useNavigate()
+    const { user } = useAuth()
+    const { data: profile } = useProfile()
     if (!user) return null
 
-    async function handleLogout() {
-        await logout()
-        navigate({ to: "/" })
-    }
-
+    // box-shadow glow instead of a scale transform — scaling the hit target
+    // itself shifts its own hover boundary mid-transition, which can
+    // retrigger the hover state repeatedly near the edge (looks like the
+    // ring "running" on a loop). box-shadow is purely visual and never
+    // affects hit-testing, so it can't do that.
     return (
-        <DropdownMenuPrimitive.Root>
-            <DropdownMenuPrimitive.Trigger asChild>
-                <button
-                    type="button"
-                    className="flex items-center gap-2 rounded-full border border-(--landing-border) bg-(--landing-bg-2) py-1 pr-3 pl-1 text-sm font-medium text-(--landing-text-primary) outline-none transition-colors hover:border-(--landing-border-strong) hover:bg-(--landing-bg-3) focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
-                >
-                    <UserAvatar sizeClassName="size-8" background="var(--landing-gold)" color="var(--landing-gold-fg)" className="ring-2 ring-(--landing-gold)/30" />
-                    <span className="hidden flex-col items-start leading-tight sm:flex">
-                        <span className="text-(--landing-text-primary)">{user.username}</span>
-                        <span className="flex items-center gap-1 text-xs text-(--landing-gold-text)">
-                            <Star className="size-3" fill="var(--landing-gold-text)" stroke="var(--landing-gold-text)" aria-hidden="true" />
-                            {CURRENT_LOYALTY_TIER.name}
-                        </span>
-                    </span>
-                    <ChevronDown className="size-4 text-(--landing-text-secondary)" aria-hidden="true" />
-                </button>
-            </DropdownMenuPrimitive.Trigger>
-            <DropdownMenuPrimitive.Portal>
-                <DropdownMenuPrimitive.Content
-                    align="end"
-                    sideOffset={8}
-                    className="landing-card z-60 min-w-48 rounded-(--landing-radius-md) p-1.5 text-sm text-(--landing-text-primary)"
-                >
-                    <DropdownMenuPrimitive.Item asChild className="flex cursor-pointer items-center gap-2 rounded-(--landing-radius-sm) px-3 py-2 outline-none data-highlighted:bg-(--landing-hover-tint)">
-                        <Link to="/dashboard/account">
-                            <LayoutDashboard className="size-5.5" aria-hidden="true" />
-                            My Account
-                        </Link>
-                    </DropdownMenuPrimitive.Item>
-
-                    <DropdownMenuPrimitive.Item
-                        onSelect={() => handleLogout()}
-                        className="flex cursor-pointer items-center gap-2 rounded-(--landing-radius-sm) px-3 py-2 text-(--landing-text-secondary) outline-none data-highlighted:bg-(--landing-hover-tint)"
-                    >
-                        <LogOut className="size-5.5" aria-hidden="true" />
-                        Log out
-                    </DropdownMenuPrimitive.Item>
-                </DropdownMenuPrimitive.Content>
-            </DropdownMenuPrimitive.Portal>
-        </DropdownMenuPrimitive.Root>
+        <Link
+            to="/dashboard/account"
+            aria-label="My Account"
+            className="flex items-center gap-2 rounded-full border border-(--landing-border) bg-(--landing-bg-2) p-1 outline-none transition-colors duration-200 hover:border-(--landing-gold) hover:bg-(--landing-bg-3) hover:shadow-[0_0_0_4px_color-mix(in_srgb,var(--landing-gold)_25%,transparent)] focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
+        >
+            <UserAvatar sizeClassName="size-9" background="var(--landing-gold)" color="var(--landing-gold-fg)" className="ring-2 ring-(--landing-gold)/30" gender={profile?.gender} />
+        </Link>
     )
 }
