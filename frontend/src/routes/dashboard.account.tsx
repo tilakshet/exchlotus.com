@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet, redirect, useMatchRoute, useNavigate, us
 import { ArrowDownLeft, ArrowUpRight, Briefcase, Gift, History as HistoryIcon, LifeBuoy, LogOut, ShieldCheck, Star, User } from "lucide-react"
 import { store } from "@/store"
 import { useAuth } from "@/hooks/useAuth"
+import { useProfile } from "@/hooks/useProfile"
 import { UserAvatar } from "@/components/shared/UserAvatar"
 import { BottomNavBar } from "@/components/dashboard-shell/BottomNavBar"
 import { CURRENT_LOYALTY_TIER } from "@/features/account/loyalty-tiers"
@@ -89,6 +90,7 @@ const pageHeadings: { match: string; exact: boolean; title: string; subtitle: st
 
 function AccountLayout() {
   const { user, logout } = useAuth()
+  const { data: profile } = useProfile()
   const navigate = useNavigate()
   const matchRoute = useMatchRoute()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -112,7 +114,7 @@ function AccountLayout() {
           style={{ background: "linear-gradient(135deg, var(--acc-accent-soft), var(--acc-surface) 70%)" }}
         >
           <div className="flex items-center gap-3">
-            <UserAvatar sizeClassName="size-14" background="var(--acc-accent)" color="var(--acc-accent-fg)" />
+            <UserAvatar sizeClassName="size-14" background="var(--acc-accent)" color="var(--acc-accent-fg)" gender={profile?.gender} />
             <div>
               <p className="text-sm font-medium text-[color:var(--acc-text-primary)]">{user?.username ?? "Guest"}</p>
               <div className="mt-1 flex gap-0.5" aria-label={`${CURRENT_LOYALTY_TIER.name} tier`}>
@@ -175,7 +177,7 @@ function AccountLayout() {
           side by side; the stacked mobile layout has no need for one. */}
       <div aria-hidden="true" className="hidden shrink-0 lg:block lg:w-px lg:self-stretch" style={{ background: "var(--acc-border)" }} />
 
-      <div className="min-w-0 flex-1 pb-24 lg:h-full lg:overflow-y-auto lg:pr-2 lg:pb-0 lg:pl-6">
+      <div className="min-w-0 flex-1 lg:h-full lg:overflow-y-auto lg:pr-2 lg:pl-6">
         <div className="mb-5">
           <h1 className="text-xl font-semibold leading-tight text-[color:var(--acc-text-primary)] sm:text-2xl">{heading.title}</h1>
           <p className="mt-1 text-sm text-[color:var(--acc-text-secondary)]">{heading.subtitle}</p>

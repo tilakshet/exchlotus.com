@@ -1,5 +1,7 @@
-import { Link } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
+import { LogOut } from "lucide-react"
 import { DASHBOARD_NAV_ITEMS, SIDEBAR_EXTRA_NAV_ITEMS, type DashboardNavItem } from "@/data/dashboardShell"
+import { useAuth } from "@/hooks/useAuth"
 
 function NavRow({ item }: { item: DashboardNavItem }) {
   return (
@@ -42,6 +44,37 @@ function NavRow({ item }: { item: DashboardNavItem }) {
   )
 }
 
+/** Same visual treatment as NavRow above, but a button (it performs an action, not a route) — moved here from TopNavbar's ProfileChip, which no longer has a dropdown. */
+function LogoutRow({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative flex min-h-15 items-center gap-3 rounded-[var(--sb-radius-md)] py-2 pr-3 pl-3 text-sm font-semibold text-[color:var(--sb-text-secondary)] outline-none transition-colors duration-200 hover:bg-[color:var(--sb-accent-gold)]/8 hover:text-[color:var(--sb-accent-gold)] focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)]"
+    >
+      <span aria-hidden="true" className="relative flex size-12 shrink-0 items-center justify-center">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-1.5 -z-10 rounded-full opacity-0 blur-md transition-opacity duration-300 group-hover:opacity-70"
+          style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--sb-accent-gold) 55%, transparent), transparent 70%)" }}
+        />
+        <span
+          className="relative flex size-12 items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-105"
+          style={{ background: "var(--landing-glass)", boxShadow: "inset 0 0 0 1.5px var(--sb-border)" }}
+        >
+          <span
+            aria-hidden="true"
+            className="absolute inset-[3px] rounded-full border border-dashed opacity-50 transition-colors duration-200 group-hover:opacity-90"
+            style={{ borderColor: "var(--sb-border)" }}
+          />
+          <LogOut className="relative size-6.5" strokeWidth={2} aria-hidden="true" />
+        </span>
+      </span>
+      Log out
+    </button>
+  )
+}
+
 /**
  * Fixed (not sticky) left rail on desktop (≥1024px) — stays in place while
  * the page scrolls, per explicit request. `top`/`h` are pinned to
@@ -58,6 +91,14 @@ function NavRow({ item }: { item: DashboardNavItem }) {
  * empty space next to short one/two-word labels.
  */
 export function Sidebar() {
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    await logout()
+    navigate({ to: "/" })
+  }
+
   return (
     <nav
       aria-label="Main"
@@ -73,6 +114,10 @@ export function Sidebar() {
         {SIDEBAR_EXTRA_NAV_ITEMS.map((item) => (
           <NavRow key={item.id} item={item} />
         ))}
+      </div>
+
+      <div className="border-t border-[color:var(--sb-border)] pt-1">
+        <LogoutRow onClick={handleLogout} />
       </div>
     </nav>
   )

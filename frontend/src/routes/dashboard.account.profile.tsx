@@ -38,6 +38,7 @@ const infoSchema = z.object({
   firstName: z.string().max(60).optional().or(z.literal("")),
   lastName: z.string().max(60).optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]),
 })
 type InfoValues = z.infer<typeof infoSchema>
 
@@ -53,7 +54,7 @@ function InfoTab() {
   } = useForm<InfoValues>({
     resolver: zodResolver(infoSchema),
     values: profile
-      ? { username: profile.username, firstName: profile.firstName ?? "", lastName: profile.lastName ?? "", dateOfBirth: profile.dateOfBirth ?? "" }
+      ? { username: profile.username, firstName: profile.firstName ?? "", lastName: profile.lastName ?? "", dateOfBirth: profile.dateOfBirth ?? "", gender: profile.gender }
       : undefined,
   })
 
@@ -65,6 +66,7 @@ function InfoTab() {
         firstName: values.firstName || null,
         lastName: values.lastName || null,
         dateOfBirth: values.dateOfBirth || null,
+        gender: values.gender,
       })
       setSaved(true)
     } catch {
@@ -122,6 +124,23 @@ function InfoTab() {
 
         <Field label="Date Of Birth">
           <input type="date" className={inputClass} style={inputStyle} {...register("dateOfBirth")} />
+        </Field>
+
+        <Field label="Gender">
+          <select className={inputClass} style={inputStyle} {...register("gender")}>
+            {/* The dropdown popup is native/OS-rendered, not styled by the
+                select's own inline style — options need their own explicit
+                background/color or they render as invisible light-on-white. */}
+            <option value="OTHER" style={inputStyle}>
+              Prefer not to say
+            </option>
+            <option value="MALE" style={inputStyle}>
+              Male
+            </option>
+            <option value="FEMALE" style={inputStyle}>
+              Female
+            </option>
+          </select>
         </Field>
 
         <Field label="Mobile Number">

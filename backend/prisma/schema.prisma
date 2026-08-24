@@ -32,6 +32,16 @@ enum PlayerStatus {
   SUSPENDED
 }
 
+/// Drives which avatar illustration the frontend shows (UserAvatar.tsx).
+/// OTHER is also the default for every account that existed before this
+/// field was added, and for OTP signups (which don't collect it up front) —
+/// those get a neutral avatar until set via profile settings.
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 model Player {
   id             String       @id @default(uuid())
   /// Matches `user_id` in webhook payloads — the partner-side account identifier.
@@ -51,6 +61,8 @@ model Player {
   firstName      String?
   lastName       String?
   dateOfBirth    DateTime?
+  /// Drives avatar selection (UserAvatar.tsx) — see the Gender enum doc.
+  gender         Gender       @default(OTHER)
   currency       String       @default("INR")
   /// Set only by the admin panel (users.suspend permission). Read by the
   /// player backend on every authenticated request (auth.middleware.ts) and

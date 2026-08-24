@@ -1,11 +1,13 @@
 import { apiRequest } from "./http"
 import type { AuthTokens } from "@/types/auth"
+import type { Gender } from "@/types/profile"
 
 export function registerAccount(input: {
   username: string
   phone: string
   email?: string
   password: string
+  gender: Gender
 }): Promise<AuthTokens> {
   return apiRequest<AuthTokens>("/api/auth/register", { method: "POST", body: input, anonymous: true })
 }
@@ -23,7 +25,7 @@ export function requestOtp(phone: string): Promise<{ devCode?: string }> {
   return apiRequest<{ devCode?: string }>("/api/auth/otp/request", { method: "POST", body: { phone }, anonymous: true })
 }
 
-export function verifyOtp(input: { phone: string; code: string; referralCode?: string }): Promise<AuthTokens> {
+export function verifyOtp(input: { phone: string; code: string; referralCode?: string; gender?: Gender }): Promise<AuthTokens> {
   return apiRequest<AuthTokens>("/api/auth/otp/verify", { method: "POST", body: input, anonymous: true })
 }
 

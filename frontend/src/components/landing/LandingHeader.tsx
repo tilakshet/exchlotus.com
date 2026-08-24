@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
-import { Wallet, ChevronDown, LayoutDashboard, LogOut } from "lucide-react"
+import { Wallet } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { useWallet } from "@/hooks/useWallet"
+import { useProfile } from "@/hooks/useProfile"
 import { Logo } from "@/components/shared/Logo"
 import { UserAvatar } from "@/components/shared/UserAvatar"
 import { NavSearchBar } from "@/components/shared/NavSearchBar"
@@ -74,10 +74,14 @@ export function LandingHeader() {
   )
 }
 
+// No dropdown here (Dashboard/Log out used to live in one) — a direct link
+// straight to the account page, same treatment as TopNavbar's ProfileChip.
+// Log out lives in the dashboard sidebar (Sidebar.tsx), one click further
+// in — landing/dashboard is a single unified auth session either way.
 function ProfileMenu() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const { data: wallet, isLoading: walletLoading } = useWallet()
-  const navigate = useNavigate()
+  const { data: profile } = useProfile()
 
   if (!user) return null
 
@@ -94,40 +98,13 @@ function ProfileMenu() {
         )}
       </div>
 
-      <DropdownMenuPrimitive.Root>
-        <DropdownMenuPrimitive.Trigger asChild>
-          <button
-            type="button"
-            className="flex items-center gap-2 rounded-full border border-(--landing-border) bg-(--landing-bg-2) py-1 pr-3 pl-1 text-sm font-medium text-(--landing-text-primary) outline-none transition-colors hover:border-(--landing-border-strong) hover:bg-(--landing-bg-3) focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
-          >
-            <UserAvatar sizeClassName="size-9" background="var(--landing-gold)" color="var(--landing-gold-fg)" className="ring-2 ring-(--landing-gold)/30" />
-            <span className="hidden sm:inline">{user.username}</span>
-            <ChevronDown className="size-4.5 text-(--landing-text-secondary)" aria-hidden="true" />
-          </button>
-        </DropdownMenuPrimitive.Trigger>
-        <DropdownMenuPrimitive.Portal>
-          <DropdownMenuPrimitive.Content
-            align="end"
-            sideOffset={8}
-            className="landing-card z-60 min-w-48 rounded-(--landing-radius-md) p-1.5 text-sm text-(--landing-text-primary)"
-          >
-            <DropdownMenuPrimitive.Item
-              onSelect={() => navigate({ to: "/dashboard" })}
-              className="flex cursor-pointer items-center gap-2 rounded-(--landing-radius-sm) px-3 py-2 outline-none data-highlighted:bg-(--landing-hover-tint)"
-            >
-              <LayoutDashboard className="size-5.5" aria-hidden="true" />
-              Dashboard
-            </DropdownMenuPrimitive.Item>
-            <DropdownMenuPrimitive.Item
-              onSelect={() => logout()}
-              className="flex cursor-pointer items-center gap-2 rounded-(--landing-radius-sm) px-3 py-2 text-(--landing-text-secondary) outline-none data-highlighted:bg-(--landing-hover-tint)"
-            >
-              <LogOut className="size-5.5" aria-hidden="true" />
-              Log out
-            </DropdownMenuPrimitive.Item>
-          </DropdownMenuPrimitive.Content>
-        </DropdownMenuPrimitive.Portal>
-      </DropdownMenuPrimitive.Root>
+      <Link
+        to="/dashboard/account"
+        aria-label="My Account"
+        className="flex items-center gap-2 rounded-full border border-(--landing-border) bg-(--landing-bg-2) p-1 outline-none transition-colors duration-200 hover:border-(--landing-gold) hover:bg-(--landing-bg-3) hover:shadow-[0_0_0_4px_color-mix(in_srgb,var(--landing-gold)_25%,transparent)] focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
+      >
+        <UserAvatar sizeClassName="size-9" background="var(--landing-gold)" color="var(--landing-gold-fg)" className="ring-2 ring-(--landing-gold)/30" gender={profile?.gender} />
+      </Link>
     </div>
   )
 }

@@ -9,6 +9,7 @@ import { usePhoneOtpFlow } from "@/hooks/usePhoneOtpFlow";
 import { ApiError, friendlyErrorMessage } from "@/api/api-error";
 import { Logo } from "@/components/shared/Logo";
 import promoImage from "@/assets/hero.png";
+import type { Gender } from "@/types/profile";
 
 interface LoginSearch {
   redirect?: string;
@@ -54,8 +55,11 @@ const otpCodeSchema = z.object({
 });
 type OtpCodeValues = z.infer<typeof otpCodeSchema>;
 
+const genderLocalSchema = z.enum(["MALE", "FEMALE", "OTHER"], { message: "Select your gender" });
+
 const signUpPhoneSchema = z.object({
   phone: phoneLocalSchema,
+  gender: genderLocalSchema,
   promoCode: z.string().max(40).optional(),
   agreeTerms: z.boolean().refine((v) => v === true, {
     message: "You must agree to the Terms & Privacy Policy",
@@ -66,6 +70,7 @@ const passwordSignUpSchema = z
   .object({
     username: z.string().min(2, "Enter your name").max(40),
     phone: phoneLocalSchema,
+    gender: genderLocalSchema,
     password: z.string().min(8, "At least 8 characters").max(72),
     confirmPassword: z.string().min(1, "Confirm your password"),
     agreeTerms: z.boolean().refine((v) => v === true, {
@@ -441,6 +446,60 @@ function PhoneField({
   );
 }
 
+/** Drives which avatar badge (UserAvatar.tsx) the account gets — collected at signup so it's set from day one. */
+function GenderField({
+  id,
+  register,
+  error,
+}: {
+  id: string;
+  register: ReturnType<typeof useForm<{ gender: Gender }>>["register"];
+  error?: string;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="mb-1.5 block text-xs font-bold"
+        style={{ color: "var(--landing-text-secondary)" }}
+      >
+        Gender*
+      </label>
+      <div
+        className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+        style={inputBoxStyle()}
+      >
+        <select
+          id={id}
+          defaultValue=""
+          aria-invalid={!!error}
+          className="w-full bg-transparent py-3 text-sm outline-none"
+          style={{ color: "var(--landing-text-primary)" }}
+          {...register("gender")}
+        >
+          {/* Options are a native OS-rendered popup, not styled by the
+              parent's bg-transparent — without an explicit background/color
+              here they inherit a white system background with light text,
+              i.e. invisible. */}
+          <option value="" disabled style={{ background: "var(--landing-bg-2)", color: "var(--landing-text-muted)" }}>
+            Select gender
+          </option>
+          <option value="MALE" style={{ background: "var(--landing-bg-2)", color: "var(--landing-text-primary)" }}>
+            Male
+          </option>
+          <option value="FEMALE" style={{ background: "var(--landing-bg-2)", color: "var(--landing-text-primary)" }}>
+            Female
+          </option>
+          <option value="OTHER" style={{ background: "var(--landing-bg-2)", color: "var(--landing-text-primary)" }}>
+            Other / Prefer not to say
+          </option>
+        </select>
+      </div>
+      <FieldError message={error} />
+    </div>
+  );
+}
+
 /**
  * Shared code-entry step for both Login-with-OTP and Sign Up — same
  * request/resend/verify flow (usePhoneOtpFlow), just a different verify
@@ -451,11 +510,13 @@ function OtpCodeStep({
   flow,
   onSuccess,
   referralCode,
+  gender,
   verifyLabel,
 }: {
   flow: ReturnType<typeof usePhoneOtpFlow>;
   onSuccess: () => void;
   referralCode?: string;
+  gender?: Gender;
   verifyLabel: string;
 }) {
   const codeForm = useForm<OtpCodeValues>({
@@ -463,7 +524,7 @@ function OtpCodeStep({
   });
 
   async function handleVerify(values: OtpCodeValues) {
-    await flow.verify(values.code, referralCode, onSuccess);
+    await flow.verify(values.code, referralCode, onSuccess, gender);
   }
 
   return (
@@ -598,6 +659,7 @@ function OtpLoginForm({ onSuccess }: { onSuccess: () => void }) {
 function SignUpForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; initialPromoCode?: string }) {
   const flow = usePhoneOtpFlow();
   const [promoCode, setPromoCode] = useState(initialPromoCode ?? "");
+  const [gender, setGender] = useState<Gender | undefined>(undefined);
   const {
     register,
     handleSubmit,
@@ -609,6 +671,7 @@ function SignUpForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; in
 
   async function onRequest(values: SignUpPhoneValues) {
     setPromoCode(values.promoCode ?? "");
+    setGender(values.gender);
     await flow.request(values.phone);
   }
 
@@ -618,6 +681,7 @@ function SignUpForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; in
         flow={flow}
         onSuccess={onSuccess}
         referralCode={promoCode || undefined}
+        gender={gender}
         verifyLabel="Verify & Create Account"
       />
     );
@@ -634,6 +698,12 @@ function SignUpForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; in
         id="signup-phone"
         register={register}
         error={errors.phone?.message}
+      />
+
+      <GenderField
+        id="signup-gender"
+        register={register}
+        error={errors.gender?.message}
       />
 
       <div>
@@ -787,7 +857,7 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
   async function onSubmit(values: PasswordSignUpValues) {
     setFormError(null);
     try {
-      await createAccount(values.username, `+91${values.phone}`, values.password);
+      await createAccount(values.username, `+91${values.phone}`, values.password, values.gender);
       onSuccess();
     } catch (err) {
       setFormError(friendlyErrorMessage(err instanceof ApiError ? err : err));
@@ -831,6 +901,12 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
         id="signup-password-phone"
         register={register}
         error={errors.phone?.message}
+      />
+
+      <GenderField
+        id="signup-password-gender"
+        register={register}
+        error={errors.gender?.message}
       />
 
       <div>

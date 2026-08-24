@@ -84,28 +84,28 @@ function WithdrawPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <div
-        className="flex items-center justify-between rounded-[var(--acc-radius-lg)] px-7 py-6"
+        className="flex items-center justify-between rounded-[var(--acc-radius-lg)] px-5 py-4"
         style={{ background: "var(--acc-success-bg)", color: "var(--acc-success-fg)" }}
       >
-        <span className="flex items-center gap-3 text-lg font-medium">
-          <WalletIcon className="size-7.5" aria-hidden="true" strokeWidth={2.1} />
+        <span className="flex items-center gap-2.5 text-base font-medium">
+          <WalletIcon className="size-6" aria-hidden="true" strokeWidth={2.1} />
           Withdrawable Balance
         </span>
-        <span className="text-[28px] font-bold">{formatInr(availableBalance)}</span>
+        <span className="text-xl font-bold">{formatInr(availableBalance)}</span>
       </div>
 
       {profile && profile.kycStatus !== "APPROVED" ? (
         <div
-          className="flex flex-col items-start gap-3 rounded-[var(--acc-radius-lg)] px-7 py-6 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col items-start gap-2.5 rounded-[var(--acc-radius-lg)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
           style={profile.kycStatus === "PENDING" ? { background: "var(--acc-pending-bg)", color: "var(--acc-pending-fg)" } : { background: "var(--acc-danger-bg)", color: "var(--acc-danger)" }}
         >
-          <span className="flex items-center gap-3 text-lg font-medium">
+          <span className="flex items-center gap-2.5 text-base font-medium">
             {profile.kycStatus === "PENDING" ? (
-              <Clock className="size-7.5 shrink-0" aria-hidden="true" strokeWidth={2.1} />
+              <Clock className="size-6 shrink-0" aria-hidden="true" strokeWidth={2.1} />
             ) : (
-              <ShieldAlert className="size-7.5 shrink-0" aria-hidden="true" strokeWidth={2.1} />
+              <ShieldAlert className="size-6 shrink-0" aria-hidden="true" strokeWidth={2.1} />
             )}
             {profile.kycStatus === "PENDING"
               ? "Your KYC verification is under review — withdrawals unlock once it's approved."
@@ -114,7 +114,7 @@ function WithdrawPage() {
           {profile.kycStatus !== "PENDING" && (
             <Link
               to="/dashboard/account/kyc"
-              className="flex h-11 shrink-0 items-center rounded-[var(--acc-radius-md)] px-6 text-sm font-bold whitespace-nowrap outline-none transition-opacity hover:opacity-90"
+              className="flex h-10 shrink-0 items-center rounded-[var(--acc-radius-md)] px-5 text-sm font-bold whitespace-nowrap outline-none transition-opacity hover:opacity-90"
               style={{ background: "var(--acc-danger)", color: "white" }}
             >
               Verify Now
@@ -122,12 +122,12 @@ function WithdrawPage() {
           )}
         </div>
       ) : (
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr] lg:items-start">
-          <section className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_1fr] lg:items-start">
+          <section className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-4">
             <StepHeading step={1} title="Enter Withdrawal Amount" />
             <div className="relative">
-              <IndianRupee className="pointer-events-none absolute top-1/2 left-4 size-5.5 -translate-y-1/2 text-[color:var(--acc-text-secondary)]" aria-hidden="true" strokeWidth={2.2} />
+              <IndianRupee className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-[color:var(--acc-text-secondary)]" aria-hidden="true" strokeWidth={2.2} />
               <input
                 type="number"
                 step="1"
@@ -136,12 +136,12 @@ function WithdrawPage() {
                 placeholder="Enter Amount"
                 aria-label="Withdrawal amount"
                 aria-invalid={!!errors.amount}
-                className="w-full rounded-[var(--acc-radius-md)] border py-4 pr-4 pl-12 text-2xl font-semibold outline-none focus:border-[color:var(--acc-accent)]"
+                className="w-full rounded-[var(--acc-radius-md)] border py-2.5 pr-4 pl-10 text-lg font-semibold outline-none focus:border-[color:var(--acc-accent)]"
                 style={{ background: "var(--acc-input-bg)", color: "var(--acc-input-fg)", borderColor: "var(--acc-input-border)" }}
                 {...register("amount")}
               />
             </div>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-[color:var(--acc-text-secondary)]">
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-[color:var(--acc-text-secondary)]">
               <span>
                 Min: {formatInr(MIN_WITHDRAW)} Max: {formatInr(MAX_WITHDRAW)}
               </span>
@@ -153,8 +153,8 @@ function WithdrawPage() {
               </p>
             )}
 
-            <h3 className="mt-6 mb-2.5 text-lg font-semibold text-[color:var(--acc-text-primary)]">Select your Bank Account</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <h3 className="mt-4 mb-2 text-sm font-semibold text-[color:var(--acc-text-primary)]">Select your Bank Account</h3>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {accounts.map((account) => {
                 const active = account.id === selectedAccountId
                 return (
@@ -165,16 +165,16 @@ function WithdrawPage() {
                     tabIndex={0}
                     onClick={() => setSelectedAccountId(account.id)}
                     onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setSelectedAccountId(account.id)}
-                    className="relative flex cursor-pointer items-start gap-3 rounded-[var(--acc-radius-md)] border-2 p-4 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
+                    className="relative flex cursor-pointer items-start gap-2.5 rounded-[var(--acc-radius-md)] border-2 p-3.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
                     style={{ borderColor: active ? "var(--acc-accent)" : "var(--acc-border)", background: active ? "var(--acc-accent-soft)" : "transparent" }}
                   >
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--acc-accent-soft)" }}>
-                      <Landmark className="size-5.5" style={{ color: "var(--acc-accent)" }} aria-hidden="true" strokeWidth={2.1} />
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--acc-accent-soft)" }}>
+                      <Landmark className="size-4.5" style={{ color: "var(--acc-accent)" }} aria-hidden="true" strokeWidth={2.1} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-[color:var(--acc-text-primary)]">{account.bankName}</p>
-                      <p className="truncate text-sm text-[color:var(--acc-text-secondary)]">{account.accountHolderName}</p>
-                      <p className="mt-0.5 font-mono text-sm text-[color:var(--acc-text-secondary)]">{maskAccountNumber(account.accountNumber)}</p>
+                      <p className="truncate text-sm font-semibold text-[color:var(--acc-text-primary)]">{account.bankName}</p>
+                      <p className="truncate text-xs text-[color:var(--acc-text-secondary)]">{account.accountHolderName}</p>
+                      <p className="mt-0.5 font-mono text-xs text-[color:var(--acc-text-secondary)]">{maskAccountNumber(account.accountNumber)}</p>
                     </div>
                     <button
                       type="button"
@@ -186,7 +186,7 @@ function WithdrawPage() {
                       className="rounded-full p-1.5 outline-none transition-colors hover:bg-[color:var(--acc-danger-bg)] focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
                       style={{ color: "var(--acc-text-secondary)" }}
                     >
-                      <Trash2 className="size-4.5" aria-hidden="true" />
+                      <Trash2 className="size-4" aria-hidden="true" />
                     </button>
                   </div>
                 )
@@ -194,11 +194,11 @@ function WithdrawPage() {
 
               <Link
                 to="/dashboard/account/add-bank"
-                className="flex flex-col items-center justify-center gap-2 rounded-[var(--acc-radius-md)] border px-4 py-7 text-base font-medium outline-none transition-colors hover:bg-[color:var(--acc-bg)] focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--acc-radius-md)] border px-4 py-5 text-sm font-medium outline-none transition-colors hover:bg-[color:var(--acc-bg)] focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
                 style={{ borderColor: "var(--acc-border)", color: "var(--acc-text-primary)" }}
               >
-                <span className="flex size-12 items-center justify-center rounded-full" style={{ background: "var(--acc-accent-soft)" }}>
-                  <Plus className="size-6.5" style={{ color: "var(--acc-accent)" }} aria-hidden="true" strokeWidth={2.2} />
+                <span className="flex size-10 items-center justify-center rounded-full" style={{ background: "var(--acc-accent-soft)" }}>
+                  <Plus className="size-5.5" style={{ color: "var(--acc-accent)" }} aria-hidden="true" strokeWidth={2.2} />
                 </span>
                 {accounts.length === 0 ? "Add Bank Account" : "Add Another Bank"}
               </Link>
@@ -209,26 +209,26 @@ function WithdrawPage() {
               <button
                 type="button"
                 onClick={() => setPayoutNote("Crypto payouts aren't available yet — bank transfer is the only payout method right now.")}
-                className="mt-3 flex items-center gap-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
+                className="mt-2.5 flex items-center gap-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
                 style={{ color: "var(--acc-text-secondary)" }}
               >
-                <Plus className="size-4.5" aria-hidden="true" />
+                <Plus className="size-4" aria-hidden="true" />
                 Add Crypto Wallet instead
               </button>
               {payoutNote && (
-                <div className="mt-3">
+                <div className="mt-2.5">
                   <ComingSoon message={payoutNote} />
                 </div>
               )}
             </div>
           </section>
 
-          <section className="flex flex-col gap-6">
-            <div className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
+          <section className="flex flex-col gap-4">
+            <div className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-4">
               {/* Summary breakdown is desktop-only — mobile goes straight from the amount/bank-account step to the Request Withdrawal button below. */}
               <div className="hidden lg:block">
                 <StepHeading step={2} title="Withdrawal Summary" />
-                <div className="flex flex-col gap-3 text-base">
+                <div className="flex flex-col gap-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-[color:var(--acc-text-secondary)]">Withdrawal Amount</span>
                     <span className="font-semibold text-[color:var(--acc-text-primary)]">{formatInr(numericAmount)}</span>
@@ -239,29 +239,29 @@ function WithdrawPage() {
                       {WITHDRAWAL_CHARGE === 0 ? "Free" : formatInr(WITHDRAWAL_CHARGE)}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center justify-between border-t border-[color:var(--acc-border-soft)] pt-3">
-                    <span className="text-lg font-semibold text-[color:var(--acc-text-primary)]">Net Amount</span>
-                    <span className="text-2xl font-bold" style={{ color: "var(--acc-accent)" }}>
+                  <div className="mt-1 flex items-center justify-between border-t border-[color:var(--acc-border-soft)] pt-2">
+                    <span className="text-sm font-semibold text-[color:var(--acc-text-primary)]">Net Amount</span>
+                    <span className="text-lg font-bold" style={{ color: "var(--acc-accent)" }}>
                       {formatInr(netAmount)}
                     </span>
                   </div>
-                  <p className="text-sm text-[color:var(--acc-text-secondary)]">Reviewed before payout to your selected bank account.</p>
+                  <p className="text-xs text-[color:var(--acc-text-secondary)]">Reviewed before payout to your selected bank account.</p>
                 </div>
               </div>
 
               {withdraw.isError && (
-                <p role="alert" className="mt-4 text-base" style={{ color: "var(--acc-danger)" }}>
+                <p role="alert" className="mt-3 text-sm" style={{ color: "var(--acc-danger)" }}>
                   {friendlyErrorMessage(withdraw.error instanceof ApiError ? withdraw.error : withdraw.error)}
                 </p>
               )}
               {!withdraw.isError && !selectedAccountId && (
-                <p role="alert" className="mt-4 text-base" style={{ color: "var(--acc-danger)" }}>
+                <p role="alert" className="mt-3 text-sm" style={{ color: "var(--acc-danger)" }}>
                   Add a bank account below before requesting a withdrawal.
                 </p>
               )}
               {requestedAmount !== null && (
-                <p role="status" className="mt-4 flex items-center gap-2 text-base font-medium" style={{ color: "var(--acc-success-fg)" }}>
-                  <CheckCircle2 className="size-5.5" aria-hidden="true" />
+                <p role="status" className="mt-3 flex items-center gap-2 text-sm font-medium" style={{ color: "var(--acc-success-fg)" }}>
+                  <CheckCircle2 className="size-5" aria-hidden="true" />
                   Withdrawal requested — {formatInr(requestedAmount)} is reserved and pending review.
                 </p>
               )}
@@ -269,10 +269,10 @@ function WithdrawPage() {
               <button
                 type="submit"
                 disabled={withdraw.isPending || !selectedAccountId}
-                className="mt-5 flex h-14 w-full items-center justify-center gap-2.5 rounded-[var(--acc-radius-md)] text-lg font-bold outline-none transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[var(--acc-radius-md)] text-base font-bold outline-none transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
                 style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
               >
-                <CreditCard className="size-5.5" aria-hidden="true" strokeWidth={2.2} />
+                <CreditCard className="size-5" aria-hidden="true" strokeWidth={2.2} />
                 {withdraw.isPending ? "Requesting…" : "Request Withdrawal"}
               </button>
             </div>
@@ -282,17 +282,17 @@ function WithdrawPage() {
       )}
 
       <section className="hidden lg:block">
-        <h3 className="mb-4 text-center text-xl font-bold" style={{ color: "var(--acc-accent)" }}>
+        <h3 className="mb-3 text-center text-lg font-bold" style={{ color: "var(--acc-accent)" }}>
           Frequently Asked Questions
         </h3>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {faqs.map(({ q, a }) => (
-            <details key={q} className="rounded-[var(--acc-radius-md)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-4">
-              <summary className="flex cursor-pointer items-center gap-2.5 text-base font-semibold text-[color:var(--acc-text-primary)]">
-                {q === faqs[0].q ? <WalletIcon className="size-5.5 shrink-0" aria-hidden="true" /> : <CreditCard className="size-5.5 shrink-0" aria-hidden="true" />}
+            <details key={q} className="rounded-[var(--acc-radius-md)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-3.5">
+              <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[color:var(--acc-text-primary)]">
+                {q === faqs[0].q ? <WalletIcon className="size-5 shrink-0" aria-hidden="true" /> : <CreditCard className="size-5 shrink-0" aria-hidden="true" />}
                 {q}
               </summary>
-              <p className="mt-2.5 text-base text-[color:var(--acc-text-secondary)]">{a}</p>
+              <p className="mt-2 text-sm text-[color:var(--acc-text-secondary)]">{a}</p>
             </details>
           ))}
         </div>
