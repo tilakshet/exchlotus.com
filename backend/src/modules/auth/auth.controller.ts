@@ -33,7 +33,7 @@ const otpRequestSchema = z.object({
 
 const otpVerifySchema = z.object({
   phone: phoneSchema,
-  code: z.string().length(6),
+  code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
   referralCode: z.string().max(40).optional(),
 })
 

@@ -34,6 +34,13 @@ export function friendlyErrorMessage(err: unknown): string {
       case 422:
         if (err.code === "INSUFFICIENT_BALANCE") return "Insufficient balance."
         if (err.code === "NO_PASSWORD_SET") return err.message
+        // A bare zod field-issues response (VALIDATION_ERROR + `issues`, no
+        // top-level message) is shown per-field elsewhere, so the generic
+        // copy is right there — but every other 422 (KycError codes like
+        // PAN_ALREADY_USED, or a VALIDATION_ERROR that DOES carry a message,
+        // e.g. an upload rejection) has a real, specific message worth
+        // showing instead of hiding it behind this fallback.
+        if (err.code !== "VALIDATION_ERROR" || !err.issues) return err.message || "Please check the form for errors."
         return "Please check the form for errors."
       case 429:
         return "Too many attempts — please wait a moment and try again."

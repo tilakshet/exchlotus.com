@@ -51,7 +51,12 @@ gamingWebhookRouter.post("/gaming_webhook", async (req, res) => {
     return res.status(200).json(result)
   } catch (err) {
     if (err instanceof GamingApiError) {
-      logger.info({ code: err.code, method: parsed.data.method }, "Gaming webhook business error")
+      // user_id included deliberately — pino-http's default req serializer
+      // never logs the body, so without this an INVALID_USER spike (as
+      // opposed to a genuine one-off) is undiagnosable: there'd be no way
+      // to tell whether it's the same stale/test user_id being retried in a
+      // loop, or many distinct real players, from these logs alone.
+      logger.info({ code: err.code, method: parsed.data.method, userId: parsed.data.user_id }, "Gaming webhook business error")
       return res.status(200).json({ status: false, error: err.code })
     }
     logger.error({ err, method: parsed.data.method }, "Unhandled error processing gaming webhook")

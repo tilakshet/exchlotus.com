@@ -14,6 +14,7 @@ const KYC_ERROR_STATUS: Record<KycError["code"], number> = {
   ALREADY_PENDING: 409,
   PHONE_NOT_VERIFIED: 422,
   NO_PHONE_ON_FILE: 422,
+  PAN_ALREADY_USED: 422,
 }
 
 kycRouter.get("/me", async (req, res) => {
@@ -34,7 +35,7 @@ kycRouter.post("/phone/request-otp", async (req, res) => {
   }
 })
 
-const verifyPhoneOtpSchema = z.object({ code: z.string().length(6) })
+const verifyPhoneOtpSchema = z.object({ code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code") })
 
 kycRouter.post("/phone/verify-otp", async (req, res) => {
   const parsed = verifyPhoneOtpSchema.safeParse(req.body)

@@ -8,15 +8,12 @@ import { useMyKyc, useRequestPhoneOtp, useSubmitKyc, useVerifyPhoneOtp } from "@
 import { useProfile } from "@/hooks/useProfile"
 import { ApiError, friendlyErrorMessage } from "@/api/api-error"
 import { StepHeading } from "@/features/account/StepHeading"
+import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/upload-limits"
 
 export const Route = createFileRoute("/dashboard/account/kyc")({
   component: KycPage,
 })
 
-// Kept in sync with backend/src/lib/uploads.ts — client-side UX only
-// (instant feedback), the backend enforces the same limits regardless.
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 
 const kycSchema = z.object({
@@ -39,6 +36,7 @@ function ImageDropSlot({
   onSelect,
   onRemove,
   error,
+  onError,
 }: {
   label: string
   icon: typeof CreditCard
@@ -47,6 +45,7 @@ function ImageDropSlot({
   onSelect: (file: File) => void
   onRemove: () => void
   error?: string
+  onError: (message: string) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const inputId = `kyc-${label.replace(/\s+/g, "-").toLowerCase()}`
@@ -55,8 +54,8 @@ function ImageDropSlot({
     const selected = e.target.files?.[0]
     e.target.value = ""
     if (!selected) return
-    if (!ALLOWED_IMAGE_TYPES.includes(selected.type)) return
-    if (selected.size > MAX_IMAGE_BYTES) return
+    if (!ALLOWED_IMAGE_TYPES.includes(selected.type)) return onError("Only JPEG, PNG, WEBP, or GIF images are allowed.")
+    if (selected.size > MAX_IMAGE_BYTES) return onError(`Image must be under ${MAX_IMAGE_BYTES / 1024 / 1024}MB.`)
     onSelect(selected)
   }
 
@@ -220,6 +219,8 @@ function KycForm({ onDone }: { onDone: () => void }) {
   const [photo, setPhoto] = useState<File | null>(null)
   const [panCardPreview, setPanCardPreview] = useState<string | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [panCardError, setPanCardError] = useState<string | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   const {
@@ -229,10 +230,12 @@ function KycForm({ onDone }: { onDone: () => void }) {
   } = useForm<KycValues>({ resolver: zodResolver(kycSchema) })
 
   function selectPanCard(file: File) {
+    setPanCardError(null)
     setPanCard(file)
     setPanCardPreview(URL.createObjectURL(file))
   }
   function selectPhoto(file: File) {
+    setPhotoError(null)
     setPhoto(file)
     setPhotoPreview(URL.createObjectURL(file))
   }
@@ -241,6 +244,14 @@ function KycForm({ onDone }: { onDone: () => void }) {
     setFormError(null)
     if (!panCard || !photo) {
       setFormError("Both a PAN card image and a profile photo are required.")
+      return
+    }
+    // Cheap client-side heuristic only (name/size/modified-time match) —
+    // instant feedback for the obvious case of picking the same file twice.
+    // The backend compares actual file contents byte-for-byte and is the
+    // real gate; this can't replace that check, only shortcut the round trip.
+    if (panCard.name === photo.name && panCard.size === photo.size && panCard.lastModified === photo.lastModified) {
+      setFormError("Your PAN card and profile photo can't be the same image — please upload two different photos.")
       return
     }
     try {
@@ -268,8 +279,8 @@ function KycForm({ onDone }: { onDone: () => void }) {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <ImageDropSlot label="PAN Card Photo" icon={CreditCard} file={panCard} previewUrl={panCardPreview} onSelect={selectPanCard} onRemove={() => { setPanCard(null); setPanCardPreview(null) }} />
-        <ImageDropSlot label="Your Profile Photo" icon={UserIcon} file={photo} previewUrl={photoPreview} onSelect={selectPhoto} onRemove={() => { setPhoto(null); setPhotoPreview(null) }} />
+        <ImageDropSlot label="PAN Card Photo" icon={CreditCard} file={panCard} previewUrl={panCardPreview} onSelect={selectPanCard} onRemove={() => { setPanCard(null); setPanCardPreview(null) }} error={panCardError ?? undefined} onError={setPanCardError} />
+        <ImageDropSlot label="Your Profile Photo" icon={UserIcon} file={photo} previewUrl={photoPreview} onSelect={selectPhoto} onRemove={() => { setPhoto(null); setPhotoPreview(null) }} error={photoError ?? undefined} onError={setPhotoError} />
       </div>
 
       {formError && (
