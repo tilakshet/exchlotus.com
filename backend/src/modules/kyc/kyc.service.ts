@@ -3,7 +3,7 @@ import { checkOtpCode, requestOtp } from "../auth/auth.service"
 
 export class KycError extends Error {
   constructor(
-    public readonly code: "ALREADY_APPROVED" | "ALREADY_PENDING" | "PHONE_NOT_VERIFIED" | "NO_PHONE_ON_FILE",
+    public readonly code: "ALREADY_APPROVED" | "ALREADY_PENDING" | "PHONE_NOT_VERIFIED" | "NO_PHONE_ON_FILE" | "PAN_ALREADY_USED",
     message: string
   ) {
     super(message)
@@ -60,6 +60,20 @@ export async function submitKyc(
   // be entirely skipped (see requestPhoneVerificationOtp/confirmPhoneVerificationOtp above).
   if (!player.phoneVerifiedAt) {
     throw new KycError("PHONE_NOT_VERIFIED", "Verify your mobile number before submitting KYC documents")
+  }
+
+  // The same real-world PAN identifies one person — letting it verify
+  // multiple player accounts would defeat the point of requiring it (a
+  // player could open unlimited accounts, e.g. to farm signup bonuses or
+  // dodge a suspension, and still pass "identity verification" on every
+  // one of them). PENDING is included, not just APPROVED, so two accounts
+  // can't race two submissions of the same PAN and have both approved
+  // before either review catches it.
+  const existingUseOfPan = await prisma.kycSubmission.findFirst({
+    where: { panNumber: input.panNumber, status: { in: ["APPROVED", "PENDING"] }, playerId: { not: playerId } },
+  })
+  if (existingUseOfPan) {
+    throw new KycError("PAN_ALREADY_USED", "This PAN number is already associated with another account")
   }
 
   return prisma.$transaction(async (tx) => {

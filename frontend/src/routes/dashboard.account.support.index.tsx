@@ -6,12 +6,7 @@ import { z } from "zod"
 import { ImagePlus, LifeBuoy, MessageCircle, Plus, X } from "lucide-react"
 import { useSupportTickets } from "@/hooks/useSupportTickets"
 import type { SupportTicketStatus } from "@/types/support"
-
-// Kept in sync with backend/src/lib/uploads.ts — this is client-side UX
-// only (instant feedback instead of a round trip), the backend enforces the
-// same limits regardless.
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/upload-limits"
 
 export const Route = createFileRoute("/dashboard/account/support/")({
   component: SupportPage,

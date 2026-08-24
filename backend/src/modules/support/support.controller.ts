@@ -27,7 +27,7 @@ supportRouter.post("/", async (req, res) => {
   const parsed = createTicketSchema.safeParse(req.body)
   if (!parsed.success) return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
 
-  const attachmentUrl = req.file ? supportImageUrl(req.file.filename) : undefined
+  const attachmentUrl = upload.filename ? supportImageUrl(upload.filename) : undefined
   const ticket = await createTicket(req.auth!.sub, parsed.data.subject, parsed.data.message, attachmentUrl)
   res.status(201).json({ id: ticket.id })
 })

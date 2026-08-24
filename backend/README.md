@@ -287,6 +287,17 @@ integration doc would normally include:
 
 ## Not yet done
 
+- **No SMS gateway is connected — OTP delivery is a launch blocker.**
+  `requestOtp` (auth.service.ts) generates and stores a code but never sends
+  it anywhere; outside production the code is returned to the caller as
+  `devCode` so the flow stays testable, and that fallback is intentionally
+  left in place until a real provider is wired up. This affects OTP-based
+  login/signup **and** the KYC phone-verification step (kyc.service.ts's
+  `requestPhoneVerificationOtp` calls the same function) — no real player
+  can complete either until a provider (e.g. MSG91, Gupshup, Kaleyra, Twilio
+  Verify) is set up with a DLT-registered template (required for Indian
+  carriers to not silently drop the message) and its send-SMS call replaces
+  the no-op here.
 - **`POST /api/catalog/sync` has no auth gate.** Anyone who can reach the
   API can trigger it. Marked `TODO` in code — needs an admin/internal check.
   (`/api/game-session/launch` *was* the same issue and is now fixed:
