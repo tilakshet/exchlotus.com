@@ -69,7 +69,7 @@ export interface LaunchSessionResponse {
     user_id: string
     game_id: string
     currency: string
-    mode: string
+    mode: "real" | "fun"
   }
 }
 

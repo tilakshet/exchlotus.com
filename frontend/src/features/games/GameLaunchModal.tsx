@@ -145,7 +145,19 @@ export function GameLaunchModal({ game, onClose }: { game: Game; onClose: () => 
             )}
 
             {validatedUrl && (
-              <iframe title={`${game.gameName} game session`} src={validatedUrl} className="size-full border-0" allow="fullscreen" />
+              // Third-party real-money gambling content — sandboxed rather than
+              // given full same-origin/script/form/popup privileges by default.
+              // This starting set hasn't been tested against the actual
+              // provider's game client yet; if a game breaks (e.g. a payment
+              // redirect needs allow-top-navigation-by-user-activation), loosen
+              // it deliberately rather than dropping the sandbox attribute.
+              <iframe
+                title={`${game.gameName} game session`}
+                src={validatedUrl}
+                className="size-full border-0"
+                allow="fullscreen"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              />
             )}
           </div>
         </DialogPrimitive.Content>
