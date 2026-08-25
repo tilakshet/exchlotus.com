@@ -42,7 +42,7 @@ import { useGames } from "@/hooks/useGames"
 import { useFavorites } from "@/hooks/useFavorites"
 import { useRecentlyPlayedGameIds } from "@/hooks/useRecentlyPlayed"
 import { GameCard } from "./GameCard"
-import { GameLaunchModal } from "./GameLaunchModal"
+import { GameLaunchModalConnected } from "./GameLaunchModalConnected"
 import type { Game } from "@/types/catalog"
 
 /** Best-effort icon per real category code — purely decorative, falls back to Gamepad2 for anything unmapped. */
@@ -338,7 +338,7 @@ export function GameCatalogSection() {
         )}
       </section>
 
-      {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+      {launchingGame && <GameLaunchModalConnected game={launchingGame} onClose={() => setLaunchingGame(null)} />}
     </div>
   )
 }

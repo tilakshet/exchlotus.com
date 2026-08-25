@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useHomeFeed } from "@/hooks/useCategories"
 import { CategoryRowView, CategoryRowSkeleton } from "./CategoryRow"
-import { GameLaunchModal } from "./GameLaunchModal"
+import { GameLaunchModalConnected } from "./GameLaunchModalConnected"
 import type { Game } from "@/types/catalog"
 
 /**
@@ -49,7 +49,7 @@ export function CategoryGameRows() {
           <CategoryRowView key={shelf.id} code={shelf.code} name={shelf.name} games={shelf.games} onPlay={setLaunchingGame} />
         ))}
 
-      {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+      {launchingGame && <GameLaunchModalConnected game={launchingGame} onClose={() => setLaunchingGame(null)} />}
     </div>
   )
 }

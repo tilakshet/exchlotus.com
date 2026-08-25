@@ -2,7 +2,7 @@ import { useState } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowLeft, Play } from "lucide-react"
 import { useGameBySlug } from "@/hooks/useGames"
-import { GameLaunchModal } from "@/features/games/GameLaunchModal"
+import { GameLaunchModalConnected } from "@/features/games/GameLaunchModalConnected"
 import type { Game } from "@/types/catalog"
 
 export const Route = createFileRoute("/game/$gameSlug")({
@@ -67,7 +67,7 @@ function GamePage() {
           </section>
         )}
       </div>
-      {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+      {launchingGame && <GameLaunchModalConnected game={launchingGame} onClose={() => setLaunchingGame(null)} />}
     </main>
   )
 }

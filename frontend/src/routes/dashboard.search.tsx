@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft, ChevronLeft, ChevronRight, Search } from "lucide-react"
 import { useGames } from "@/hooks/useGames"
 import { GameCard } from "@/features/games/GameCard"
-import { GameLaunchModal } from "@/features/games/GameLaunchModal"
+import { GameLaunchModalConnected } from "@/features/games/GameLaunchModalConnected"
 import type { Game } from "@/types/catalog"
 
 interface SearchRouteSearch {
@@ -121,7 +121,7 @@ function SearchResultsPage() {
         </>
       )}
 
-      {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+      {launchingGame && <GameLaunchModalConnected game={launchingGame} onClose={() => setLaunchingGame(null)} />}
     </div>
   )
 }

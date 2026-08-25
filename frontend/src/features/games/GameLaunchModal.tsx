@@ -18,28 +18,58 @@ import type { Game } from "@/types/catalog"
 const REVEAL_ZONE_PX = 60
 const HIDE_DELAY_MS = 2000
 
-export function GameLaunchModal({ game, onClose }: { game: Game; onClose: () => void }) {
+/**
+ * Confirmed by a real captured launch response (2026-08-25, fun-mode
+ * session for a live catalog game) — NOT guessed. The provider's launch
+ * pages are served from the same host as GAMING_PROVIDER_BASE_URL
+ * (backend-only, not available here, hence the literal). If the provider
+ * ever serves launch pages from an additional/different domain, a
+ * legitimate launch will start failing validation here — update this list
+ * rather than loosening the check to "any https URL".
+ */
+const TRUSTED_LAUNCH_HOSTS = ["igaming-one-psi.vercel.app"]
+
+function validateLaunchUrl(launchUrl: string): string | null {
+  try {
+    const url = new URL(launchUrl)
+    if (url.protocol !== "https:") return null
+    if (!TRUSTED_LAUNCH_HOSTS.includes(url.hostname)) return null
+    return launchUrl
+  } catch {
+    return null
+  }
+}
+
+export function GameLaunchModal({
+  game,
+  currency,
+  mode,
+  onClose,
+}: {
+  game: Game
+  currency: string
+  mode: "real" | "fun"
+  onClose: () => void
+}) {
   const launchGame = useLaunchGame()
   const queryClient = useQueryClient()
   const [validatedUrl, setValidatedUrl] = useState<string | null>(null)
   const [showClose, setShowClose] = useState(true)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
+  function launch() {
     launchGame.mutate(
-      { gameId: game.gameId, currency: "INR", lang: "en", mode: "real" },
+      { gameId: game.gameId, currency, lang: "en", mode },
       {
         onSuccess: (result) => {
-          try {
-            const url = new URL(result.launchUrl)
-            if (url.protocol !== "https:") throw new Error("non-https launch URL")
-            setValidatedUrl(result.launchUrl)
-          } catch {
-            setValidatedUrl(null)
-          }
+          setValidatedUrl(validateLaunchUrl(result.launchUrl))
         },
       }
     )
+  }
+
+  useEffect(() => {
+    launch()
     // Only ever launch once per modal open — game.gameId is stable for the
     // lifetime of this component (it's remounted, not re-rendered, per game).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -113,22 +143,7 @@ export function GameLaunchModal({ game, onClose }: { game: Game; onClose: () => 
                 <p className="text-sm">{friendlyErrorMessage(launchGame.error)}</p>
                 <button
                   type="button"
-                  onClick={() =>
-                    launchGame.mutate(
-                      { gameId: game.gameId, currency: "INR", lang: "en", mode: "real" },
-                      {
-                        onSuccess: (result) => {
-                          try {
-                            const url = new URL(result.launchUrl)
-                            if (url.protocol !== "https:") throw new Error("non-https launch URL")
-                            setValidatedUrl(result.launchUrl)
-                          } catch {
-                            setValidatedUrl(null)
-                          }
-                        },
-                      }
-                    )
-                  }
+                  onClick={launch}
                   className="rounded-[var(--sb-radius-sm)] px-4 py-2 text-sm font-semibold text-[color:var(--sb-accent-gold-fg)]"
                   style={{ background: "var(--sb-accent-gold)" }}
                 >

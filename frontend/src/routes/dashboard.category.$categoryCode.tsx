@@ -4,7 +4,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
 import { useCategories } from "@/hooks/useCategories"
 import { useGames } from "@/hooks/useGames"
 import { GameCard } from "@/features/games/GameCard"
-import { GameLaunchModal } from "@/features/games/GameLaunchModal"
+import { GameLaunchModalConnected } from "@/features/games/GameLaunchModalConnected"
 import type { Game } from "@/types/catalog"
 
 interface CategorySearch {
@@ -113,7 +113,7 @@ function CategoryDetailPage() {
         </>
       )}
 
-      {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+      {launchingGame && <GameLaunchModalConnected game={launchingGame} onClose={() => setLaunchingGame(null)} />}
     </div>
   )
 }
