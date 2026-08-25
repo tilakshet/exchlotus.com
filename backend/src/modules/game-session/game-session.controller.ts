@@ -36,15 +36,16 @@ gameSessionRouter.post("/launch", async (req, res) => {
       user_name: req.auth!.username,
     })
 
-    // The provider's launch standard is the same for every currency/mode
-    // combination — if the session they hand back doesn't echo the mode we
-    // asked for, that's their side silently deviating (e.g. serving a demo
-    // session for a real-money request), not something safe to paper over
-    // by opening the URL anyway.
-    if (launch.session?.mode && launch.session.mode !== parsed.data.mode) {
+    // Fail CLOSED, not open: a real-money request must come back with an
+    // explicit "real" session. `session` is optional in the response type,
+    // so a provider that silently serves a fun/demo session while simply
+    // omitting `session` from the response must not slip through as
+    // success just because it didn't actively echo a mismatched mode.
+    const returnedMode = launch.session?.mode
+    if (parsed.data.mode === "real" && returnedMode !== "real") {
       logger.error(
-        { gameId: parsed.data.gameId, requestedMode: parsed.data.mode, returnedMode: launch.session.mode },
-        "Gaming provider returned a session mode that doesn't match the requested mode"
+        { gameId: parsed.data.gameId, requestedMode: parsed.data.mode, returnedMode },
+        "Gaming provider did not confirm a real-money session for a real-money request"
       )
       return res.status(502).json({
         error: "GAME_UNAVAILABLE",
