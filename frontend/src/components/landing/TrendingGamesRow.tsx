@@ -3,7 +3,7 @@ import { Flame } from "lucide-react"
 import { useGames } from "@/hooks/useGames"
 import { TRENDING_GAME_IDS } from "@/data/trendingGames"
 import { GameCard } from "@/features/games/GameCard"
-import { GameLaunchModal } from "@/features/games/GameLaunchModal"
+import { GameLaunchModalConnected } from "@/features/games/GameLaunchModalConnected"
 import type { Game } from "@/types/catalog"
 
 /** Fixed 3-per-row on mobile, auto-fill `w-48`-ish sizing at `sm:` and up — same grid as the category/search pages (dashboard.category.$categoryCode.tsx, dashboard.search.tsx, GameCatalogSection.tsx). */
@@ -54,7 +54,7 @@ export function TrendingGamesRow() {
           </li>
         ))}
       </ul>
-      {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+      {launchingGame && <GameLaunchModalConnected game={launchingGame} onClose={() => setLaunchingGame(null)} />}
     </div>
   )
 }

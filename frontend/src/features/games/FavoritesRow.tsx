@@ -4,7 +4,7 @@ import { useFavorites } from "@/hooks/useFavorites"
 import { useGames } from "@/hooks/useGames"
 import { CategoryRowSkeleton } from "./CategoryRow"
 import { GameCard } from "./GameCard"
-import { GameLaunchModal } from "./GameLaunchModal"
+import { GameLaunchModalConnected } from "./GameLaunchModalConnected"
 import type { Game } from "@/types/catalog"
 
 /**
@@ -47,7 +47,7 @@ export function FavoritesRow() {
           </li>
         ))}
       </ul>
-      {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+      {launchingGame && <GameLaunchModalConnected game={launchingGame} onClose={() => setLaunchingGame(null)} />}
     </div>
   )
 }

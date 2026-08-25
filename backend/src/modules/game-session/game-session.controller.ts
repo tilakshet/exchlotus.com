@@ -3,6 +3,7 @@ import { z } from "zod"
 import { requireAuth } from "../auth/auth.middleware"
 import { logger } from "../../lib/logger"
 import { gamingProviderClient } from "../provider-integration/gaming-provider/gaming-provider.client"
+import { getWalletDetails } from "../wallet/wallet.service"
 
 export const gameSessionRouter = Router()
 gameSessionRouter.use(requireAuth)
@@ -27,6 +28,18 @@ gameSessionRouter.post("/launch", async (req, res) => {
   }
 
   try {
+    // The client sends currency (see GameLaunchModal — sourced from the
+    // player's own wallet, not a literal) but this is still a
+    // client-supplied value, so it's checked against the wallet's actual
+    // currency server-side rather than trusted outright. Every player's
+    // wallet is single-currency today (see Wallet.currency, always "INR" —
+    // no multi-currency/conversion feature exists), so this never rejects a
+    // legitimate request; it only stops a tampered one.
+    const wallet = await getWalletDetails(req.auth!.externalId)
+    if (parsed.data.currency !== wallet.currency) {
+      return res.status(400).json({ error: "CURRENCY_MISMATCH", message: "Currency does not match your wallet." })
+    }
+
     const launch = await gamingProviderClient.launchSession({
       game_id: parsed.data.gameId,
       currency: parsed.data.currency,

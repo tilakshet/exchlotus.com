@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useHomeFeed } from "@/hooks/useCategories"
 import { GameCard } from "@/features/games/GameCard"
-import { GameLaunchModal } from "@/features/games/GameLaunchModal"
+import { GameLaunchModalConnected } from "@/features/games/GameLaunchModalConnected"
 import type { Game, HomeFeedShelf } from "@/types/catalog"
 
 export function CategoryRowSkeleton() {
@@ -67,7 +67,7 @@ export function CategoryGameRows() {
       )}
       {!isLoading && shelves?.map((shelf) => <CategoryRow key={shelf.id} shelf={shelf} onPlay={setLaunchingGame} />)}
 
-      {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+      {launchingGame && <GameLaunchModalConnected game={launchingGame} onClose={() => setLaunchingGame(null)} />}
     </div>
   )
 }

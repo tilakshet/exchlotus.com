@@ -3,7 +3,7 @@ import { Heart } from "lucide-react"
 import { useFavorites } from "@/hooks/useFavorites"
 import { useGames } from "@/hooks/useGames"
 import { GameCard } from "@/features/games/GameCard"
-import { GameLaunchModal } from "@/features/games/GameLaunchModal"
+import { GameLaunchModalConnected } from "@/features/games/GameLaunchModalConnected"
 import { CategoryRowSkeleton } from "./CategoryGameRows"
 import type { Game } from "@/types/catalog"
 
@@ -43,7 +43,7 @@ export function FavoritesRow() {
           </li>
         ))}
       </ul>
-      {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+      {launchingGame && <GameLaunchModalConnected game={launchingGame} onClose={() => setLaunchingGame(null)} />}
     </div>
   )
 }

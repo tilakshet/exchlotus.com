@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useCategories } from "@/hooks/useCategories"
 import { isLiveCasinoCategory } from "@/lib/categoryGroups"
 import { CategoryRow, CategoryRowSkeleton } from "./CategoryRow"
-import { GameLaunchModal } from "./GameLaunchModal"
+import { GameLaunchModalConnected } from "./GameLaunchModalConnected"
 import type { Game } from "@/types/catalog"
 
 /**
@@ -57,7 +57,7 @@ export function CategoryHubPage({ group, title }: { group: "casino" | "live-casi
             />
           ))}
 
-        {launchingGame && <GameLaunchModal game={launchingGame} onClose={() => setLaunchingGame(null)} />}
+        {launchingGame && <GameLaunchModalConnected game={launchingGame} onClose={() => setLaunchingGame(null)} />}
       </div>
     </div>
   )
