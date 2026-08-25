@@ -10,10 +10,9 @@ gameSessionRouter.use(requireAuth)
 const launchRequestSchema = z.object({
   gameId: z.string().min(1),
   currency: z.string().length(3),
-  // Accepted for backward compatibility with the frontend's existing
-  // request shape, but not forwarded — the v2 launch endpoint's inferred
-  // input shape (gameId, playerId, currency, mode) has no language field,
-  // unlike the original spec's game_launch. See gaming-provider.types.ts.
+  // The provider's launch spec requires lang — defaults to "en" since the
+  // frontend has always sent it anyway, but isn't hard-required here in
+  // case an older client build doesn't.
   lang: z.string().min(2).optional(),
   mode: z.enum(["real", "fun"]),
 })
@@ -31,8 +30,10 @@ gameSessionRouter.post("/launch", async (req, res) => {
     const launch = await gamingProviderClient.launchSession({
       game_id: parsed.data.gameId,
       currency: parsed.data.currency,
+      lang: parsed.data.lang ?? "en",
       mode: parsed.data.mode,
       user_id: req.auth!.externalId,
+      user_name: req.auth!.username,
     })
 
     // The provider's launch standard is the same for every currency/mode

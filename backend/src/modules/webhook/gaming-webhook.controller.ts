@@ -36,7 +36,17 @@ gamingWebhookRouter.use(json())
 
 gamingWebhookRouter.post("/gaming_webhook", async (req, res) => {
   if (!isValidBearerToken(req.header("authorization"))) {
-    logger.warn("Rejected gaming webhook call with missing/invalid bearer token")
+    // Never log the token itself — but knowing whether the provider sent no
+    // header at all vs. a wrong-length/wrong-value one is the difference
+    // between "they're not sending auth" and "the two sides have different
+    // secrets configured", which isn't distinguishable from the generic
+    // rejection message alone.
+    const header = req.header("authorization")
+    const receivedLength = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).length : null
+    logger.warn(
+      { hasAuthHeader: !!header, receivedLength, expectedLength: env.GAMING_WEBHOOK_SHARED_SECRET.length },
+      "Rejected gaming webhook call with missing/invalid bearer token"
+    )
     return res.status(401).json({ status: false, error: "UNAUTHORIZED" })
   }
 
