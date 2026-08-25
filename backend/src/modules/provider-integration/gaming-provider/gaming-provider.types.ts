@@ -56,7 +56,10 @@ export interface ListGamesFilters {
 export interface LaunchSessionInput {
   game_id: string
   user_id: string
+  user_name: string
   currency: string
+  /** ISO language code (e.g. "en"). Required per the provider's launch spec — see LaunchSessionRequest header comment. */
+  lang: string
   mode: "real" | "fun"
 }
 

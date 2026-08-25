@@ -118,11 +118,19 @@ class GamingProviderClient {
   private static readonly LAUNCH_RETRY_DELAYS_MS = [300, 800]
 
   async launchSession(input: LaunchSessionInput): Promise<LaunchSessionResponse> {
+    // type is a fixed, non-negotiable "CHARGED" per the provider's own
+    // "Session Initialization & Game Launch" spec — this account only has a
+    // single Bearer API key (no separate agent_code/agent_token, unlike that
+    // spec's example), but type was still never sent at all, which is
+    // consistent with real-money launches for some games silently coming
+    // back as a fun/demo session instead of erroring outright.
+    const requestBody = { ...input, type: "CHARGED" }
+
     for (let attempt = 0; ; attempt++) {
       const res = await this.authorizedFetch("/v1/sessions/launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify(requestBody),
       })
       if (res.ok) {
         return res.json() as Promise<LaunchSessionResponse>
