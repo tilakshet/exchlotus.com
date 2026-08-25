@@ -18,28 +18,6 @@ import type { Game } from "@/types/catalog"
 const REVEAL_ZONE_PX = 60
 const HIDE_DELAY_MS = 2000
 
-/**
- * Confirmed by a real captured launch response (2026-08-25, fun-mode
- * session for a live catalog game) — NOT guessed. The provider's launch
- * pages are served from the same host as GAMING_PROVIDER_BASE_URL
- * (backend-only, not available here, hence the literal). If the provider
- * ever serves launch pages from an additional/different domain, a
- * legitimate launch will start failing validation here — update this list
- * rather than loosening the check to "any https URL".
- */
-const TRUSTED_LAUNCH_HOSTS = ["igaming-one-psi.vercel.app"]
-
-function validateLaunchUrl(launchUrl: string): string | null {
-  try {
-    const url = new URL(launchUrl)
-    if (url.protocol !== "https:") return null
-    if (!TRUSTED_LAUNCH_HOSTS.includes(url.hostname)) return null
-    return launchUrl
-  } catch {
-    return null
-  }
-}
-
 export function GameLaunchModal({
   game,
   currency,
@@ -62,7 +40,13 @@ export function GameLaunchModal({
       { gameId: game.gameId, currency, lang: "en", mode },
       {
         onSuccess: (result) => {
-          setValidatedUrl(validateLaunchUrl(result.launchUrl))
+          try {
+            const url = new URL(result.launchUrl)
+            if (url.protocol !== "https:") throw new Error("non-https launch URL")
+            setValidatedUrl(result.launchUrl)
+          } catch {
+            setValidatedUrl(null)
+          }
         },
       }
     )
