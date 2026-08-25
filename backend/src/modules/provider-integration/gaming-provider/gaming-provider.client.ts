@@ -52,6 +52,15 @@ class GamingProviderClient {
         ...init?.headers,
         Authorization: `Bearer ${env.GAMING_PROVIDER_API_KEY}`,
         Accept: "application/json",
+        // The provider's key is domain-restricted to the player-facing site
+        // (confirmed via their own 403 body: "This API key is restricted to
+        // exchlotus.com. Include a matching Origin or Referer header.") — a
+        // server-side fetch doesn't send either automatically the way a
+        // browser request would, so this has to be set explicitly.
+        // PAYMENT_CALLBACK_BASE_URL is reused here rather than a new env var
+        // since it's already documented as this backend's frontend origin.
+        Origin: env.PAYMENT_CALLBACK_BASE_URL,
+        Referer: `${env.PAYMENT_CALLBACK_BASE_URL}/`,
       },
     })
 
