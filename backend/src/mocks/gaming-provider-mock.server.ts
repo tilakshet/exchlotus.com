@@ -106,14 +106,14 @@ app.get("/api/v1/catalog/games", (req, res) => {
 
 app.post("/api/v1/sessions/launch", (req, res) => {
   if (!requireApiKey(req, res)) return
-  const { gameId, playerId, currency, mode } = req.body ?? {}
-  if (!gameId || !playerId || !currency || !mode) {
-    return res.status(422).json({ error: "VALIDATION_ERROR", required: ["gameId", "playerId", "currency", "mode"] })
+  const { game_id, user_id, currency, mode } = req.body ?? {}
+  if (!game_id || !user_id || !currency || !mode) {
+    return res.status(422).json({ error: "VALIDATION_ERROR", required: ["game_id", "user_id", "currency", "mode"] })
   }
   const sessionId = randomUUID()
   res.json({
-    sessionId,
-    launchUrl: `https://play.example-provider.test/session/${sessionId}?game=${gameId}&mode=${mode}`,
+    game_url: `https://play.example-provider.test/session/${sessionId}?game=${game_id}&mode=${mode}`,
+    session: { user_id, game_id, currency, mode },
   })
 })
 

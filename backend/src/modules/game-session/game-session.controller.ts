@@ -34,6 +34,23 @@ gameSessionRouter.post("/launch", async (req, res) => {
       mode: parsed.data.mode,
       user_id: req.auth!.externalId,
     })
+
+    // The provider's launch standard is the same for every currency/mode
+    // combination — if the session they hand back doesn't echo the mode we
+    // asked for, that's their side silently deviating (e.g. serving a demo
+    // session for a real-money request), not something safe to paper over
+    // by opening the URL anyway.
+    if (launch.session?.mode && launch.session.mode !== parsed.data.mode) {
+      logger.error(
+        { gameId: parsed.data.gameId, requestedMode: parsed.data.mode, returnedMode: launch.session.mode },
+        "Gaming provider returned a session mode that doesn't match the requested mode"
+      )
+      return res.status(502).json({
+        error: "GAME_UNAVAILABLE",
+        message: "This game is temporarily unavailable. Please try another game or try again shortly.",
+      })
+    }
+
     res.json({ launchUrl: launch.game_url })
   } catch (err) {
     // The provider itself rejecting a launch (bad session config on their
