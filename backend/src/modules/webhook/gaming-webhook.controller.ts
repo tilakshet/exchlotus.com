@@ -34,6 +34,25 @@ export const gamingWebhookRouter = Router()
 // reason above.
 gamingWebhookRouter.use(json())
 
+/**
+ * The provider's own webhook integration test (their dashboard's "Test
+ * Webhook" button, which gates real-money launches account-wide) flags ANY
+ * user_balance response missing a numeric `balance` field as an integration
+ * failure — including a structurally correct error response like
+ * {status:false, error:"INVALID_USER"}. Confirmed via that test directly:
+ * it wants {status:0, error:"INVALID_USER", balance:0} instead — status as
+ * numeric 0, matching their spec's `status: 1` on a successful user_balance
+ * response, and balance present (0) even when there's no real balance to
+ * report. This only applies to user_balance; every other method's error
+ * shape (account_details, transaction_bet/win, refund) is untouched.
+ */
+function errorBody(error: string, method: string | undefined): Record<string, unknown> {
+  if (method === "user_balance") {
+    return { status: 0, error, balance: 0 }
+  }
+  return { status: false, error }
+}
+
 gamingWebhookRouter.post("/gaming_webhook", async (req, res) => {
   if (!isValidBearerToken(req.header("authorization"))) {
     // Never log the token itself — but knowing whether the provider sent no
@@ -47,13 +66,13 @@ gamingWebhookRouter.post("/gaming_webhook", async (req, res) => {
       { hasAuthHeader: !!header, receivedLength, expectedLength: env.GAMING_WEBHOOK_SHARED_SECRET.length },
       "Rejected gaming webhook call with missing/invalid bearer token"
     )
-    return res.status(401).json({ status: false, error: "UNAUTHORIZED" })
+    return res.status(401).json(errorBody("UNAUTHORIZED", typeof req.body?.method === "string" ? req.body.method : undefined))
   }
 
   const parsed = gamingWebhookRequestSchema.safeParse(req.body)
   if (!parsed.success) {
     logger.warn({ issues: parsed.error.issues }, "Rejected malformed gaming webhook payload")
-    return res.status(200).json({ status: false, error: "INVALID_TRANSACTION" })
+    return res.status(200).json(errorBody("INVALID_TRANSACTION", typeof req.body?.method === "string" ? req.body.method : undefined))
   }
 
   try {
@@ -67,9 +86,9 @@ gamingWebhookRouter.post("/gaming_webhook", async (req, res) => {
       // to tell whether it's the same stale/test user_id being retried in a
       // loop, or many distinct real players, from these logs alone.
       logger.info({ code: err.code, method: parsed.data.method, userId: parsed.data.user_id }, "Gaming webhook business error")
-      return res.status(200).json({ status: false, error: err.code })
+      return res.status(200).json(errorBody(err.code, parsed.data.method))
     }
     logger.error({ err, method: parsed.data.method }, "Unhandled error processing gaming webhook")
-    return res.status(500).json({ status: false, error: "INTERNAL_ERROR" })
+    return res.status(500).json(errorBody("INTERNAL_ERROR", parsed.data.method))
   }
 })
