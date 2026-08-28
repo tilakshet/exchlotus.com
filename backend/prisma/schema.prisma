@@ -275,6 +275,15 @@ model Provider {
   name     String
   rtp      Float?
   syncedAt DateTime @default(now())
+  /// Manually confirmed (not derived from any provider API field) that
+  /// real-money mode:"real" launches actually work for this studio — see
+  /// backend README "Real-money studio enablement". Verified via a direct
+  /// POST /v1/sessions/launch call returning session.mode:"real", not
+  /// assumed from category/name. Defaults false: only games from a studio
+  /// explicitly flagged true here sort ahead of the rest of the catalog —
+  /// an unverified studio is treated the same as a known-broken one for
+  /// sorting purposes, since "untested" isn't the same as "safe."
+  realMoneyVerified Boolean @default(false)
 
   games Game[]
 
