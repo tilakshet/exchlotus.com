@@ -203,9 +203,12 @@ export async function listGames(filters: ListGamesFilters = {}): Promise<GamesPa
       prisma.game.findMany({
         where,
         include: { provider: true, category: true },
-        // gameName alone isn't unique, so id is a tiebreaker — without it,
-        // rows can shift between pages when two games share a name.
-        orderBy: [{ gameName: "asc" }, { id: "asc" }],
+        // provider.realMoneyVerified first — a player landing on a game
+        // whose studio isn't yet confirmed for real-money is exactly the
+        // 502 this ordering exists to reduce the odds of. gameName alone
+        // isn't unique, so id is a tiebreaker after that — without it, rows
+        // can shift between pages when two games share a name.
+        orderBy: [{ provider: { realMoneyVerified: "desc" } }, { gameName: "asc" }, { id: "asc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -267,7 +270,7 @@ export async function listHomeFeed(): Promise<HomeFeedShelf[]> {
         const games = await prisma.game.findMany({
           where: { enabled: true, category: { code: group ? { in: group.sourceCodes } : category.code } },
           include: { provider: true, category: true },
-          orderBy: [{ gameName: "asc" }, { id: "asc" }],
+          orderBy: [{ provider: { realMoneyVerified: "desc" } }, { gameName: "asc" }, { id: "asc" }],
           take: HOME_FEED_GAMES_PER_CATEGORY,
         })
         return { id: category.id, code: category.code, name: category.name, games }
