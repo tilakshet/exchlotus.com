@@ -1,3 +1,4 @@
+import crypto from "node:crypto"
 import { prisma } from "../../lib/prisma"
 import { logger } from "../../lib/logger"
 import { bumpCatalogVersion, getCatalogVersion, getOrSetCache } from "../../lib/redis"
@@ -159,17 +160,28 @@ export interface GamesPage {
  */
 export async function listGames(filters: ListGamesFilters = {}): Promise<GamesPage> {
   if (filters.gameIds) {
-    // Per-caller sets of ids (favorites, recently played) — essentially
-    // unique per request, so caching them would just fill Redis with
-    // one-hit entries. Straight to Postgres.
-    const data = filters.gameIds.length
-      ? await prisma.game.findMany({
-          where: { gameId: { in: filters.gameIds }, enabled: true },
-          include: { provider: true, category: true },
-          orderBy: { gameName: "asc" },
-        })
-      : []
-    return { data, pagination: { page: 1, pageSize: data.length, total: data.length, totalPages: 1 } }
+    if (!filters.gameIds.length) {
+      return { data: [], pagination: { page: 1, pageSize: 0, total: 0, totalPages: 1 } }
+    }
+
+    // Keyed by a hash of the sorted id set, not the caller — most callers
+    // (favorites, recently played) pass a unique-per-user set and this just
+    // adds a low-value, TTL-bound Redis entry for them. But some callers
+    // (Trending) pass the same fixed global set on every request, and that
+    // case is common and hot enough to be worth caching properly instead of
+    // hitting Postgres on every home-page load.
+    const version = await getCatalogVersion()
+    const idsHash = crypto.createHash("sha1").update([...filters.gameIds].sort().join(",")).digest("hex")
+    const cacheKey = `catalog:v${version}:games:ids:${idsHash}`
+
+    return getOrSetCache(cacheKey, 60, async () => {
+      const data = await prisma.game.findMany({
+        where: { gameId: { in: filters.gameIds }, enabled: true },
+        include: { provider: true, category: true },
+        orderBy: { gameName: "asc" },
+      })
+      return { data, pagination: { page: 1, pageSize: data.length, total: data.length, totalPages: 1 } }
+    })
   }
 
   const page = filters.page && filters.page > 0 ? Math.floor(filters.page) : 1

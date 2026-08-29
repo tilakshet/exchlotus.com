@@ -324,6 +324,13 @@ model Game {
   enabled    Boolean   @default(true)
   syncedAt   DateTime  @default(now())
 
+  /// Every player-facing catalog query filters enabled:true first, then
+  /// narrows by category or provider (listGames/listHomeFeed in
+  /// catalog.service.ts) — Postgres doesn't auto-index FK columns, and
+  /// without these the ~15k-row table falls back to a sequential scan on
+  /// every cache miss.
+  @@index([enabled, categoryId])
+  @@index([enabled, providerId])
   @@map("games")
 }
 
