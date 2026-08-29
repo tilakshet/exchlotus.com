@@ -9,8 +9,21 @@ export interface CreatePayinOrderInput {
 }
 
 export interface CreatePayinOrderResult {
-  /** Hosted checkout page to redirect the player to. */
-  paymentUrl: string
+  /** Hosted checkout page to redirect the player to directly — undefined for
+   * a gateway that needs its own client-side checkout SDK instead (see
+   * paymentSessionId below); exactly one of the two is always present. */
+  paymentUrl?: string
+  /** Cashfree's payment_session_id (cashfree-gateway.client.ts) — its
+   * server-to-server Order Pay API (what would otherwise turn this into a
+   * plain paymentUrl) needs separate account approval from Cashfree, so the
+   * frontend instead loads Cashfree's own checkout SDK and calls
+   * `cashfree.checkout({ paymentSessionId })`, which needs no such approval.
+   * Undefined for gateways (Oro) that return a real paymentUrl instead. */
+  paymentSessionId?: string
+  /** Only meaningful alongside paymentSessionId — which Cashfree SDK mode
+   * the frontend must initialize with to match the account these
+   * credentials belong to. */
+  cashfreeMode?: "sandbox" | "production"
   gatewayTrxId: string
   expiresAt: Date
 }
