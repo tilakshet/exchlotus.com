@@ -23,6 +23,34 @@ const MAX_BASELINE = 1800
 const MAX_DRIFT_RATIO = 0.15
 const TICK_MS = 1000
 
+/**
+ * A page can render hundreds of GameCards at once (Trending, category
+ * shelves, favorites all stacked on Home) — one `setInterval` per card was
+ * hundreds of independent per-second re-renders fighting for the main
+ * thread simultaneously. This shares a single global ticker across every
+ * mounted instance instead: one `setInterval`, started lazily on first
+ * subscriber and stopped when the last one unmounts, that just fans a tick
+ * out to whichever cards are currently on screen.
+ */
+const tickListeners = new Set<() => void>()
+let tickTimer: ReturnType<typeof setInterval> | null = null
+
+function subscribeTick(listener: () => void): () => void {
+  tickListeners.add(listener)
+  if (!tickTimer) {
+    tickTimer = setInterval(() => {
+      for (const l of tickListeners) l()
+    }, TICK_MS)
+  }
+  return () => {
+    tickListeners.delete(listener)
+    if (tickListeners.size === 0 && tickTimer) {
+      clearInterval(tickTimer)
+      tickTimer = null
+    }
+  }
+}
+
 export function useLivePlayingCount(seed: string): number {
   const [count, setCount] = useState(() => {
     const baseline = MIN_BASELINE + (hashSeed(seed) % (MAX_BASELINE - MIN_BASELINE))
@@ -33,7 +61,7 @@ export function useLivePlayingCount(seed: string): number {
     const baseline = MIN_BASELINE + (hashSeed(seed) % (MAX_BASELINE - MIN_BASELINE))
     setCount(baseline)
 
-    const interval = setInterval(() => {
+    return subscribeTick(() => {
       setCount((prev) => {
         const step = Math.floor(Math.random() * 9) - 4 // -4..+4
         const next = prev + step
@@ -41,9 +69,7 @@ export function useLivePlayingCount(seed: string): number {
         const ceil = Math.ceil(baseline * (1 + MAX_DRIFT_RATIO))
         return Math.min(ceil, Math.max(floor, next))
       })
-    }, TICK_MS)
-
-    return () => clearInterval(interval)
+    })
   }, [seed])
 
   return count
