@@ -37,6 +37,7 @@ export async function syncCatalog(): Promise<{
 
   const games = await gamingProviderClient.getGames()
   const categoryIdByCode = new Map<string, string>()
+  const seenGameIds: string[] = []
   let gamesImported = 0
 
   for (const g of games) {
@@ -71,6 +72,7 @@ export async function syncCatalog(): Promise<{
         bannerUrl: g.thumbnail,
         providerId: provider.id,
         categoryId,
+        availableFromProvider: true,
         syncedAt: new Date(),
       },
       create: {
@@ -83,6 +85,25 @@ export async function syncCatalog(): Promise<{
       },
     })
     gamesImported += 1
+    seenGameIds.push(g.id)
+  }
+
+  // The provider's catalog API has no removal/delisting signal — a game
+  // that stops appearing in getGames() just silently disappears from the
+  // response. Without this, that row stays availableFromProvider:true
+  // forever (upsert only ever sets it true, never false), so a player
+  // could still click into and attempt to launch a game the provider no
+  // longer lists at all. Guarded on a non-empty sync: if getGames() ever
+  // came back empty (a bad response, not a genuinely empty catalog), this
+  // must not mass-disable every game that already exists.
+  if (seenGameIds.length > 0) {
+    const { count: gamesMarkedUnavailable } = await prisma.game.updateMany({
+      where: { gameId: { notIn: seenGameIds }, availableFromProvider: true },
+      data: { availableFromProvider: false },
+    })
+    if (gamesMarkedUnavailable > 0) {
+      logger.info({ gamesMarkedUnavailable }, "Marked games no longer in the provider's catalog as unavailable")
+    }
   }
 
   // Every cached catalog/hero-banner response (below, and home.service.ts)
@@ -176,7 +197,7 @@ export async function listGames(filters: ListGamesFilters = {}): Promise<GamesPa
 
     return getOrSetCache(cacheKey, 60, async () => {
       const data = await prisma.game.findMany({
-        where: { gameId: { in: filters.gameIds }, enabled: true },
+        where: { gameId: { in: filters.gameIds }, enabled: true, availableFromProvider: true },
         include: { provider: true, category: true },
         orderBy: { gameName: "asc" },
       })
@@ -193,6 +214,7 @@ export async function listGames(filters: ListGamesFilters = {}): Promise<GamesPa
   return getOrSetCache(cacheKey, 60, async () => {
     const where = {
       enabled: true,
+      availableFromProvider: true,
       ...(filters.categoryCode
         ? (() => {
             const group = findMergeGroup(filters.categoryCode)
@@ -235,7 +257,7 @@ export async function getGameByIdentifier(identifier: string) {
   const version = await getCatalogVersion()
   return getOrSetCache(`catalog:v${version}:game:${identifier}`, 300, () =>
     prisma.game.findFirst({
-      where: { enabled: true, OR: [{ gameId: identifier }, { gameCode: identifier }] },
+      where: { enabled: true, availableFromProvider: true, OR: [{ gameId: identifier }, { gameCode: identifier }] },
       include: { provider: true, category: true },
     })
   )
@@ -280,7 +302,11 @@ export async function listHomeFeed(): Promise<HomeFeedShelf[]> {
       categories.map(async (category) => {
         const group = findMergeGroup(category.code)
         const games = await prisma.game.findMany({
-          where: { enabled: true, category: { code: group ? { in: group.sourceCodes } : category.code } },
+          where: {
+            enabled: true,
+            availableFromProvider: true,
+            category: { code: group ? { in: group.sourceCodes } : category.code },
+          },
           include: { provider: true, category: true },
           orderBy: [{ provider: { realMoneyVerified: "desc" } }, { gameName: "asc" }, { id: "asc" }],
           take: HOME_FEED_GAMES_PER_CATEGORY,
