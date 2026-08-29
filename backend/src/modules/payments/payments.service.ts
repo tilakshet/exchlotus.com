@@ -3,10 +3,13 @@ import { env } from "../../lib/env"
 import { prisma } from "../../lib/prisma"
 import { logger } from "../../lib/logger"
 import { applyLedgerEntry } from "../wallet/wallet.service"
-// Active PayIn gateway. Oro's client (./gateway/oro-gateway.client) is left
-// fully intact, not deleted — this is a one-line swap back if Oro needs to
-// be reactivated, not a migration.
-import { cashfreeGateway as paymentGateway } from "./gateway/cashfree-gateway.client"
+// Active PayIn gateway. Temporarily reverted to Oro (2026-08-29) — Cashfree
+// needs domain whitelisting approved (merchant.cashfree.com > Developers >
+// Whitelisting) before its hosted checkout will accept exchlotus.com;
+// that's a Cashfree-side approval wait, not a code issue. Cashfree's client
+// (./gateway/cashfree-gateway.client) is left fully intact — swap this
+// import back once whitelisting is approved.
+import { paymentGateway } from "./gateway/oro-gateway.client"
 
 class PaymentError extends Error {}
 
