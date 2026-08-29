@@ -32,12 +32,24 @@ const envSchema = z.object({
   // Real-money payment gateway (PayIn deposits, Payout withdrawals) — see
   // backend/src/modules/payments. Neither callback the gateway sends is
   // signature-verified (undocumented by the provider); payments.service.ts
-  // binds strictly to a pending order/withdrawal WE created instead.
+  // binds strictly to a pending order/withdrawal WE created instead. Kept
+  // configured (Oro is not being deleted) even while Cashfree is the active
+  // PayIn gateway — see gateway/oro-gateway.client.ts / cashfree-gateway.client.ts.
   PAYMENT_GATEWAY_BASE_URL: z.string().url(),
   PAYMENT_GATEWAY_CLIENT_ID: z.string().min(1),
   PAYMENT_GATEWAY_SECRET_ID: z.string().min(1),
   /** Used to build the per-transaction redirect_url sent to the PayIn API — where the player's browser returns to after paying. */
   PAYMENT_CALLBACK_BASE_URL: z.string().url(),
+
+  // Cashfree PG (deposits) — active PayIn gateway (see cashfree-gateway.client.ts).
+  // Unlike Oro's, Cashfree's webhook IS signature-verified — Cashfree has no
+  // separate webhook secret to configure; per their own reference
+  // implementation (github.com/cashfree/cashfree-pg-webhook), x-webhook-signature
+  // is HMAC-SHA256'd with this same Client Secret, not a distinct one.
+  CASHFREE_BASE_URL: z.string().url().default("https://sandbox.cashfree.com"),
+  CASHFREE_CLIENT_ID: z.string().min(1),
+  CASHFREE_CLIENT_SECRET: z.string().min(1),
+  CASHFREE_API_VERSION: z.string().default("2023-08-01"),
 
   /** This backend's own public origin — used to build absolute URLs (e.g. support ticket image attachments) that admin/frontend, a different domain, can load directly. Unlike PAYMENT_CALLBACK_BASE_URL (the frontend's origin), this is the API's own. */
   PUBLIC_BASE_URL: z.string().url(),

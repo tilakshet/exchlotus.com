@@ -321,16 +321,29 @@ model Game {
   /// Admin-panel toggle (games.manage) — catalog.service.ts filters player-
   /// facing reads to enabled:true and bumps the catalog cache version on
   /// change, so a disabled game disappears from the player app promptly.
+  /// Deliberately untouched by syncCatalog() — an admin's manual disable
+  /// must survive routine re-syncing, see availableFromProvider below for
+  /// the sync-driven equivalent.
   enabled    Boolean   @default(true)
+  /// Set true whenever this game appears in a syncCatalog() run, false for
+  /// any previously-synced game that didn't (the provider stopped listing
+  /// it, without us finding out any other way — there's no delete/removal
+  /// signal in their catalog API). Deliberately a separate column from
+  /// `enabled`: syncCatalog() must never flip an admin's manual disable
+  /// back on just because the provider still lists the game, and an
+  /// admin's manual disable must never get silently reversed by a re-sync
+  /// either — the two booleans track two unrelated facts about the same
+  /// row, and both must be true for the game to actually be launchable.
+  availableFromProvider Boolean @default(true)
   syncedAt   DateTime  @default(now())
 
-  /// Every player-facing catalog query filters enabled:true first, then
-  /// narrows by category or provider (listGames/listHomeFeed in
-  /// catalog.service.ts) — Postgres doesn't auto-index FK columns, and
-  /// without these the ~15k-row table falls back to a sequential scan on
-  /// every cache miss.
-  @@index([enabled, categoryId])
-  @@index([enabled, providerId])
+  /// Every player-facing catalog query filters enabled:true and
+  /// availableFromProvider:true first, then narrows by category or
+  /// provider (listGames/listHomeFeed in catalog.service.ts) — Postgres
+  /// doesn't auto-index FK columns, and without these the ~15k-row table
+  /// falls back to a sequential scan on every cache miss.
+  @@index([enabled, availableFromProvider, categoryId])
+  @@index([enabled, availableFromProvider, providerId])
   @@map("games")
 }
 

@@ -53,7 +53,10 @@ function errorBody(error: string, method: string | undefined): Record<string, un
   return { status: false, error }
 }
 
-gamingWebhookRouter.post("/gaming_webhook", async (req, res) => {
+// Mounted at the full "/api/gaming_webhook" path in app.ts (not a bare "/api"
+// prefix with this as the sub-path) — see app.ts's comment on why that mount
+// needs to be exact, not just prefix-broad.
+gamingWebhookRouter.post("/", async (req, res) => {
   if (!isValidBearerToken(req.header("authorization"))) {
     // Never log the token itself — but knowing whether the provider sent no
     // header at all vs. a wrong-length/wrong-value one is the difference

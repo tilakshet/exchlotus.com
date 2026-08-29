@@ -42,7 +42,18 @@ export function createApp() {
   // Mounted before apiLimiter — this is inbound provider traffic (bearer-
   // token verified, see gaming-webhook.controller.ts), not user-facing, and
   // a 300/15min-per-IP cap would throttle legitimate settlement callbacks.
-  app.use("/api", gamingWebhookRouter)
+  // Scoped to its exact route (not a bare "/api") — gamingWebhookRouter runs
+  // its own body parser unconditionally on every request that reaches it,
+  // and Express's router.use() middleware fires for ANY request entering the
+  // router regardless of whether a route inside it ultimately matches. A
+  // broad "/api" mount was silently consuming/parsing the body for every
+  // other /api/* request too, including payments-callback.controller.ts's
+  // Cashfree route below — by the time that router's own body parser ran,
+  // body-parser saw the body already parsed and skipped it entirely,
+  // including its `verify` callback, so the raw bytes needed for Cashfree's
+  // signature check never got captured. Discovered via a live signature
+  // verification failure that traced back to this over-broad mount.
+  app.use("/api/gaming_webhook", gamingWebhookRouter)
   app.use("/api/payments", paymentsCallbackRouter)
   app.use("/api", apiLimiter)
 
