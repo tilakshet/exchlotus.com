@@ -17,3 +17,12 @@ export const payoutCallbackSchema = z.object({
   status: z.string(),
   utr: z.string().nullable().optional(),
 })
+
+/** Shape of Cashfree's webhook body — signature is checked separately (raw body), this only validates structure. */
+export const cashfreeWebhookSchema = z.object({
+  type: z.string(),
+  data: z.object({
+    order: z.object({ order_id: z.string().min(1) }),
+    payment: z.object({ payment_amount: z.number() }),
+  }),
+})

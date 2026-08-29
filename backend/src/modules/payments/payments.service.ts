@@ -3,7 +3,10 @@ import { env } from "../../lib/env"
 import { prisma } from "../../lib/prisma"
 import { logger } from "../../lib/logger"
 import { applyLedgerEntry } from "../wallet/wallet.service"
-import { paymentGateway } from "./gateway/oro-gateway.client"
+// Active PayIn gateway. Oro's client (./gateway/oro-gateway.client) is left
+// fully intact, not deleted — this is a one-line swap back if Oro needs to
+// be reactivated, not a migration.
+import { cashfreeGateway as paymentGateway } from "./gateway/cashfree-gateway.client"
 
 class PaymentError extends Error {}
 
