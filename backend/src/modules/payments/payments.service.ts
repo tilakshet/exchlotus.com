@@ -36,7 +36,13 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
     data: { gatewayTrxId: result.gatewayTrxId },
   })
 
-  return { orderId: order.id, paymentUrl: result.paymentUrl, expiresAt: result.expiresAt.toISOString() }
+  return {
+    orderId: order.id,
+    paymentUrl: result.paymentUrl,
+    paymentSessionId: result.paymentSessionId,
+    cashfreeMode: result.cashfreeMode,
+    expiresAt: result.expiresAt.toISOString(),
+  }
 }
 
 /**

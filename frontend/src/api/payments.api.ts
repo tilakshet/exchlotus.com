@@ -2,7 +2,12 @@ import { apiRequest } from "./http"
 
 export interface DepositOrder {
   orderId: string
-  paymentUrl: string
+  /** Present for a gateway (Oro) that gives a ready-made hosted page — exactly one of paymentUrl/paymentSessionId is present. */
+  paymentUrl?: string
+  /** Cashfree's payment_session_id — when present, must be handed to Cashfree's own checkout SDK (see dashboard.account.deposit.tsx) rather than redirected to directly. */
+  paymentSessionId?: string
+  /** Only meaningful alongside paymentSessionId. */
+  cashfreeMode?: "sandbox" | "production"
   expiresAt: string
 }
 

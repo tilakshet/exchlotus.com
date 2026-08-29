@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { CreditCard, IndianRupee, QrCode } from "lucide-react"
+import { load as loadCashfree } from "@cashfreepayments/cashfree-js"
 import { useCreateDepositOrder } from "@/hooks/useWallet"
 import { ApiError, friendlyErrorMessage } from "@/api/api-error"
 import { ComingSoon } from "@/features/account/ComingSoon"
@@ -71,9 +72,15 @@ function DepositPage() {
       // (backend payments.service.ts) — this redirect (or the QR panel
       // below) just hands the player off to pay, neither is itself a
       // success signal.
-      if (isWebPaymentUrl(order.paymentUrl)) {
+      if (order.paymentSessionId) {
+        // Cashfree: no ready-made paymentUrl (its server-to-server Order Pay
+        // API needs separate account approval — see cashfree-gateway.client.ts)
+        // — its own checkout SDK reaches the identical hosted page without it.
+        const cashfree = await loadCashfree({ mode: order.cashfreeMode ?? "sandbox" })
+        await cashfree.checkout({ paymentSessionId: order.paymentSessionId, redirectTarget: "_self" })
+      } else if (order.paymentUrl && isWebPaymentUrl(order.paymentUrl)) {
         window.location.href = order.paymentUrl
-      } else {
+      } else if (order.paymentUrl) {
         setUpiOrder({ paymentUrl: order.paymentUrl, amount: values.amount })
       }
     } catch {

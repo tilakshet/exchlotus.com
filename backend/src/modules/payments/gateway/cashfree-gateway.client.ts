@@ -9,13 +9,6 @@ interface CreateOrderResponse {
   message?: string
 }
 
-interface OrderPayResponse {
-  cf_payment_id?: string
-  payment_message?: string
-  data?: { payload?: { web?: string } }
-  message?: string
-}
-
 const CASHFREE_HEADERS = {
   "x-client-id": env.CASHFREE_CLIENT_ID,
   "x-client-secret": env.CASHFREE_CLIENT_SECRET,
@@ -26,32 +19,18 @@ const CASHFREE_HEADERS = {
 
 /**
  * Adapter for Cashfree PG (deposits only — payout stays Oro-only, see
- * payment-gateway.interface.ts). Two calls, matching Cashfree's documented
- * UPI Intent flow:
- *
- *   1. Create Order (`POST /pg/orders`) → `payment_session_id`
- *   2. Order Pay (`POST /pg/orders/sessions`, `payment_method.upi.channel:
- *      "link"`) → several device-specific links in `data.payload`
- *
- * `data.payload` carries both a `web` link (Cashfree's own hosted checkout
- * page — genuinely fulfills this interface's `paymentUrl` contract: "hosted
- * checkout page to redirect the player to") and per-app links (`default`,
- * `gpay`, `phonepe`, `paytm`, `bhim` — bare mobile app-intent deep links,
- * meant to be tapped on a phone, not redirected to from a browser). `web` is
- * the one used here deliberately: like every major Indian UPI gateway's
- * hosted checkout, it's the single page that auto-adapts — a scannable QR on
- * desktop, an app-picker on mobile — which is the deposit UX this needs to
- * match (see dashboard.account.deposit.tsx's isWebPaymentUrl: a real `web`
- * URL takes the plain redirect path, no UpiPaymentPanel involved — that
- * component exists specifically for Oro's occasional bare, page-less
- * `upi://` links, not for Cashfree's proper hosted page).
- *
- * Cashfree's sandbox can't demonstrate this responsive behavior — every
- * `data.payload` field, `web` included, resolves to the same flat test
- * simulator page in sandbox regardless of which one is used (confirmed by
- * directly following the `web` link) — so sandbox testing will look
- * different from Oro even though this is the field production actually
- * renders as an adaptive checkout page from.
+ * payment-gateway.interface.ts). Only ever calls Create Order (`POST
+ * /pg/orders`) — the server-to-server "Order Pay" API that would otherwise
+ * turn the resulting `payment_session_id` into a ready-made hosted
+ * `paymentUrl` needs separate account approval from Cashfree (confirmed
+ * live: `POST /pg/orders/sessions` fails with `s2s_enabled_not_approved`,
+ * "Please reach out to care@cashfree.com" — an account-level gate, not
+ * something fixable here). Rather than wait on that approval, this returns
+ * the bare `payment_session_id` instead and lets the frontend use
+ * Cashfree's own checkout SDK (`cashfree.checkout({ paymentSessionId })`,
+ * dashboard.account.deposit.tsx) — the standard client-side integration
+ * every merchant account gets by default, no S2S approval required, and the
+ * same hosted checkout page ("web") this was already trying to reach.
  *
  * Cashfree's webhook (unlike Oro's) is signature-verified — see
  * payments-callback.controller.ts's `/payin/callback/cashfree` route.
@@ -70,7 +49,12 @@ class CashfreeGatewayClient implements PaymentGateway {
           customer_name: input.name,
           customer_phone: input.mobileNumber,
         },
-        order_meta: { return_url: input.redirectUrl },
+        // Restricts the hosted checkout page to UPI only (QR + UPI app
+        // options) — otherwise it shows every method Cashfree supports
+        // (cards, wallets, net banking, paylater, EMI), which doesn't match
+        // this deposit flow's UPI-only design (see Oro's equivalent, which
+        // only ever collects via UPI).
+        order_meta: { return_url: input.redirectUrl, payment_methods: "upi" },
       }),
     })
 
@@ -80,27 +64,12 @@ class CashfreeGatewayClient implements PaymentGateway {
       throw new Error(`Cashfree order creation failed with status ${orderRes.status}${orderJson.message ? `: ${orderJson.message}` : ""}`)
     }
 
-    const payRes = await fetch(`${env.CASHFREE_BASE_URL}/pg/orders/sessions`, {
-      method: "POST",
-      headers: CASHFREE_HEADERS,
-      body: JSON.stringify({
-        payment_session_id: orderJson.payment_session_id,
-        payment_method: { upi: { channel: "link" } },
-      }),
-    })
-
-    const payJson = (await payRes.json().catch(() => ({}))) as Partial<OrderPayResponse>
-    const paymentUrl = payJson.data?.payload?.web
-    if (!payRes.ok || !paymentUrl) {
-      logger.error({ status: payRes.status, body: payJson }, "Cashfree UPI intent request failed")
-      throw new Error(`Cashfree UPI intent request failed with status ${payRes.status}${payJson.message ? `: ${payJson.message}` : ""}`)
-    }
-
-    logger.info({ orderId: input.orderId, paymentUrl, cfPaymentId: payJson.cf_payment_id }, "Cashfree PayIn order created")
+    logger.info({ orderId: input.orderId, paymentSessionId: orderJson.payment_session_id }, "Cashfree PayIn order created")
 
     return {
-      paymentUrl,
-      gatewayTrxId: payJson.cf_payment_id ?? orderJson.order_id ?? "",
+      paymentSessionId: orderJson.payment_session_id,
+      cashfreeMode: env.CASHFREE_BASE_URL.includes("sandbox") ? "sandbox" : "production",
+      gatewayTrxId: orderJson.order_id ?? "",
       expiresAt: orderJson.order_expiry_time ? new Date(orderJson.order_expiry_time) : new Date(Date.now() + 15 * 60 * 1000),
     }
   }
