@@ -41,6 +41,12 @@ async function performRefresh(): Promise<string | null> {
     })
     if (!res.ok) throw new Error("refresh failed")
     const tokens = (await res.json()) as AuthTokens
+    // A logout can land while this fetch is still in flight (this refresh
+    // was already using the pre-logout refreshToken) — re-populating tokens
+    // after that would silently undo the logout, and letting the original
+    // caller retry with them would make an orphaned post-logout API call.
+    // Treat it the same as never having had a refresh token to begin with.
+    if (!store.getState().auth.refreshToken) return null
     store.dispatch(tokensRefreshed(tokens))
     return tokens.accessToken
   } catch {

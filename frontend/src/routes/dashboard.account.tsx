@@ -104,10 +104,12 @@ function AccountLayout() {
 
   return (
     <div className="account-shell flex w-full flex-col gap-6 lg:sticky lg:top-[8px] lg:h-[calc(100dvh-5.5rem)] lg:flex-row lg:items-stretch lg:gap-0 lg:overflow-hidden">
-      {/* Hidden on mobile — the account section's own BottomNavBar (rendered
-          below) covers the same ground (including Log Out via ProfileChip
-          on the navbar), so this doesn't need a stacked-above-content
-          mobile fallback the way it might otherwise. */}
+      {/* Desktop-only sidebar (Log Out lives in it, pinned to the bottom —
+          see the button further down). BottomNavBar below is mobile's
+          equivalent for navigation, but it's Link-only (see
+          BottomNavItem/BottomNavBar.tsx) and can't carry an onClick action
+          like Log Out — hence the separate mobile-only button right after
+          the heading below, reusing this same handleLogout. */}
       <aside className="hidden lg:flex lg:h-full lg:w-72 lg:shrink-0 lg:flex-col lg:gap-4 lg:overflow-y-auto lg:pr-4">
         <div
           className="shrink-0 rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] p-4"
@@ -178,9 +180,25 @@ function AccountLayout() {
       <div aria-hidden="true" className="hidden shrink-0 lg:block lg:w-px lg:self-stretch" style={{ background: "var(--acc-border)" }} />
 
       <div className="min-w-0 flex-1 lg:h-full lg:overflow-y-auto lg:pr-2 lg:pl-6">
-        <div className="mb-5">
-          <h1 className="text-xl font-semibold leading-tight text-[color:var(--acc-text-primary)] sm:text-2xl">{heading.title}</h1>
-          <p className="mt-1 text-sm text-[color:var(--acc-text-secondary)]">{heading.subtitle}</p>
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold leading-tight text-[color:var(--acc-text-primary)] sm:text-2xl">{heading.title}</h1>
+            <p className="mt-1 text-sm text-[color:var(--acc-text-secondary)]">{heading.subtitle}</p>
+          </div>
+          {/* Mobile-only — desktop's Log Out lives in the sidebar above.
+              BottomNavBar can't carry this (Link-only items), so it needs
+              its own spot; the page heading is visible on every account
+              page regardless of which BottomNavBar tab got here. */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            aria-label="Log out"
+            className="flex shrink-0 items-center gap-1.5 rounded-[var(--acc-radius-md)] border px-3 py-2 text-sm font-medium outline-none transition-colors hover:bg-[color:var(--acc-bg)] focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)] lg:hidden"
+            style={{ borderColor: "var(--acc-border)", color: "var(--acc-text-secondary)" }}
+          >
+            <LogOut className="size-4.5" aria-hidden="true" strokeWidth={2.1} />
+            Log Out
+          </button>
         </div>
 
         {/* Desktop only — mobile navigates this section via the BottomNavBar below instead. */}
