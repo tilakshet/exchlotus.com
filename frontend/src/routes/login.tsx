@@ -492,10 +492,10 @@ function CaptchaField({ captcha, error }: { captcha: CaptchaState; error?: strin
           onClick={() => captcha.refresh()}
           disabled={captcha.loading}
           aria-label="Refresh CAPTCHA"
-          className="flex size-9 shrink-0 items-center justify-center rounded-(--landing-radius-sm) outline-none transition-opacity disabled:opacity-60"
+          className="flex size-11 shrink-0 items-center justify-center rounded-(--landing-radius-sm) outline-none transition-opacity disabled:opacity-60"
           style={inputBoxStyle()}
         >
-          <RefreshCw className={`size-4 ${captcha.loading ? "animate-spin" : ""}`} style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
+          <RefreshCw className={`size-4.5 ${captcha.loading ? "animate-spin" : ""}`} style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
         </button>
       </div>
       <div
