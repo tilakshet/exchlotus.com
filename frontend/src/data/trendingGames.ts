@@ -3,21 +3,26 @@
  * session volume) tracked anywhere in this system to rank by, same
  * reasoning as home.service.ts's PINNED_BANNERS on the backend.
  *
- * Every title below was individually verified (2026-08-27) with a direct
+ * Every title below was individually verified with a direct
  * POST /v1/sessions/launch call against the real provider, mode:"real" —
  * each one confirmed to return an actual session.mode:"real" session, not
- * a silent fun-mode downgrade. Restricted to the three studios (7mojos,
- * abracadabra, absolute) where real-money launches are currently enabled
- * on this account — every other studio tested (avigroup, kagaming, in-out,
- * RubyPlay, and the crash/instant-win studios in the previous version of
- * this list — spribe, funkygames, hacksaw, jetx, pragmatic, 100hp,
- * galaxsys, turbo-games — none individually re-verified but same account-
- * level restriction applies) currently returns a demo session instead
- * regardless of what mode is requested — see the provider correspondence
- * for the underlying issue. Swap in newly-enabled studios' titles here
- * once the provider confirms more are turned on; don't add a game back
- * without re-verifying it the same way, since a game "existing in the
- * catalog" doesn't mean real-money actually works for it right now.
+ * a silent fun-mode downgrade. Don't add a game back without re-verifying
+ * it the same way, since a game "existing in the catalog" doesn't mean
+ * real-money actually works for it right now.
+ *
+ * Batches 1-2 (2026-08-27/28) were restricted to 3 studios (7mojos,
+ * abracadabra, absolute) — the only ones with real-money launches enabled
+ * at the time. That account-level restriction has since lifted: a broad
+ * re-test (2026-08-31) across every provider with an available game found
+ * 53 studios, 197/197 sampled titles launching correctly in real mode —
+ * see Provider.realMoneyVerified in the backend, now populated from this
+ * same test run and already used to sort verified-provider games first in
+ * every category (catalog.service.ts). Batch 3 below draws specifically
+ * from well-known, high-demand titles in the real-money casino market
+ * (Evolution's game-show/live-casino lineup, Pragmatic Live, popular
+ * Andar Bahar/Teen Patti/Dragon Tiger variants for this market) that
+ * turned up among those 53 verified studios — market popularity, not just
+ * "first available game," picked the specific titles.
  */
 export const TRENDING_GAME_IDS = [
   "cmsge6sev0hqkuz1dtkua3d2x", // Andar Bahar (7mojos)
@@ -90,4 +95,25 @@ export const TRENDING_GAME_IDS = [
   "cmsge9vsa0jh6uz1dkpvfkykh", // Lucky Helicopter, crashgame (abracadabra)
   "8f314f37-4da2-4d81-be66-b9c8126ab43a", // Blackjack Bar, tablegames (abracadabra) — verified live
   "cmsged2en0mdcuz1dvatqpfcc", // Arcane Roulette (absolute)
+
+  // Batch 3 (2026-08-31) — market-popular titles, verified live via the
+  // same POST /v1/sessions/launch, mode:"real" method, drawn from the 53
+  // studios confirmed working in the broader re-test (see header comment).
+  "cmsge291n0df4uz1dibolvt3o", // Crazy Time, gameshow (evolutionWCX)
+  "cmsge29yd0dg4uz1dbs6ljx7u", // MONOPOLY Live, gameshow (evolutionWCY)
+  "cmsge2ank0dgwuz1d0186lyqh", // Lightning Roulette (evolutionWCX)
+  "cmsge29lt0dfquz1di5hjozgq", // Funky Time, gameshow (evolutionWCX)
+  "cmsge29um0dg0uz1dxttaywh4", // Dream Catcher, gameshow (evolutionWCX)
+  "cmsge2ax90dh6uz1d40x7zq20", // XXXtreme Lightning Roulette (evolutionWCX)
+  "cmsgdvbqv06l4uz1dqb47lir0", // Sweet Bonanza CandyLand, gameshow (pragmatic-live)
+  "cmsge96sp0itcuz1dmw3f7q84", // Teen Patti Auto (jacktop)
+  "cmsge232a0d98uz1daunmngk9", // Super Andar Bahar (evolutionWC)
+  "cmsge5rci0goauz1dnspsb9hv", // Dragon Tiger Phoenix (evolutionWCX)
+  "cmsge267k0dc8uz1dz49pxx29", // Speed Baccarat 9 (evolutionWC)
+  "cmsgecomq0m08uz1dw0y3z4if", // Avi Crash, gameshow (creedroomz)
+  "cmsge90zy0in8uz1dzvvvl7ky", // Cash balloon, crashgame (tada)
+  "cmsge3bl10ehmuz1dpp871i9a", // Diamond Mines, instantgame (betsoft-a)
+  "cmsgeblaa0l12uz1d6cxzpyxi", // Symphony Private Blackjack 1 (winfinity)
+  "cmsge9cya0izauz1ddytb44j1", // Ultimate Auto Roulette (ezugi)
+  "cmsgeb9u40kr6uz1dh9neak89", // Plinko, instantgame (pascalgaming)
 ] as const
