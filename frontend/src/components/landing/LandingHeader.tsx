@@ -61,7 +61,7 @@ export function LandingHeader() {
               </Link>
               <Link
                 to="/login"
-                search={{ view: "otp" }}
+                search={{ view: "login" }}
                 className="landing-cta-purple landing-shine shrink-0 whitespace-nowrap rounded-(--landing-radius-sm) px-8 py-4 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
               >
                 Login

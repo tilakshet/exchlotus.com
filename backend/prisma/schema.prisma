@@ -95,15 +95,16 @@ model Player {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  wallet             Wallet?
-  entries            LedgerEntry[]
-  refreshTokens      RefreshToken[]
-  bankAccounts       BankAccount[]
-  paymentOrders      PaymentOrder[]
-  withdrawalRequests WithdrawalRequest[]
-  tickets            SupportTicket[]
-  loginEvents        LoginEvent[]
-  kycSubmissions     KycSubmission[]
+  wallet              Wallet?
+  entries             LedgerEntry[]
+  refreshTokens       RefreshToken[]
+  bankAccounts        BankAccount[]
+  paymentOrders       PaymentOrder[]
+  withdrawalRequests  WithdrawalRequest[]
+  tickets             SupportTicket[]
+  loginEvents         LoginEvent[]
+  kycSubmissions      KycSubmission[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("players")
 }
@@ -267,6 +268,26 @@ model OtpCode {
 
   @@index([phone, createdAt])
   @@map("otp_codes")
+}
+
+/// Forgot-password: a short-lived, single-use credential that lets the
+/// "new password" step (auth.service.ts resetPassword) prove it followed a
+/// legitimate request-reset step (requestPasswordReset), without an OTP —
+/// same hash-only-storage principle as RefreshToken above (a DB leak alone
+/// can't be replayed). playerId is nullable so a request for a phone/email
+/// with no matching account can still return a same-shaped, never-resolving
+/// token instead of revealing whether the account exists.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  playerId  String?
+  player    Player?   @relation(fields: [playerId], references: [id])
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([playerId])
+  @@map("password_reset_tokens")
 }
 
 model Provider {

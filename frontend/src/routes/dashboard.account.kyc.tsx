@@ -3,9 +3,8 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { AlertCircle, CheckCircle2, Clock, CreditCard, Info, Phone, ShieldCheck, User as UserIcon, X } from "lucide-react"
-import { useMyKyc, useRequestPhoneOtp, useSubmitKyc, useVerifyPhoneOtp } from "@/hooks/useKyc"
-import { useProfile } from "@/hooks/useProfile"
+import { AlertCircle, CheckCircle2, Clock, CreditCard, ShieldCheck, User as UserIcon, X } from "lucide-react"
+import { useMyKyc, useSubmitKyc } from "@/hooks/useKyc"
 import { ApiError, friendlyErrorMessage } from "@/api/api-error"
 import { StepHeading } from "@/features/account/StepHeading"
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/upload-limits"
@@ -110,108 +109,6 @@ function StatusBanner({ icon: Icon, bg, fg, title, description }: { icon: typeof
   )
 }
 
-function PhoneVerifyStep({ phone, onVerified }: { phone: string | null; onVerified: () => void }) {
-  const requestOtp = useRequestPhoneOtp()
-  const verifyOtp = useVerifyPhoneOtp()
-  const [sent, setSent] = useState(false)
-  const [devCode, setDevCode] = useState<string | null>(null)
-  const [code, setCode] = useState("")
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleSend() {
-    setError(null)
-    try {
-      const result = await requestOtp.mutateAsync()
-      setDevCode(result.devCode ?? null)
-      setSent(true)
-    } catch (err) {
-      setError(friendlyErrorMessage(err instanceof ApiError ? err : err))
-    }
-  }
-
-  async function handleVerify(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    try {
-      await verifyOtp.mutateAsync(code)
-      onVerified()
-    } catch (err) {
-      setError(friendlyErrorMessage(err instanceof ApiError ? err : err))
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-5 rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
-      <StepHeading step={1} title="Verify Your Mobile Number" />
-
-      {!sent ? (
-        <>
-          <p className="flex items-center gap-2.5 text-base text-[color:var(--acc-text-secondary)]">
-            <Phone className="size-5 shrink-0" aria-hidden="true" />
-            We'll send a one-time code to {phone ?? "your registered number"} to confirm it's really you.
-          </p>
-          {error && (
-            <p role="alert" className="text-sm" style={{ color: "var(--acc-danger)" }}>
-              {error}
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={requestOtp.isPending}
-            className="flex h-12 w-fit items-center gap-2 rounded-[var(--acc-radius-md)] px-6 text-base font-bold outline-none transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
-          >
-            {requestOtp.isPending ? "Sending…" : "Send Code"}
-          </button>
-        </>
-      ) : (
-        <form onSubmit={handleVerify} className="flex flex-col gap-4">
-          {devCode && (
-            <p className="flex items-center gap-2 rounded-[var(--acc-radius-sm)] border border-[color:var(--acc-border)] px-3 py-2 text-xs" style={{ color: "var(--acc-text-secondary)" }}>
-              <Info className="size-4.5 shrink-0" style={{ color: "var(--acc-accent)" }} aria-hidden="true" />
-              No SMS gateway connected — dev code: <span className="font-mono font-bold" style={{ color: "var(--acc-text-primary)" }}>{devCode}</span>
-            </p>
-          )}
-          <div>
-            <label htmlFor="kyc-phone-code" className="mb-2 block text-base font-semibold text-[color:var(--acc-text-primary)]">
-              Enter the 6-digit code sent to {phone}
-            </label>
-            <input
-              id="kyc-phone-code"
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className={inputClass}
-              style={inputStyle}
-              placeholder="••••••"
-            />
-          </div>
-          {error && (
-            <p role="alert" className="text-sm" style={{ color: "var(--acc-danger)" }}>
-              {error}
-            </p>
-          )}
-          <div className="flex items-center gap-4">
-            <button
-              type="submit"
-              disabled={verifyOtp.isPending || code.length !== 6}
-              className="flex h-12 items-center gap-2 rounded-[var(--acc-radius-md)] px-6 text-base font-bold outline-none transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-              style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
-            >
-              {verifyOtp.isPending ? "Verifying…" : "Verify"}
-            </button>
-            <button type="button" onClick={handleSend} disabled={requestOtp.isPending} className="text-sm font-semibold underline" style={{ color: "var(--acc-text-secondary)" }}>
-              Resend code
-            </button>
-          </div>
-        </form>
-      )}
-    </div>
-  )
-}
 
 function KycForm({ onDone }: { onDone: () => void }) {
   const submit = useSubmitKyc()
@@ -302,9 +199,27 @@ function KycForm({ onDone }: { onDone: () => void }) {
   )
 }
 
+/**
+ * Defensive fallback only — every account has phoneVerifiedAt set at
+ * registration now (see auth.service.ts register()), and a data migration
+ * backfilled every pre-existing account, so this shouldn't be reachable in
+ * practice. There's no self-service OTP step to send someone to anymore
+ * (that flow was removed — see kyc.service.ts), hence a support pointer
+ * instead of a dead "Send Code" button.
+ */
+function PhoneNotVerifiedNotice() {
+  return (
+    <div className="flex flex-col gap-3 rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
+      <StepHeading step={1} title="Mobile Number Not Verified" />
+      <p className="text-base text-[color:var(--acc-text-secondary)]">
+        We couldn't confirm your mobile number on this account. Please contact support to resolve this before submitting KYC documents.
+      </p>
+    </div>
+  )
+}
+
 function KycPage() {
   const { data, isLoading, isError, refetch } = useMyKyc()
-  const { data: profile } = useProfile()
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -350,7 +265,7 @@ function KycPage() {
                 title="Verification rejected"
                 description={data.latestSubmission?.rejectionReason || "Your submission was rejected. Please review and resubmit."}
               />
-              {data.phoneVerified ? <KycForm onDone={() => refetch()} /> : <PhoneVerifyStep phone={profile?.phone ?? null} onVerified={() => refetch()} />}
+              {data.phoneVerified ? <KycForm onDone={() => refetch()} /> : <PhoneNotVerifiedNotice />}
             </>
           )}
 
@@ -359,7 +274,7 @@ function KycPage() {
               <div className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-5 text-base text-[color:var(--acc-text-secondary)]">
                 Verify your identity with your mobile number, a PAN card, and a profile photo. This is required once, before your first withdrawal — deposits and gameplay aren't affected.
               </div>
-              {data.phoneVerified ? <KycForm onDone={() => refetch()} /> : <PhoneVerifyStep phone={profile?.phone ?? null} onVerified={() => refetch()} />}
+              {data.phoneVerified ? <KycForm onDone={() => refetch()} /> : <PhoneNotVerifiedNotice />}
             </>
           )}
         </>

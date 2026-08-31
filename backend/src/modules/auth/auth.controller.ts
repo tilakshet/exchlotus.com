@@ -1,10 +1,11 @@
 import { Router } from "express"
 import { z } from "zod"
-import { authLimiter } from "../../lib/rate-limit"
+import { authLimiter, captchaLimiter } from "../../lib/rate-limit"
 import { logger } from "../../lib/logger"
 import { requireAuth } from "./auth.middleware"
 import { AuthError } from "./auth.errors"
-import { changePassword, login, logout, refresh, register, requestOtp, verifyOtp } from "./auth.service"
+import { generateCaptcha } from "./captcha.service"
+import { changePassword, login, logout, refresh, register, requestPasswordReset, resetPassword } from "./auth.service"
 import type { LoginEventContext } from "./login-event.service"
 
 export const authRouter = Router()
@@ -13,34 +14,40 @@ const phoneSchema = z.string().regex(/^\+[1-9]\d{7,14}$/, "Enter a valid phone n
 
 const genderSchema = z.enum(["MALE", "FEMALE", "OTHER"])
 
+const captchaFields = {
+  captchaId: z.string().uuid(),
+  captchaCode: z.string().regex(/^\d{4}$/, "Enter the 4-digit CAPTCHA"),
+}
+
 const registerSchema = z.object({
   username: z.string().min(2).max(40),
   phone: phoneSchema,
   email: z.string().email().optional(),
   password: z.string().min(8).max(72), // bcrypt truncates beyond 72 bytes
   gender: genderSchema,
+  ...captchaFields,
 })
 
 const loginSchema = z.object({
   phone: phoneSchema,
   password: z.string().min(1),
+  ...captchaFields,
 })
 
 const refreshSchema = z.object({
   refreshToken: z.string().min(1),
 })
 
-const otpRequestSchema = z.object({
-  phone: phoneSchema,
+const forgotPasswordSchema = z.object({
+  // Phone or email — requestPasswordReset tells them apart by "@".
+  identifier: z.string().min(3).max(120),
+  ...captchaFields,
 })
 
-const otpVerifySchema = z.object({
-  phone: phoneSchema,
-  code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
-  referralCode: z.string().max(40).optional(),
-  // Only meaningful when this call provisions a brand-new account — an OTP
-  // login into an existing account ignores it (see verifyOtp/auth.service.ts).
-  gender: genderSchema.optional(),
+const resetPasswordSchema = z.object({
+  resetToken: z.string().min(1),
+  newPassword: z.string().min(8).max(72), // matches registerSchema
+  ...captchaFields,
 })
 
 function loginContext(req: import("express").Request): LoginEventContext {
@@ -54,15 +61,28 @@ function sendAuthError(res: import("express").Response, err: unknown) {
         ? 409
         : err.code === "OTP_RATE_LIMITED"
           ? 429
-          : err.code === "NO_PASSWORD_SET"
+          : err.code === "NO_PASSWORD_SET" || err.code === "CAPTCHA_INVALID" || err.code === "RESET_TOKEN_INVALID"
             ? 422
             : err.code === "ACCOUNT_SUSPENDED"
               ? 403
-              : 401
+              : err.code === "CAPTCHA_UNAVAILABLE"
+                ? 503
+                : 401
     return res.status(status).json({ error: err.code, message: err.message })
   }
   throw err
 }
+
+// Numeric CAPTCHA, generated and validated server-side (see
+// captcha.service.ts) — shared by login, register, forgot-password, and
+// reset-password below rather than each form growing its own copy.
+authRouter.post("/captcha", captchaLimiter, async (_req, res) => {
+  try {
+    res.json(await generateCaptcha())
+  } catch (err) {
+    sendAuthError(res, err)
+  }
+})
 
 authRouter.post("/register", authLimiter, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body)
@@ -117,27 +137,27 @@ authRouter.post("/logout", async (req, res) => {
   }
 })
 
-authRouter.post("/otp/request", authLimiter, async (req, res) => {
-  const parsed = otpRequestSchema.safeParse(req.body)
+authRouter.post("/forgot-password", authLimiter, async (req, res) => {
+  const parsed = forgotPasswordSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   }
   try {
-    const result = await requestOtp(parsed.data.phone)
+    const result = await requestPasswordReset(parsed.data)
     res.json(result)
   } catch (err) {
     sendAuthError(res, err)
   }
 })
 
-authRouter.post("/otp/verify", authLimiter, async (req, res) => {
-  const parsed = otpVerifySchema.safeParse(req.body)
+authRouter.post("/reset-password", authLimiter, async (req, res) => {
+  const parsed = resetPasswordSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   }
   try {
-    const tokens = await verifyOtp(parsed.data.phone, parsed.data.code, parsed.data.referralCode, parsed.data.gender, loginContext(req))
-    res.json(tokens)
+    await resetPassword(parsed.data)
+    res.status(204).send()
   } catch (err) {
     sendAuthError(res, err)
   }

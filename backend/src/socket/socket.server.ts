@@ -1,5 +1,6 @@
 import type { Server as HttpServer } from "node:http"
 import { Server as SocketIoServer } from "socket.io"
+import { createAdapter } from "@socket.io/redis-adapter"
 import { verifyAccessToken } from "../modules/auth/token.util"
 import { appEvents } from "../lib/events"
 import { redis } from "../lib/redis"
@@ -31,6 +32,24 @@ export function createSocketServer(httpServer: HttpServer) {
   const io = new SocketIoServer(httpServer, {
     cors: { origin: env.CORS_ORIGIN ? env.CORS_ORIGIN.split(",") : true, credentials: true },
   })
+
+  // Cross-instance room/broadcast state — without this, a socket connected
+  // to one backend replica never receives an event emitted (io.to(...)
+  // below) from a request handled by a different replica, since each
+  // process would otherwise only know about its own local connections. Only
+  // one backend container runs today (docker-compose.prod.yml has no
+  // replicas:), so this was a latent gap rather than a live bug — but
+  // CLAUDE.md calls for horizontal scaling, and this is what makes that
+  // actually work for realtime events once there's more than one instance.
+  // Separate pub/sub clients, same reasoning as the player:notifications
+  // subscriber below: a client that's issued SUBSCRIBE can't run other
+  // commands, so the adapter needs its own dedicated pair, not the shared
+  // `redis` client.
+  const pubClient = redis.duplicate()
+  const subClient = redis.duplicate()
+  pubClient.on("error", (err) => logger.warn({ err }, "Redis adapter pub client error"))
+  subClient.on("error", (err) => logger.warn({ err }, "Redis adapter sub client error"))
+  io.adapter(createAdapter(pubClient, subClient))
 
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token as string | undefined

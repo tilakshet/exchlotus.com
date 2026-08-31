@@ -36,7 +36,7 @@ export function RewardsPreviewSection() {
         ))}
       </div>
       <p className="mt-8 text-center text-sm text-(--landing-text-secondary)">
-        <Link to="/login" search={{ view: "otp" }} className="font-bold text-(--landing-gold-text) underline underline-offset-2">
+        <Link to="/login" search={{ view: "login" }} className="font-bold text-(--landing-gold-text) underline underline-offset-2">
           Log in
         </Link>{" "}
         to track your tier and points.

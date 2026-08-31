@@ -15,14 +15,6 @@ export function getMyKyc(): Promise<MyKycStatus> {
   return apiRequest<MyKycStatus>("/api/kyc/me")
 }
 
-export function requestPhoneVerificationOtp(): Promise<{ devCode?: string }> {
-  return apiRequest<{ devCode?: string }>("/api/kyc/phone/request-otp", { method: "POST" })
-}
-
-export function verifyPhoneVerificationOtp(code: string): Promise<void> {
-  return apiRequest<void>("/api/kyc/phone/verify-otp", { method: "POST", body: { code } })
-}
-
 export function submitKyc(input: { panNumber: string; panCard: File; photo: File }): Promise<{ id: string; status: KycStatus }> {
   const body = new FormData()
   body.set("panNumber", input.panNumber)

@@ -3,9 +3,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Lock, Phone, Info, Ticket, X } from "lucide-react";
+import { Lock, Phone, RefreshCw, Ticket, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { usePhoneOtpFlow } from "@/hooks/usePhoneOtpFlow";
+import { useCaptcha, type CaptchaState } from "@/hooks/useCaptcha";
+import * as authApi from "@/api/auth.api";
 import { ApiError, friendlyErrorMessage } from "@/api/api-error";
 import { Logo } from "@/components/shared/Logo";
 import promoImage from "@/assets/hero.png";
@@ -18,6 +19,8 @@ interface LoginSearch {
   idle?: boolean;
   /** Set by useSocketConnection's session:revoked handler — a newer login elsewhere just kicked this device out (single-active-session enforcement, see Player.sessionVersion in schema.prisma). */
   sessionRevoked?: boolean;
+  /** Set after a successful Reset Password, so the login view can show a confirmation banner. */
+  resetDone?: boolean;
   /** Pre-fills Sign Up's promo code field — carried in via a shared referral link (see dashboard.refer-earn.tsx). */
   promo?: string;
 }
@@ -27,13 +30,15 @@ export const Route = createFileRoute("/login")({
     redirect: typeof search.redirect === "string" ? search.redirect : undefined,
     view:
       search.view === "register" ||
-      search.view === "password" ||
-      search.view === "otp"
+      search.view === "login" ||
+      search.view === "forgot" ||
+      search.view === "reset"
         ? search.view
         : undefined,
     suspended: search.suspended === "1" || search.suspended === true,
     idle: search.idle === "1" || search.idle === true,
     sessionRevoked: search.sessionRevoked === "1" || search.sessionRevoked === true,
+    resetDone: search.resetDone === "1" || search.resetDone === true,
     promo: typeof search.promo === "string" && search.promo.trim() !== "" ? search.promo.trim().slice(0, 40) : undefined,
   }),
   component: LoginPage,
@@ -50,21 +55,7 @@ const loginSchema = z.object({
 });
 type LoginValues = z.infer<typeof loginSchema>;
 
-const otpCodeSchema = z.object({
-  code: z.string().length(6, "Enter the 6-digit code"),
-});
-type OtpCodeValues = z.infer<typeof otpCodeSchema>;
-
 const genderLocalSchema = z.enum(["MALE", "FEMALE", "OTHER"], { message: "Select your gender" });
-
-const signUpPhoneSchema = z.object({
-  phone: phoneLocalSchema,
-  gender: genderLocalSchema,
-  promoCode: z.string().max(40).optional(),
-  agreeTerms: z.boolean().refine((v) => v === true, {
-    message: "You must agree to the Terms & Privacy Policy",
-  }),
-});
 
 const passwordSignUpSchema = z
   .object({
@@ -82,31 +73,58 @@ const passwordSignUpSchema = z
     path: ["confirmPassword"],
   });
 type PasswordSignUpValues = z.infer<typeof passwordSignUpSchema>;
-type SignUpPhoneValues = z.infer<typeof signUpPhoneSchema>;
 
-type View = "otp" | "password" | "register";
+const forgotIdentifierSchema = z.object({
+  identifier: z.string().min(3, "Enter your mobile number or email"),
+});
+type ForgotIdentifierValues = z.infer<typeof forgotIdentifierSchema>;
+
+const resetPasswordFormSchema = z
+  .object({
+    newPassword: z.string().min(8, "At least 8 characters").max(72),
+    confirmPassword: z.string().min(1, "Confirm your password"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+type ResetPasswordFormValues = z.infer<typeof resetPasswordFormSchema>;
+
+type View = "login" | "register" | "forgot" | "reset";
 
 /**
  * Real auth (routed through useAuth() → the backend's JWT endpoints).
- * Phone number is the identifier everywhere now — Login with OTP, Login
- * with Password, and Sign Up all key off it, not email. Sign Up has no
- * password field at all: verifying an OTP for a number with no account
- * provisions one (auth.service.ts verifyOtp), matching the reference —
- * password is a separate login *method* for accounts that already have
- * one (e.g. the seeded fixture player), not something Sign Up collects.
+ * Phone number is the identifier for both Login and Sign Up. Password +
+ * numeric CAPTCHA only — there is no OTP-based login/signup anymore (see
+ * auth.service.ts). Forgot Password is a two-step CAPTCHA-gated flow
+ * (identify → set new password), also with no OTP.
  */
 function LoginPage() {
-  const { redirect, view: initialView, suspended, idle, sessionRevoked, promo } = Route.useSearch();
+  const { redirect, view: initialView, suspended, idle, sessionRevoked, resetDone, promo } = Route.useSearch();
   const navigate = useNavigate();
   // A shared referral link (?promo=CODE) jumps straight to Sign Up rather
-  // than the default Login/OTP screen — the whole point of the link is to
-  // get a new player registering with that code already in hand.
-  const [view, setView] = useState<View>(initialView ?? (promo ? "register" : "otp"));
-  const [signUpMethod, setSignUpMethod] = useState<"otp" | "password">("otp");
+  // than the default Login screen — the whole point of the link is to get a
+  // new player registering with that code already in hand.
+  const [view, setView] = useState<View>(initialView ?? (promo ? "register" : "login"));
+  // Carries the resetToken from Forgot Password's identify step into its
+  // set-new-password step — never put in the URL/search params, it's a
+  // one-time credential (see auth.service.ts resetPassword).
+  const [resetToken, setResetToken] = useState<string | null>(null);
 
   function onSuccess() {
     navigate({ to: (redirect ?? "/dashboard") as "/dashboard" });
   }
+
+  function goToView(next: View) {
+    setView(next);
+  }
+
+  const titleByView: Record<View, string> = {
+    login: "Login",
+    register: "Sign Up",
+    forgot: "Forgot Password",
+    reset: "Reset Password",
+  };
 
   return (
     <div className="login-gaming-bg relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
@@ -127,56 +145,13 @@ function LoginPage() {
             <Logo heightClass="h-20" />
           </div>
 
-          {view !== "register" && (
-            <div
-              className="mt-8 inline-flex gap-1 rounded-(--landing-radius-full) p-1 text-sm"
-              style={{
-                background: "var(--landing-glass)",
-                border: "1px solid var(--landing-border)",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setView("otp")}
-                aria-pressed={view === "otp"}
-                className="rounded-(--landing-radius-full) px-5 py-2.5 font-bold transition-colors"
-                style={
-                  view === "otp"
-                    ? {
-                        background: "var(--landing-gold)",
-                        color: "var(--landing-gold-fg)",
-                      }
-                    : { color: "var(--landing-text-secondary)" }
-                }
-              >
-                Login with OTP
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("password")}
-                aria-pressed={view === "password"}
-                className="rounded-(--landing-radius-full) px-5 py-2.5 font-bold transition-colors"
-                style={
-                  view === "password"
-                    ? {
-                        background: "var(--landing-gold)",
-                        color: "var(--landing-gold-fg)",
-                      }
-                    : { color: "var(--landing-text-secondary)" }
-                }
-              >
-                Login with Password
-              </button>
-            </div>
-          )}
-
           <h1
             className="mt-7 text-3xl font-black tracking-tight"
             style={{ color: "var(--landing-text-primary)" }}
           >
-            {view === "register" ? "Sign Up" : "Login"}
+            {titleByView[view]}
           </h1>
-          {redirect && view !== "register" && !suspended && !idle && !sessionRevoked && (
+          {redirect && view === "login" && !suspended && !idle && !sessionRevoked && (
             <p
               className="mt-1.5 text-xs"
               style={{ color: "var(--landing-text-secondary)" }}
@@ -214,54 +189,33 @@ function LoginPage() {
             </p>
           )}
 
-          {view === "register" && (
-            <div
-              className="mt-6 inline-flex gap-1 rounded-(--landing-radius-full) p-1 text-sm"
-              style={{
-                background: "var(--landing-glass)",
-                border: "1px solid var(--landing-border)",
-              }}
+          {resetDone && view === "login" && (
+            <p
+              role="status"
+              className="mt-3 rounded-(--landing-radius-sm) border border-(--landing-border) bg-(--landing-glass) px-3 py-2 text-xs"
+              style={{ color: "var(--landing-text-secondary)" }}
             >
-              <button
-                type="button"
-                onClick={() => setSignUpMethod("otp")}
-                aria-pressed={signUpMethod === "otp"}
-                className="rounded-(--landing-radius-full) px-5 py-2.5 font-bold transition-colors"
-                style={
-                  signUpMethod === "otp"
-                    ? {
-                        background: "var(--landing-gold)",
-                        color: "var(--landing-gold-fg)",
-                      }
-                    : { color: "var(--landing-text-secondary)" }
-                }
-              >
-                Sign Up with OTP
-              </button>
-              <button
-                type="button"
-                onClick={() => setSignUpMethod("password")}
-                aria-pressed={signUpMethod === "password"}
-                className="rounded-(--landing-radius-full) px-5 py-2.5 font-bold transition-colors"
-                style={
-                  signUpMethod === "password"
-                    ? {
-                        background: "var(--landing-gold)",
-                        color: "var(--landing-gold-fg)",
-                      }
-                    : { color: "var(--landing-text-secondary)" }
-                }
-              >
-                Sign Up with Password
-              </button>
-            </div>
+              Your password has been reset. Log in with your new password.
+            </p>
           )}
 
           <div className="mt-2 max-w-md">
-            {view === "otp" && <OtpLoginForm onSuccess={onSuccess} />}
-            {view === "password" && <PasswordLoginForm onSuccess={onSuccess} />}
-            {view === "register" && signUpMethod === "otp" && <SignUpForm onSuccess={onSuccess} initialPromoCode={promo} />}
-            {view === "register" && signUpMethod === "password" && <PasswordSignUpForm onSuccess={onSuccess} />}
+            {view === "login" && <LoginForm onSuccess={onSuccess} />}
+            {view === "register" && <RegisterForm onSuccess={onSuccess} initialPromoCode={promo} />}
+            {view === "forgot" && (
+              <ForgotPasswordForm
+                onIdentified={(token) => {
+                  setResetToken(token);
+                  goToView("reset");
+                }}
+              />
+            )}
+            {view === "reset" && (
+              <ResetPasswordForm
+                resetToken={resetToken}
+                onDone={() => navigate({ to: "/login", search: { view: "login", resetDone: true } })}
+              />
+            )}
           </div>
 
           <p
@@ -273,23 +227,31 @@ function LoginPage() {
                 Already have an account?{" "}
                 <button
                   type="button"
-                  onClick={() => setView("otp")}
+                  onClick={() => goToView("login")}
                   className="underline outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
                 >
                   Login
                 </button>
               </>
-            ) : (
+            ) : view === "login" ? (
               <>
                 Don&rsquo;t have an account?{" "}
                 <button
                   type="button"
-                  onClick={() => setView("register")}
+                  onClick={() => goToView("register")}
                   className="underline outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
                 >
                   Sign Up
                 </button>
               </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => goToView("login")}
+                className="underline outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
+              >
+                Back to Login
+              </button>
             )}
           </p>
 
@@ -313,8 +275,8 @@ function LoginPage() {
 }
 
 /**
- * The real promo banner asset (src/assets/hero.png) on a clean solid panel
- * — one deliberate custom touch (the image tilts toward the pointer) rather
+ * Real promo banner asset (src/assets/hero.png) on a clean solid panel —
+ * one deliberate custom touch (the image tilts toward the pointer) rather
  * than a stack of ambient background effects.
  */
 function AvatarPanel() {
@@ -501,269 +463,78 @@ function GenderField({
 }
 
 /**
- * Shared code-entry step for both Login-with-OTP and Sign Up — same
- * request/resend/verify flow (usePhoneOtpFlow), just a different verify
- * button label and, for Sign Up, a referral code passed through to
- * verifyOtp so it lands on the newly-created account.
+ * Numeric CAPTCHA, shared by Login/Register/Forgot Password/Reset Password
+ * — the code is displayed in plain text (it's not a secret from the
+ * browser, only the server-side record makes it enforceable) with a
+ * refresh button, and the user retypes it below. Server-validated on
+ * submit (captcha.service.ts) — never trust this client-side alone.
  */
-function OtpCodeStep({
-  flow,
-  onSuccess,
-  referralCode,
-  gender,
-  verifyLabel,
-}: {
-  flow: ReturnType<typeof usePhoneOtpFlow>;
-  onSuccess: () => void;
-  referralCode?: string;
-  gender?: Gender;
-  verifyLabel: string;
-}) {
-  const codeForm = useForm<OtpCodeValues>({
-    resolver: zodResolver(otpCodeSchema),
-  });
-
-  async function handleVerify(values: OtpCodeValues) {
-    await flow.verify(values.code, referralCode, onSuccess, gender);
-  }
-
+function CaptchaField({ captcha, error }: { captcha: CaptchaState; error?: string }) {
   return (
-    <form
-      onSubmit={codeForm.handleSubmit(handleVerify)}
-      className="mt-6 flex flex-col gap-5"
-      noValidate
-    >
-      <FormError message={flow.formError} />
-      {flow.devCode && (
-        <p
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) border border-(--landing-border) px-3 py-2 text-xs"
-          style={{ color: "var(--landing-text-secondary)" }}
+    <div>
+      <label
+        htmlFor="captcha-input"
+        className="mb-1.5 block text-xs font-bold"
+        style={{ color: "var(--landing-text-secondary)" }}
+      >
+        CAPTCHA*
+      </label>
+      <div className="mb-2 flex items-center gap-2">
+        <div
+          className="select-none rounded-(--landing-radius-sm) px-4 py-2.5 font-mono text-lg font-black tracking-[0.4em]"
+          style={{ ...inputBoxStyle(), color: "var(--landing-text-primary)" }}
+          aria-hidden="true"
         >
-          <Info
-            className="size-4.5 shrink-0 text-(--landing-gold)"
-            aria-hidden="true"
-          />
-          No SMS gateway connected — dev code:{" "}
-          <span
-            className="font-mono font-bold"
-            style={{ color: "var(--landing-text-primary)" }}
+          {captcha.loading ? "····" : (captcha.code ?? "— — — —")}
+        </div>
+        <button
+          type="button"
+          onClick={() => captcha.refresh()}
+          disabled={captcha.loading}
+          aria-label="Refresh CAPTCHA"
+          className="flex size-9 shrink-0 items-center justify-center rounded-(--landing-radius-sm) outline-none transition-opacity disabled:opacity-60"
+          style={inputBoxStyle()}
+        >
+          <RefreshCw className={`size-4 ${captcha.loading ? "animate-spin" : ""}`} style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
+        </button>
+      </div>
+      <div
+        className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+        style={inputBoxStyle()}
+      >
+        <input
+          id="captcha-input"
+          type="text"
+          inputMode="numeric"
+          maxLength={4}
+          placeholder="Enter CAPTCHA"
+          aria-invalid={!!error}
+          className="w-full bg-transparent py-3 text-sm tracking-[0.3em] outline-none placeholder:text-(--landing-text-muted)"
+          style={{ color: "var(--landing-text-primary)" }}
+          value={captcha.value}
+          onChange={(e) => captcha.setValue(e.target.value.replace(/\D/g, "").slice(0, 4))}
+        />
+      </div>
+      <FieldError message={error} />
+      {captcha.error && !captcha.loading && (
+        <p role="alert" className="mt-1 text-xs text-red-400">
+          Couldn&rsquo;t load CAPTCHA: {captcha.error} —{" "}
+          <button
+            type="button"
+            onClick={() => captcha.refresh()}
+            className="underline outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
           >
-            {flow.devCode}
-          </span>
+            try again
+          </button>
         </p>
       )}
-      <div>
-        <label
-          htmlFor="otp-code"
-          className="mb-1.5 block text-xs font-bold"
-          style={{ color: "var(--landing-text-secondary)" }}
-        >
-          Enter the 6-digit code sent to +91 {flow.phone.slice(3)}
-        </label>
-        <div
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
-          style={inputBoxStyle()}
-        >
-          <Lock
-            className="size-4.5 shrink-0"
-            style={{ color: "var(--landing-text-muted)" }}
-            aria-hidden="true"
-          />
-          <input
-            id="otp-code"
-            type="text"
-            inputMode="numeric"
-            maxLength={6}
-            placeholder="••••••"
-            aria-invalid={!!codeForm.formState.errors.code}
-            className="w-full bg-transparent py-3 text-sm tracking-[0.3em] outline-none placeholder:text-(--landing-text-muted)"
-            style={{ color: "var(--landing-text-primary)" }}
-            {...codeForm.register("code")}
-          />
-        </div>
-        <FieldError message={codeForm.formState.errors.code?.message} />
-      </div>
-
-      <button
-        type="submit"
-        disabled={codeForm.formState.isSubmitting}
-        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {codeForm.formState.isSubmitting ? "Verifying…" : verifyLabel}
-      </button>
-
-      <div
-        className="flex items-center justify-between text-xs"
-        style={{ color: "var(--landing-text-muted)" }}
-      >
-        <button
-          type="button"
-          onClick={() => flow.setStep("phone")}
-          className="underline outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
-        >
-          Change number
-        </button>
-        <button
-          type="button"
-          onClick={flow.resend}
-          disabled={flow.cooldown > 0}
-          className="underline outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold) disabled:no-underline disabled:opacity-60"
-        >
-          {flow.cooldown > 0 ? `Resend in ${flow.cooldown}s` : "Resend code"}
-        </button>
-      </div>
-    </form>
+    </div>
   );
 }
 
-function OtpLoginForm({ onSuccess }: { onSuccess: () => void }) {
-  const flow = usePhoneOtpFlow();
-  const phoneForm = useForm<{ phone: string }>({
-    resolver: zodResolver(z.object({ phone: phoneLocalSchema })),
-  });
-
-  if (flow.step === "code") {
-    return (
-      <OtpCodeStep flow={flow} onSuccess={onSuccess} verifyLabel="Verify OTP" />
-    );
-  }
-
-  return (
-    <form
-      onSubmit={phoneForm.handleSubmit((v) => flow.request(v.phone))}
-      className="mt-6 flex flex-col gap-5"
-      noValidate
-    >
-      <FormError message={flow.formError} />
-      <PhoneField
-        id="otp-phone"
-        register={phoneForm.register}
-        error={phoneForm.formState.errors.phone?.message}
-      />
-      <button
-        type="submit"
-        disabled={phoneForm.formState.isSubmitting}
-        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {phoneForm.formState.isSubmitting ? "Sending…" : "Request OTP"}
-      </button>
-    </form>
-  );
-}
-
-/**
- * Matches the reference's Sign Up screen: phone, an optional promo code,
- * an 18+/terms checkbox, then the same OTP request/verify flow as Login
- * with OTP. No password field — see the module doc comment above for why.
- */
-function SignUpForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; initialPromoCode?: string }) {
-  const flow = usePhoneOtpFlow();
-  const [promoCode, setPromoCode] = useState(initialPromoCode ?? "");
-  const [gender, setGender] = useState<Gender | undefined>(undefined);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<SignUpPhoneValues>({
-    resolver: zodResolver(signUpPhoneSchema),
-    defaultValues: { agreeTerms: false, promoCode: initialPromoCode },
-  });
-
-  async function onRequest(values: SignUpPhoneValues) {
-    setPromoCode(values.promoCode ?? "");
-    setGender(values.gender);
-    await flow.request(values.phone);
-  }
-
-  if (flow.step === "code") {
-    return (
-      <OtpCodeStep
-        flow={flow}
-        onSuccess={onSuccess}
-        referralCode={promoCode || undefined}
-        gender={gender}
-        verifyLabel="Verify & Create Account"
-      />
-    );
-  }
-
-  return (
-    <form
-      onSubmit={handleSubmit(onRequest)}
-      className="mt-6 flex flex-col gap-5"
-      noValidate
-    >
-      <FormError message={flow.formError} />
-      <PhoneField
-        id="signup-phone"
-        register={register}
-        error={errors.phone?.message}
-      />
-
-      <GenderField
-        id="signup-gender"
-        register={register}
-        error={errors.gender?.message}
-      />
-
-      <div>
-        <label
-          htmlFor="signup-promo"
-          className="mb-1.5 block text-xs font-bold"
-          style={{ color: "var(--landing-text-secondary)" }}
-        >
-          Enter Promocode (Optional)
-        </label>
-        <div
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
-          style={inputBoxStyle()}
-        >
-          <Ticket
-            className="size-4.5 shrink-0"
-            style={{ color: "var(--landing-text-muted)" }}
-            aria-hidden="true"
-          />
-          <input
-            id="signup-promo"
-            type="text"
-            placeholder="Enter Promo Code"
-            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
-            style={{ color: "var(--landing-text-primary)" }}
-            {...register("promoCode")}
-          />
-        </div>
-      </div>
-
-      <div>
-        <label
-          className="flex items-start gap-2.5 text-xs"
-          style={{ color: "var(--landing-text-secondary)" }}
-        >
-          <input
-            type="checkbox"
-            className="mt-0.5 size-8 shrink-0 accent-(--landing-gold)"
-            aria-invalid={!!errors.agreeTerms}
-            {...register("agreeTerms")}
-          />
-          I certify that I am 18 years old and I agree to the T&amp;Cs and
-          Privacy Policy
-        </label>
-        <FieldError message={errors.agreeTerms?.message} />
-      </div>
-
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {isSubmitting ? "Sending…" : "Request OTP"}
-      </button>
-    </form>
-  );
-}
-
-function PasswordLoginForm({ onSuccess }: { onSuccess: () => void }) {
+function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const { login } = useAuth();
+  const captcha = useCaptcha();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -773,11 +544,16 @@ function PasswordLoginForm({ onSuccess }: { onSuccess: () => void }) {
 
   async function onSubmit(values: LoginValues) {
     setFormError(null);
+    if (!captcha.captchaId || captcha.value.length !== 4) {
+      setFormError("Enter the 4-digit CAPTCHA");
+      return;
+    }
     try {
-      await login(`+91${values.phone}`, values.password);
+      await login(`+91${values.phone}`, values.password, captcha.captchaId, captcha.value);
       onSuccess();
     } catch (err) {
       setFormError(friendlyErrorMessage(err instanceof ApiError ? err : err));
+      captcha.refresh();
     }
   }
 
@@ -822,7 +598,17 @@ function PasswordLoginForm({ onSuccess }: { onSuccess: () => void }) {
           />
         </div>
         <FieldError message={errors.password?.message} />
+        <Link
+          to="/login"
+          search={{ view: "forgot" }}
+          className="mt-1.5 inline-block text-xs underline outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
+          style={{ color: "var(--landing-text-muted)" }}
+        >
+          Forgot Password?
+        </Link>
       </div>
+
+      <CaptchaField captcha={captcha} />
 
       <button
         type="submit"
@@ -835,15 +621,9 @@ function PasswordLoginForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-/**
- * Alternative to SignUpForm's OTP flow — creates the account (and issues
- * tokens) in one request via POST /api/auth/register, instead of waiting on
- * a code with no SMS gateway to deliver it (auth.service.ts requestOtp).
- * Still collects phone, same as OTP Sign Up — register() requires it so the
- * resulting account can also use "Login with Password" afterward.
- */
-function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
+function RegisterForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; initialPromoCode?: string }) {
   const { register: createAccount } = useAuth();
+  const captcha = useCaptcha();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -853,14 +633,24 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
     resolver: zodResolver(passwordSignUpSchema),
     defaultValues: { agreeTerms: false },
   });
+  // Promo code isn't collected by password Sign Up today (register()
+  // doesn't accept a referral code — see auth.service.ts) — kept as a
+  // display-only field like before, purely for parity with the shared
+  // referral link's pre-fill.
+  const [promoCode] = useState(initialPromoCode ?? "");
 
   async function onSubmit(values: PasswordSignUpValues) {
     setFormError(null);
+    if (!captcha.captchaId || captcha.value.length !== 4) {
+      setFormError("Enter the 4-digit CAPTCHA");
+      return;
+    }
     try {
-      await createAccount(values.username, `+91${values.phone}`, values.password, values.gender);
+      await createAccount(values.username, `+91${values.phone}`, values.password, values.gender, captcha.captchaId, captcha.value);
       onSuccess();
     } catch (err) {
       setFormError(friendlyErrorMessage(err instanceof ApiError ? err : err));
+      captcha.refresh();
     }
   }
 
@@ -874,7 +664,7 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
 
       <div>
         <label
-          htmlFor="signup-password-username"
+          htmlFor="signup-username"
           className="mb-1.5 block text-xs font-bold"
           style={{ color: "var(--landing-text-secondary)" }}
         >
@@ -885,7 +675,7 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
           style={inputBoxStyle()}
         >
           <input
-            id="signup-password-username"
+            id="signup-username"
             type="text"
             placeholder="Your name"
             aria-invalid={!!errors.username}
@@ -898,20 +688,50 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
       </div>
 
       <PhoneField
-        id="signup-password-phone"
+        id="signup-phone"
         register={register}
         error={errors.phone?.message}
       />
 
       <GenderField
-        id="signup-password-gender"
+        id="signup-gender"
         register={register}
         error={errors.gender?.message}
       />
 
+      {promoCode && (
+        <div>
+          <label
+            htmlFor="signup-promo"
+            className="mb-1.5 block text-xs font-bold"
+            style={{ color: "var(--landing-text-secondary)" }}
+          >
+            Promocode
+          </label>
+          <div
+            className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+            style={inputBoxStyle()}
+          >
+            <Ticket
+              className="size-4.5 shrink-0"
+              style={{ color: "var(--landing-text-muted)" }}
+              aria-hidden="true"
+            />
+            <input
+              id="signup-promo"
+              type="text"
+              disabled
+              value={promoCode}
+              className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
+              style={{ color: "var(--landing-text-primary)" }}
+            />
+          </div>
+        </div>
+      )}
+
       <div>
         <label
-          htmlFor="signup-password-password"
+          htmlFor="signup-password"
           className="mb-1.5 block text-xs font-bold"
           style={{ color: "var(--landing-text-secondary)" }}
         >
@@ -927,7 +747,7 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
             aria-hidden="true"
           />
           <input
-            id="signup-password-password"
+            id="signup-password"
             type="password"
             placeholder="••••••••"
             aria-invalid={!!errors.password}
@@ -941,7 +761,7 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
 
       <div>
         <label
-          htmlFor="signup-password-confirm"
+          htmlFor="signup-confirm"
           className="mb-1.5 block text-xs font-bold"
           style={{ color: "var(--landing-text-secondary)" }}
         >
@@ -957,7 +777,7 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
             aria-hidden="true"
           />
           <input
-            id="signup-password-confirm"
+            id="signup-confirm"
             type="password"
             placeholder="••••••••"
             aria-invalid={!!errors.confirmPassword}
@@ -968,6 +788,8 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
         <FieldError message={errors.confirmPassword?.message} />
       </div>
+
+      <CaptchaField captcha={captcha} />
 
       <div>
         <label
@@ -992,6 +814,204 @@ function PasswordSignUpForm({ onSuccess }: { onSuccess: () => void }) {
         className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Creating account…" : "Create Account"}
+      </button>
+    </form>
+  );
+}
+
+/** Forgot Password, step 1: identify the account + CAPTCHA. No OTP is sent — see auth.service.ts requestPasswordReset. */
+function ForgotPasswordForm({ onIdentified }: { onIdentified: (resetToken: string) => void }) {
+  const captcha = useCaptcha();
+  const [formError, setFormError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ForgotIdentifierValues>({ resolver: zodResolver(forgotIdentifierSchema) });
+
+  async function onSubmit(values: ForgotIdentifierValues) {
+    setFormError(null);
+    if (!captcha.captchaId || captcha.value.length !== 4) {
+      setFormError("Enter the 4-digit CAPTCHA");
+      return;
+    }
+    try {
+      const { resetToken } = await authApi.forgotPassword({
+        identifier: values.identifier,
+        captchaId: captcha.captchaId,
+        captchaCode: captcha.value,
+      });
+      onIdentified(resetToken);
+    } catch (err) {
+      setFormError(friendlyErrorMessage(err instanceof ApiError ? err : err));
+      captcha.refresh();
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="mt-6 flex flex-col gap-5"
+      noValidate
+    >
+      <FormError message={formError} />
+      <p className="text-xs" style={{ color: "var(--landing-text-secondary)" }}>
+        Enter your registered mobile number or email — you&rsquo;ll set a new password right away.
+      </p>
+
+      <div>
+        <label
+          htmlFor="forgot-identifier"
+          className="mb-1.5 block text-xs font-bold"
+          style={{ color: "var(--landing-text-secondary)" }}
+        >
+          Mobile Number / Email*
+        </label>
+        <div
+          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          style={inputBoxStyle()}
+        >
+          <Phone
+            className="size-4.5 shrink-0"
+            style={{ color: "var(--landing-text-muted)" }}
+            aria-hidden="true"
+          />
+          <input
+            id="forgot-identifier"
+            type="text"
+            placeholder="Mobile number or email"
+            aria-invalid={!!errors.identifier}
+            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
+            style={{ color: "var(--landing-text-primary)" }}
+            {...register("identifier")}
+          />
+        </div>
+        <FieldError message={errors.identifier?.message} />
+      </div>
+
+      <CaptchaField captcha={captcha} />
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isSubmitting ? "Submitting…" : "Continue"}
+      </button>
+    </form>
+  );
+}
+
+/** Forgot Password, step 2: new password + CAPTCHA, authorized by the resetToken from step 1. */
+function ResetPasswordForm({ resetToken, onDone }: { resetToken: string | null; onDone: () => void }) {
+  const captcha = useCaptcha();
+  const [formError, setFormError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ResetPasswordFormValues>({ resolver: zodResolver(resetPasswordFormSchema) });
+
+  async function onSubmit(values: ResetPasswordFormValues) {
+    setFormError(null);
+    if (!resetToken) {
+      setFormError("Your reset session has expired — start again.");
+      return;
+    }
+    if (!captcha.captchaId || captcha.value.length !== 4) {
+      setFormError("Enter the 4-digit CAPTCHA");
+      return;
+    }
+    try {
+      await authApi.resetPassword({
+        resetToken,
+        newPassword: values.newPassword,
+        captchaId: captcha.captchaId,
+        captchaCode: captcha.value,
+      });
+      onDone();
+    } catch (err) {
+      setFormError(friendlyErrorMessage(err instanceof ApiError ? err : err));
+      captcha.refresh();
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="mt-6 flex flex-col gap-5"
+      noValidate
+    >
+      <FormError message={formError} />
+
+      <div>
+        <label
+          htmlFor="reset-new-password"
+          className="mb-1.5 block text-xs font-bold"
+          style={{ color: "var(--landing-text-secondary)" }}
+        >
+          New Password*
+        </label>
+        <div
+          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          style={inputBoxStyle()}
+        >
+          <Lock
+            className="size-4.5 shrink-0"
+            style={{ color: "var(--landing-text-muted)" }}
+            aria-hidden="true"
+          />
+          <input
+            id="reset-new-password"
+            type="password"
+            placeholder="••••••••"
+            aria-invalid={!!errors.newPassword}
+            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
+            style={{ color: "var(--landing-text-primary)" }}
+            {...register("newPassword")}
+          />
+        </div>
+        <FieldError message={errors.newPassword?.message} />
+      </div>
+
+      <div>
+        <label
+          htmlFor="reset-confirm-password"
+          className="mb-1.5 block text-xs font-bold"
+          style={{ color: "var(--landing-text-secondary)" }}
+        >
+          Confirm Password*
+        </label>
+        <div
+          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          style={inputBoxStyle()}
+        >
+          <Lock
+            className="size-4.5 shrink-0"
+            style={{ color: "var(--landing-text-muted)" }}
+            aria-hidden="true"
+          />
+          <input
+            id="reset-confirm-password"
+            type="password"
+            placeholder="••••••••"
+            aria-invalid={!!errors.confirmPassword}
+            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
+            style={{ color: "var(--landing-text-primary)" }}
+            {...register("confirmPassword")}
+          />
+        </div>
+        <FieldError message={errors.confirmPassword?.message} />
+      </div>
+
+      <CaptchaField captcha={captcha} />
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isSubmitting ? "Resetting…" : "Reset Password"}
       </button>
     </form>
   );
