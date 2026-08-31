@@ -13,9 +13,18 @@ export const redis = new Redis(env.REDIS_URL, {
   // connection but then never replies (wedged/overloaded, not down). Without
   // a hard per-command timeout, a request awaiting that command hangs
   // forever: rate-limit.ts's passOnStoreError only catches a *rejected*
-  // command, and getOrSetCache's try/catch has the same blind spot. This
-  // caps every command so a stalled Redis degrades in ~2s instead of never.
-  commandTimeout: 2000,
+  // command, and getOrSetCache's try/catch has the same blind spot.
+  //
+  // Was 2000ms — measured directly (a real Redis outage, apiLimiter's own
+  // request path) that a single request routinely makes 2-3 sequential
+  // Redis calls (a rate-limit check, then getCatalogVersion, then the
+  // actual cache read), each independently paying up to this timeout before
+  // falling through — stacking to 4-6+ seconds total for one request, wildly
+  // outside CLAUDE.md's <100ms/<300ms targets. A healthy Redis round-trip is
+  // single-digit milliseconds; 300ms is still generous headroom over that
+  // while making every one of these fall-through paths fail fast instead of
+  // stacking into multi-second requests when Redis is actually down.
+  commandTimeout: 300,
 })
 
 redis.on("error", (err) => {

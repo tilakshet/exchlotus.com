@@ -1,6 +1,16 @@
 import { apiRequest } from "./http"
-import type { AuthTokens } from "@/types/auth"
+import type { AuthTokens, Captcha } from "@/types/auth"
 import type { Gender } from "@/types/profile"
+
+interface CaptchaFields {
+  captchaId: string
+  captchaCode: string
+}
+
+/** Numeric CAPTCHA — server-generated and validated (see backend captcha.service.ts). Shared by register/login/forgot-password/reset-password. */
+export function getCaptcha(): Promise<Captcha> {
+  return apiRequest<Captcha>("/api/auth/captcha", { method: "POST", anonymous: true })
+}
 
 export function registerAccount(input: {
   username: string
@@ -8,11 +18,11 @@ export function registerAccount(input: {
   email?: string
   password: string
   gender: Gender
-}): Promise<AuthTokens> {
+} & CaptchaFields): Promise<AuthTokens> {
   return apiRequest<AuthTokens>("/api/auth/register", { method: "POST", body: input, anonymous: true })
 }
 
-export function login(input: { phone: string; password: string }): Promise<AuthTokens> {
+export function login(input: { phone: string; password: string } & CaptchaFields): Promise<AuthTokens> {
   return apiRequest<AuthTokens>("/api/auth/login", { method: "POST", body: input, anonymous: true })
 }
 
@@ -20,15 +30,16 @@ export function logout(refreshToken: string): Promise<void> {
   return apiRequest<void>("/api/auth/logout", { method: "POST", body: { refreshToken }, anonymous: true })
 }
 
-/** No SMS gateway is connected — `devCode` is only present outside production, where the backend returns the generated code instead of sending it. */
-export function requestOtp(phone: string): Promise<{ devCode?: string }> {
-  return apiRequest<{ devCode?: string }>("/api/auth/otp/request", { method: "POST", body: { phone }, anonymous: true })
-}
-
-export function verifyOtp(input: { phone: string; code: string; referralCode?: string; gender?: Gender }): Promise<AuthTokens> {
-  return apiRequest<AuthTokens>("/api/auth/otp/verify", { method: "POST", body: input, anonymous: true })
-}
-
 export function changePassword(input: { currentPassword: string; newPassword: string }): Promise<void> {
   return apiRequest<void>("/api/auth/change-password", { method: "POST", body: input })
+}
+
+/** Step 1 of Forgot Password — identifier is a phone or email. No OTP is sent; the returned resetToken authorizes the next step directly. */
+export function forgotPassword(input: { identifier: string } & CaptchaFields): Promise<{ resetToken: string }> {
+  return apiRequest<{ resetToken: string }>("/api/auth/forgot-password", { method: "POST", body: input, anonymous: true })
+}
+
+/** Step 2 of Forgot Password. */
+export function resetPassword(input: { resetToken: string; newPassword: string } & CaptchaFields): Promise<void> {
+  return apiRequest<void>("/api/auth/reset-password", { method: "POST", body: input, anonymous: true })
 }

@@ -19,8 +19,8 @@ export function useAuth() {
   const isAuthenticated = user !== null
 
   const login = useCallback(
-    async (phone: string, password: string) => {
-      const tokens = await authApi.login({ phone, password })
+    async (phone: string, password: string, captchaId: string, captchaCode: string) => {
+      const tokens = await authApi.login({ phone, password, captchaId, captchaCode })
       // The login response only carries tokens, not profile fields — let
       // useProfile() fill in the real username on next render; avoids a
       // second blocking request before the user is considered "logged in".
@@ -30,22 +30,17 @@ export function useAuth() {
   )
 
   const register = useCallback(
-    async (username: string, phone: string, password: string, gender: Gender, email?: string) => {
-      const tokens = await authApi.registerAccount({ username, phone, email, password, gender })
+    async (
+      username: string,
+      phone: string,
+      password: string,
+      gender: Gender,
+      captchaId: string,
+      captchaCode: string,
+      email?: string
+    ) => {
+      const tokens = await authApi.registerAccount({ username, phone, email, password, gender, captchaId, captchaCode })
       dispatch(credentialsReceived({ user: { username, phone, email, currency: "INR" }, tokens }))
-    },
-    [dispatch]
-  )
-
-  const requestOtp = useCallback((phone: string) => authApi.requestOtp(phone), [])
-
-  const verifyOtp = useCallback(
-    async (phone: string, code: string, referralCode?: string, gender?: Gender) => {
-      const tokens = await authApi.verifyOtp({ phone, code, referralCode, gender })
-      // Same reasoning as login() above: enough of a user object to render
-      // immediately (matches the backend's own placeholder username for new
-      // phone accounts), useProfile() corrects it on next render.
-      dispatch(credentialsReceived({ user: { username: `player_${phone.slice(-4)}`, phone, currency: "INR" }, tokens }))
     },
     [dispatch]
   )
@@ -62,5 +57,5 @@ export function useAuth() {
     }
   }, [dispatch, queryClient])
 
-  return { user, isAuthenticated, login, register, requestOtp, verifyOtp, logout }
+  return { user, isAuthenticated, login, register, logout }
 }

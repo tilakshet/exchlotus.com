@@ -1,9 +1,10 @@
-import { randomInt, randomUUID } from "node:crypto"
+import { randomBytes, randomInt, randomUUID } from "node:crypto"
 import { env } from "../../lib/env"
 import { prisma } from "../../lib/prisma"
 import { appEvents } from "../../lib/events"
 import { hashPassword, verifyPassword } from "./password.util"
 import { generateRefreshToken, hashRefreshToken, signAccessToken } from "./token.util"
+import { verifyCaptcha } from "./captcha.service"
 import { AuthError } from "./auth.errors"
 import { recordLoginEvent, type LoginEventContext } from "./login-event.service"
 import type { AuthTokens } from "./auth.types"
@@ -11,6 +12,7 @@ import type { AuthTokens } from "./auth.types"
 const OTP_TTL_MINUTES = 5
 const OTP_RESEND_COOLDOWN_SECONDS = 60
 const OTP_MAX_ATTEMPTS = 5
+const RESET_TOKEN_TTL_MINUTES = 15
 
 async function issueTokens(player: { id: string; externalId: string; username: string; sessionVersion: number }): Promise<AuthTokens> {
   const { token: accessToken, expiresIn } = signAccessToken({
@@ -54,9 +56,13 @@ export async function register(
     email?: string
     password: string
     gender: "MALE" | "FEMALE" | "OTHER"
+    captchaId: string
+    captchaCode: string
   },
   context?: LoginEventContext
 ): Promise<AuthTokens> {
+  await verifyCaptcha(input.captchaId, input.captchaCode)
+
   // Phone first — it's the identifier login()/requestOtp() key off, so an
   // account created here has to collect it too or it would be permanently
   // unable to sign back in via "Login with Password".
@@ -84,6 +90,12 @@ export async function register(
       email: input.email,
       passwordHash,
       gender: input.gender,
+      // KYC's own mobile-OTP confirmation step was removed (see
+      // kyc.service.ts) — phone ownership is now treated as established at
+      // the point a player supplies and validates it during signup instead
+      // of through a separate OTP proof, so submitKyc's phoneVerifiedAt gate
+      // stays meaningful without OTP.
+      phoneVerifiedAt: new Date(),
       wallet: { create: { balance: 0, currency: "INR" } },
     },
   })
@@ -100,7 +112,12 @@ export async function register(
  * one such place now (Sign Up with Password); the seeded fixture player is
  * the other (a phone was added to it by hand for exactly this purpose).
  */
-export async function login(input: { phone: string; password: string }, context?: LoginEventContext): Promise<AuthTokens> {
+export async function login(
+  input: { phone: string; password: string; captchaId: string; captchaCode: string },
+  context?: LoginEventContext
+): Promise<AuthTokens> {
+  await verifyCaptcha(input.captchaId, input.captchaCode)
+
   const player = await prisma.player.findUnique({ where: { phone: input.phone } })
   if (!player?.passwordHash) {
     await recordLoginEvent({ phone: input.phone, method: "PASSWORD", result: "FAILURE", reason: "INVALID_CREDENTIALS", context })
@@ -159,6 +176,78 @@ export async function changePassword(playerId: string, currentPassword: string, 
 
   const passwordHash = await hashPassword(newPassword)
   await prisma.player.update({ where: { id: playerId }, data: { passwordHash } })
+}
+
+function hashResetToken(token: string): string {
+  // Same sha256-of-opaque-token principle as hashRefreshToken — only the
+  // hash is ever persisted, so a DB leak alone can't be replayed as a live
+  // reset link.
+  return hashRefreshToken(token)
+}
+
+/**
+ * Step 1 of Forgot Password: CAPTCHA-gated, no OTP. Deliberately returns a
+ * usable resetToken in the response for *any* well-formed identifier,
+ * whether or not it matches an account — the caller can't distinguish
+ * "wrong number" from "no account" from the response, which avoids account
+ * enumeration. A non-matching identifier's token is simply never persisted,
+ * so resetPassword() below will always reject it as invalid.
+ *
+ * No SMS/email gateway is connected in this codebase (same gap as OTP's
+ * requestOtp above) — there is no side channel to deliver this token
+ * through, so it goes straight back in the response and the frontend moves
+ * straight to the "New Password" step, matching the product's specified
+ * flow (Mobile/Email → CAPTCHA → New Password, no separate "check your
+ * phone" step).
+ */
+export async function requestPasswordReset(input: { identifier: string; captchaId: string; captchaCode: string }): Promise<{ resetToken: string }> {
+  await verifyCaptcha(input.captchaId, input.captchaCode)
+
+  const isEmail = input.identifier.includes("@")
+  const player = await prisma.player.findUnique({
+    where: isEmail ? { email: input.identifier } : { phone: input.identifier },
+  })
+
+  const resetToken = randomBytes(32).toString("base64url")
+  if (player) {
+    await prisma.passwordResetToken.create({
+      data: {
+        playerId: player.id,
+        tokenHash: hashResetToken(resetToken),
+        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60_000),
+      },
+    })
+  }
+
+  return { resetToken }
+}
+
+/**
+ * Step 2 of Forgot Password: CAPTCHA-gated new password, authorized by the
+ * resetToken from requestPasswordReset above (single-use, time-limited)
+ * instead of an OTP. Also revokes every refresh token and bumps
+ * sessionVersion — same reasoning as issueTokensForNewLogin: a password
+ * reset should force every other signed-in device to re-authenticate, not
+ * leave a possibly-compromised session alive.
+ */
+export async function resetPassword(input: { resetToken: string; newPassword: string; captchaId: string; captchaCode: string }): Promise<void> {
+  await verifyCaptcha(input.captchaId, input.captchaCode)
+
+  const tokenHash = hashResetToken(input.resetToken)
+  const stored = await prisma.passwordResetToken.findUnique({ where: { tokenHash } })
+  if (!stored || stored.usedAt || stored.expiresAt < new Date() || !stored.playerId) {
+    throw new AuthError("RESET_TOKEN_INVALID", "This reset link is invalid or has expired — request a new one")
+  }
+
+  const passwordHash = await hashPassword(input.newPassword)
+  await prisma.$transaction([
+    prisma.passwordResetToken.update({ where: { id: stored.id }, data: { usedAt: new Date() } }),
+    prisma.player.update({
+      where: { id: stored.playerId },
+      data: { passwordHash, sessionVersion: { increment: 1 } },
+    }),
+    prisma.refreshToken.updateMany({ where: { playerId: stored.playerId, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ])
 }
 
 export async function logout(refreshToken: string): Promise<void> {

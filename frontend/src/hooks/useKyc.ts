@@ -22,17 +22,3 @@ export function useSubmitKyc() {
   })
 }
 
-export function useRequestPhoneOtp() {
-  return useMutation({ mutationFn: kycApi.requestPhoneVerificationOtp })
-}
-
-export function useVerifyPhoneOtp() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: kycApi.verifyPhoneVerificationOtp,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: kycQueryKey })
-      queryClient.invalidateQueries({ queryKey: profileQueryKey })
-    },
-  })
-}

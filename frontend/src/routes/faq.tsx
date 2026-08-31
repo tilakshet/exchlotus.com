@@ -48,12 +48,12 @@ const faqCategories: { title: string; items: AccordionItemData[] }[] = [
       {
         id: "account-create",
         question: "How do I create an account?",
-        answer: "Tap Login / Sign Up, enter your mobile number, and verify the OTP sent to it — your account is created automatically on first verification.",
+        answer: "Tap Login / Sign Up, enter your mobile number and a password, complete the CAPTCHA, and your account is created immediately.",
       },
       {
         id: "account-password",
         question: "I forgot my password — what do I do?",
-        answer: "Use Login with OTP instead of your password — it verifies your identity via your mobile number without needing the old password.",
+        answer: "Use Forgot Password on the login page — enter your registered mobile number or email, complete the CAPTCHA, and set a new password.",
       },
       {
         id: "account-profile",

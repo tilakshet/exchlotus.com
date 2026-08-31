@@ -9,9 +9,12 @@ export interface AppEvents {
 /**
  * Small in-process event bus so modules that shouldn't import each other
  * directly (wallet.service and the Socket.IO layer) can still communicate.
- * Fine for a single instance; once this runs on more than one process,
- * replace with the Redis pub/sub adapter Socket.IO already supports
- * (see socket.server.ts) rather than this EventEmitter.
+ * Doesn't need to become distributed itself even across multiple backend
+ * instances: whichever instance actually handles the request that changes a
+ * balance is the same instance whose listener (socket.server.ts) turns this
+ * into an `io.to(room).emit(...)` call — and that call is what needs
+ * cross-instance reach, which is now handled by Socket.IO's own Redis
+ * adapter (see socket.server.ts's `io.adapter(...)`), not by this bus.
  */
 class TypedEventEmitter extends EventEmitter {
   override emit<K extends keyof AppEvents>(event: K, ...args: Parameters<AppEvents[K]>): boolean {

@@ -34,7 +34,7 @@ export function FinalCtaSection() {
             </Link>
             <Link
               to="/login"
-              search={{ view: "otp" }}
+              search={{ view: "login" }}
               className="rounded-(--landing-radius-full) border border-(--landing-border-strong) px-8 py-3.5 text-sm font-bold text-(--landing-text-primary) outline-none transition-colors hover:border-(--landing-gold) hover:text-(--landing-gold-text) focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
             >
               Login
