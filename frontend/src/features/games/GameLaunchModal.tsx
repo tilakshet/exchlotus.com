@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 import { useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, Loader2, X } from "lucide-react"
@@ -15,9 +15,6 @@ import type { Game } from "@/types/catalog"
  * last of which is just a wallet/history query in this implementation, see
  * useRecentlyPlayed.ts, so invalidating wallet history covers it too).
  */
-const REVEAL_ZONE_PX = 60
-const HIDE_DELAY_MS = 2000
-
 export function GameLaunchModal({
   game,
   currency,
@@ -32,8 +29,6 @@ export function GameLaunchModal({
   const launchGame = useLaunchGame()
   const queryClient = useQueryClient()
   const [validatedUrl, setValidatedUrl] = useState<string | null>(null)
-  const [showClose, setShowClose] = useState(true)
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function launch() {
     launchGame.mutate(
@@ -59,33 +54,6 @@ export function GameLaunchModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Close button is hidden by default so the game gets the full device
-  // screen; it reappears when the pointer/touch nears the top edge and
-  // fades back out after a couple seconds of inactivity there.
-  useEffect(() => {
-    function reveal(clientY: number) {
-      if (clientY > REVEAL_ZONE_PX) return
-      setShowClose(true)
-      if (hideTimer.current) clearTimeout(hideTimer.current)
-      hideTimer.current = setTimeout(() => setShowClose(false), HIDE_DELAY_MS)
-    }
-    function onMouseMove(e: MouseEvent) {
-      reveal(e.clientY)
-    }
-    function onTouchStart(e: TouchEvent) {
-      const touch = e.touches[0]
-      if (touch) reveal(touch.clientY)
-    }
-    window.addEventListener("mousemove", onMouseMove)
-    window.addEventListener("touchstart", onTouchStart)
-    hideTimer.current = setTimeout(() => setShowClose(false), HIDE_DELAY_MS)
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove)
-      window.removeEventListener("touchstart", onTouchStart)
-      if (hideTimer.current) clearTimeout(hideTimer.current)
-    }
-  }, [])
-
   function handleClose() {
     queryClient.invalidateQueries({ queryKey: walletQueryKey })
     queryClient.invalidateQueries({ queryKey: ["wallet", "history"] })
@@ -101,13 +69,19 @@ export function GameLaunchModal({
             {game.gameName} — {game.provider.name}
           </DialogPrimitive.Title>
 
+          {/* Always visible/clickable, deliberately — the game itself renders
+              in a cross-origin iframe, so once a player's pointer/touch
+              activity is happening inside it, none of those events ever
+              reach this page to re-trigger a "reveal on hover" affordance.
+              An auto-hide-then-reveal-on-parent-hover version of this button
+              was tried and removed: it could hide itself after the initial
+              couple of seconds and then never come back, leaving no way to
+              exit a real-money game session. */}
           <DialogPrimitive.Close asChild>
             <button
               type="button"
               aria-label="Close game"
-              className={`fixed right-3 top-3 z-[60] flex size-11 items-center justify-center rounded-full bg-black/60 text-white opacity-100 outline-none backdrop-blur transition-opacity duration-300 hover:bg-black/80 focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)] ${
-                showClose ? "sm:opacity-100" : "sm:pointer-events-none sm:opacity-0"
-              }`}
+              className="fixed right-3 top-3 z-[60] flex size-11 items-center justify-center rounded-full bg-black/60 text-white outline-none backdrop-blur transition-colors hover:bg-black/80 focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)]"
             >
               <X className="size-5.5" aria-hidden="true" />
             </button>
