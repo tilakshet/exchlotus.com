@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, ChevronRight, ScrollText, ShieldAlert, UserPlus, Users, Wallet } from "lucide-react"
+import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, ChevronRight, ScrollText, ShieldAlert, TrendingUp, UserPlus, Users, Wallet } from "lucide-react"
 import { getDashboardSummary } from "@/api/dashboard.api"
 import { listAuditLogs } from "@/api/audit.api"
 import { listUsers } from "@/api/users.api"
@@ -127,8 +127,12 @@ function DashboardPage() {
       {data && (
         <>
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <MetricCard icon={Users} label="Total users" value={data.users.total.toLocaleString()} hint={`${data.users.newToday} new today`} />
-            <MetricCard icon={Users} label="Active users" value={data.users.active.toLocaleString()} hint={`${data.users.suspended} suspended`} />
+            <MetricCard
+              icon={TrendingUp}
+              label="Revenue today"
+              value={formatCurrency(data.finance.revenueTodayAmount)}
+              trend={{ changePct: data.finance.revenueChangePct, tone: data.finance.revenueChangePct >= 0 ? "positive" : "negative", label: "vs yesterday" }}
+            />
             <MetricCard
               icon={ArrowDownToLine}
               label="Deposits today"
@@ -141,10 +145,12 @@ function DashboardPage() {
               value={formatCurrency(data.finance.withdrawalsTodayAmount)}
               trend={{ changePct: data.finance.withdrawalsChangePct, tone: "neutral", label: "vs yesterday" }}
             />
+            <MetricCard icon={Wallet} label="Total wallet balance" value={formatCurrency(data.finance.totalWalletBalance)} />
           </section>
 
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <MetricCard icon={Wallet} label="Total wallet balance" value={formatCurrency(data.finance.totalWalletBalance)} />
+            <MetricCard icon={Users} label="Total users" value={data.users.total.toLocaleString()} hint={`${data.users.newToday} new today`} />
+            <MetricCard icon={Users} label="Active users" value={data.users.active.toLocaleString()} hint={`${data.users.suspended} suspended`} />
             <MetricCard icon={ScrollText} label="Ledger entries today" value={data.activity.ledgerEntriesToday.toLocaleString()} />
             <MetricCard icon={ShieldAlert} label="Active admins" value={data.admins.activeCount.toLocaleString()} />
           </section>

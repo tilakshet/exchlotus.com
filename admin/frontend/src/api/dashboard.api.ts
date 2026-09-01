@@ -10,6 +10,8 @@ export interface DashboardSummary {
     withdrawalsTodayCount: number
     withdrawalsChangePct: number
     totalWalletBalance: number
+    revenueTodayAmount: number
+    revenueChangePct: number
   }
   activity: { ledgerEntriesToday: number }
   admins: { activeCount: number; withoutMfaCount: number }

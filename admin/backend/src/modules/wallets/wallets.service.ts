@@ -1,5 +1,5 @@
 import type { Request } from "express"
-import { Prisma } from "../../generated/prisma"
+import { Prisma, type LedgerEntryType } from "../../generated/prisma"
 import { prisma } from "../../lib/prisma"
 import { writeAuditLog } from "../../lib/audit"
 import { AdminApiError } from "../../lib/api-error"
@@ -19,10 +19,10 @@ export async function getWalletDetails(playerId: string) {
   }
 }
 
-export async function listLedger(playerId: string, options: { limit?: number; cursor?: string } = {}) {
+export async function listLedger(playerId: string, options: { type?: LedgerEntryType[]; limit?: number; cursor?: string } = {}) {
   const limit = Math.min(options.limit ?? 20, 100)
   const rows = await prisma.ledgerEntry.findMany({
-    where: { playerId },
+    where: { playerId, ...(options.type && options.type.length > 0 ? { type: { in: options.type } } : {}) },
     orderBy: { createdAt: "desc" },
     take: limit + 1,
     ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),

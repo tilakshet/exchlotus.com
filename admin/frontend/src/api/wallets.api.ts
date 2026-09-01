@@ -25,7 +25,7 @@ export function getWallet(playerId: string) {
   return apiRequest<WalletDetails>(`/admin-api/wallets/${playerId}`)
 }
 
-export function getLedger(playerId: string, params: { cursor?: string; limit?: number } = {}) {
+export function getLedger(playerId: string, params: { type?: string; cursor?: string; limit?: number } = {}) {
   return apiRequest<{ items: LedgerItem[]; nextCursor: string | null }>(`/admin-api/wallets/${playerId}/ledger`, { query: params })
 }
 
