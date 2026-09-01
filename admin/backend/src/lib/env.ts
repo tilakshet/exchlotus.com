@@ -35,6 +35,10 @@ const envSchema = z.object({
   PAYMENT_GATEWAY_BASE_URL: z.string().url(),
   PAYMENT_GATEWAY_CLIENT_ID: z.string().min(1),
   PAYMENT_GATEWAY_SECRET_ID: z.string().min(1),
+
+  /** backend/'s own base URL, reachable from inside this container — see docker-compose.prod.yml (the `backend` service, no published port, same compose network). Used only to call POST /api/referral/internal/evaluate after a KYC approval (referral qualification re-check) — must match REFERRAL_INTERNAL_SECRET on that side. */
+  PLAYER_BACKEND_INTERNAL_URL: z.string().url().default("http://127.0.0.1:4000"),
+  REFERRAL_INTERNAL_SECRET: z.string().min(16),
 })
 
 const parsed = envSchema.safeParse(process.env)

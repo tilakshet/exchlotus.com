@@ -84,3 +84,26 @@ export async function bumpCatalogVersion(): Promise<void> {
     logger.warn({ err }, "Redis write failed for catalog:version bump — cached catalog data may be briefly stale")
   }
 }
+
+/**
+ * Pushes a real-time notification to one player's connected sockets, via
+ * the same "player:notifications" Redis channel admin/backend's own
+ * publishPlayerNotification already uses for support-ticket replies —
+ * socket.server.ts already subscribes to it. Published here too (not just
+ * emitted in-process) even though referral.service.ts runs in this same
+ * process, so both notification sources share one wire format/consumer
+ * instead of a second in-process-only path. Fails open: a missed push just
+ * means the player sees it next time they open the app (once a
+ * notification-history feature reads it from somewhere durable — none
+ * exists yet, same as admin's).
+ */
+export async function publishPlayerNotification(
+  playerExternalId: string,
+  payload: { message: string; link?: string }
+): Promise<void> {
+  try {
+    await redis.publish("player:notifications", JSON.stringify({ playerExternalId, ...payload }))
+  } catch (err) {
+    logger.warn({ err, playerExternalId }, "Redis publish failed — player will not get a real-time notification for this event")
+  }
+}

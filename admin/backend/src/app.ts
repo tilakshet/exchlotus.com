@@ -22,6 +22,7 @@ import { notificationsRouter } from "./modules/notifications/notifications.contr
 import { supportRouter } from "./modules/support/support.controller"
 import { loginEventsRouter } from "./modules/login-events/login-events.controller"
 import { kycRouter } from "./modules/kyc/kyc.controller"
+import { referralsRouter } from "./modules/referrals/referrals.controller"
 
 export function createApp() {
   const app = express()
@@ -56,6 +57,7 @@ export function createApp() {
   app.use("/admin-api/support", supportRouter)
   app.use("/admin-api/login-events", loginEventsRouter)
   app.use("/admin-api/kyc", kycRouter)
+  app.use("/admin-api/referrals", referralsRouter)
 
   app.use((req, res) => {
     res.status(404).json({ error: "NOT_FOUND", path: req.path })

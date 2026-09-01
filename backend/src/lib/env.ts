@@ -21,6 +21,9 @@ const envSchema = z.object({
 
   GAMING_WEBHOOK_SHARED_SECRET: z.string().min(1),
 
+  /** Authenticates admin/backend's server-to-server calls into POST /api/referral/internal/evaluate (referral.controller.ts) — the same static-shared-secret pattern as GAMING_WEBHOOK_SHARED_SECRET, not a player-facing credential. Lets a KYC approval in the (separate-process) admin backend trigger referral qualification re-evaluation without duplicating the reward-issuance logic into that codebase too. */
+  REFERRAL_INTERNAL_SECRET: z.string().min(16),
+
   /** Gates POST /api/catalog/sync — an operator/cron action, not something any logged-in player should be able to trigger. */
   CATALOG_SYNC_SECRET: z.string().min(16),
 
