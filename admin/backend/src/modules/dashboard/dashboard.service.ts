@@ -30,6 +30,10 @@ export async function getSummary() {
     depositsYesterday,
     withdrawalsToday,
     withdrawalsYesterday,
+    betsToday,
+    winsToday,
+    betsYesterday,
+    winsYesterday,
     walletTotals,
     ledgerEntriesToday,
     adminCount,
@@ -57,6 +61,16 @@ export async function getSummary() {
       where: { type: "WITHDRAWAL", createdAt: { gte: startOfYesterday, lt: startOfToday } },
       _sum: { amount: true },
     }),
+    // Gaming revenue (GGR) = total wagered minus total paid out — BET rows
+    // are stored as negative amounts (a debit from the player's wallet,
+    // see gaming-webhook.service.ts), WIN rows as positive, so
+    // -sum(BET) - sum(WIN) is the house's net take from actual gameplay,
+    // independent of deposits/withdrawals (a player can deposit without
+    // ever losing anything yet).
+    prisma.ledgerEntry.aggregate({ where: { type: "BET", createdAt: { gte: startOfToday } }, _sum: { amount: true } }),
+    prisma.ledgerEntry.aggregate({ where: { type: "WIN", createdAt: { gte: startOfToday } }, _sum: { amount: true } }),
+    prisma.ledgerEntry.aggregate({ where: { type: "BET", createdAt: { gte: startOfYesterday, lt: startOfToday } }, _sum: { amount: true } }),
+    prisma.ledgerEntry.aggregate({ where: { type: "WIN", createdAt: { gte: startOfYesterday, lt: startOfToday } }, _sum: { amount: true } }),
     prisma.wallet.aggregate({ _sum: { balance: true } }),
     prisma.ledgerEntry.count({ where: { createdAt: { gte: startOfToday } } }),
     prisma.adminUser.count({ where: { status: "ACTIVE" } }),
@@ -67,6 +81,9 @@ export async function getSummary() {
   const depositsYesterdayAmount = depositsYesterday._sum.amount?.toNumber() ?? 0
   const withdrawalsTodayAmount = Math.abs(withdrawalsToday._sum.amount?.toNumber() ?? 0)
   const withdrawalsYesterdayAmount = Math.abs(withdrawalsYesterday._sum.amount?.toNumber() ?? 0)
+
+  const revenueTodayAmount = Math.abs(betsToday._sum.amount?.toNumber() ?? 0) - (winsToday._sum.amount?.toNumber() ?? 0)
+  const revenueYesterdayAmount = Math.abs(betsYesterday._sum.amount?.toNumber() ?? 0) - (winsYesterday._sum.amount?.toNumber() ?? 0)
 
   return {
     users: {
@@ -83,6 +100,8 @@ export async function getSummary() {
       withdrawalsTodayCount: withdrawalsToday._count,
       withdrawalsChangePct: percentChange(withdrawalsTodayAmount, withdrawalsYesterdayAmount),
       totalWalletBalance: walletTotals._sum.balance?.toNumber() ?? 0,
+      revenueTodayAmount,
+      revenueChangePct: percentChange(revenueTodayAmount, revenueYesterdayAmount),
     },
     activity: {
       ledgerEntriesToday,

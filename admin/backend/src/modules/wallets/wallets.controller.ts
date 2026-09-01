@@ -22,7 +22,17 @@ walletsRouter.get("/:playerId", requirePermission("wallets.view"), async (req, r
   }
 })
 
+const LEDGER_TYPES = ["BET", "WIN", "REFUND", "ADJUSTMENT", "DEPOSIT", "WITHDRAWAL"] as const
+
 const ledgerQuerySchema = z.object({
+  // Same repeated/comma-separated acceptance as ledger.controller.ts's
+  // global listing, for the same reason: whichever shape the caller finds
+  // natural to build a query string with.
+  type: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : (Array.isArray(v) ? v : v.split(",")).map((s) => s.trim())))
+    .pipe(z.array(z.enum(LEDGER_TYPES)).optional()),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
 })
