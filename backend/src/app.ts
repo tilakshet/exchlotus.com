@@ -17,6 +17,7 @@ import { paymentsRouter } from "./modules/payments/payments.controller"
 import { bankAccountsRouter } from "./modules/bank-accounts/bank-accounts.controller"
 import { supportRouter } from "./modules/support/support.controller"
 import { kycRouter } from "./modules/kyc/kyc.controller"
+import { referralRouter } from "./modules/referral/referral.controller"
 import { SUPPORT_UPLOAD_DIR } from "./lib/uploads"
 
 export function createApp() {
@@ -68,6 +69,7 @@ export function createApp() {
   app.use("/api/bank-accounts", bankAccountsRouter)
   app.use("/api/support", supportRouter)
   app.use("/api/kyc", kycRouter)
+  app.use("/api/referral", referralRouter)
 
   // Uploaded support-ticket images (see lib/uploads.ts). helmet's default
   // Cross-Origin-Resource-Policy: same-origin would otherwise block

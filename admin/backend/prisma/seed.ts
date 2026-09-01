@@ -34,6 +34,11 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
       "support.manage",
       "kyc.view",
       "kyc.manage",
+      "referrals.view",
+      "referrals.manage",
+      "referrals.export",
+      "referral-settings.manage",
+      "referral-campaigns.manage",
     ],
   },
   {
@@ -54,6 +59,11 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
       "withdrawals.approve",
       "kyc.view",
       "kyc.manage",
+      "referrals.view",
+      "referrals.manage",
+      "referrals.export",
+      "referral-settings.manage",
+      "referral-campaigns.manage",
     ],
   },
   {
@@ -90,6 +100,8 @@ const ROLE_DEFINITIONS: { name: string; description: string; permissions: readon
       "reports.export",
       "support.view",
       "kyc.view",
+      "referrals.view",
+      "referrals.export",
     ],
   },
 ]

@@ -32,6 +32,11 @@ export const PERMISSION_CODES = [
   "support.manage",
   "kyc.view",
   "kyc.manage",
+  "referrals.view",
+  "referrals.manage",
+  "referrals.export",
+  "referral-settings.manage",
+  "referral-campaigns.manage",
 ] as const
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number]

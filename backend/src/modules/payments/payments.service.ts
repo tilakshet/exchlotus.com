@@ -3,6 +3,7 @@ import { env } from "../../lib/env"
 import { prisma } from "../../lib/prisma"
 import { logger } from "../../lib/logger"
 import { applyLedgerEntry } from "../wallet/wallet.service"
+import { evaluateQualificationForPlayer } from "../referral/referral.service"
 // Active PayIn gateway. Temporarily reverted to Oro (2026-08-29) — Cashfree
 // needs domain whitelisting approved (merchant.cashfree.com > Developers >
 // Whitelisting) before its hosted checkout will accept exchlotus.com;
@@ -98,6 +99,13 @@ export async function handlePayinCallback(payload: { order_id: string; amount: n
   })
 
   await prisma.paymentOrder.update({ where: { id: order.id }, data: { status: "SUCCESS" } })
+
+  // Best-effort, after the deposit is fully committed — a referral
+  // qualification-check bug must never affect the deposit itself. No-op
+  // for a player with no pending referral (see evaluateQualificationForPlayer).
+  evaluateQualificationForPlayer(player.id).catch((err) => {
+    logger.error({ err, playerId: player.id }, "Referral qualification check failed after deposit")
+  })
 }
 
 /**

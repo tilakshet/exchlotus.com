@@ -43,32 +43,39 @@ enum Gender {
 }
 
 model Player {
-  id             String       @id @default(uuid())
+  id              String       @id @default(uuid())
   /// Matches `user_id` in webhook payloads — the partner-side account identifier.
-  externalId     String       @unique
-  username       String
-  email          String?      @unique
+  externalId      String       @unique
+  username        String
+  email           String?      @unique
   /// Nullable: the spec's own seeded fixture player (externalId "12345")
   /// predates app-level auth and has no login credentials of its own.
-  passwordHash   String?
+  passwordHash    String?
   /// E.164-ish, digits with a leading "+". The identifier for both OTP
   /// login and password login now — password accounts are created via
   /// phone as well, there's no email+password path in the UI anymore.
-  phone          String?      @unique
-  /// Captured at OTP signup if a promo code was entered. No reward/bonus
-  /// engine consumes this yet — it's recorded, not yet acted on.
-  referredByCode String?
-  firstName      String?
-  lastName       String?
-  dateOfBirth    DateTime?
+  phone           String?      @unique
+  /// Captured at signup if a referral code was entered — a denormalized
+  /// snapshot only. The Referral row (below) is the real, validated
+  /// relationship the reward engine actually acts on; this column is kept
+  /// for backward compatibility with anything that reads it directly.
+  referredByCode  String?
+  /// This account's OWN shareable code — server-generated at registration
+  /// (see referral.service.ts generateReferralCode), unique, unrelated to
+  /// username so it can't be used to enumerate/impersonate accounts by
+  /// guessing usernames. Not user-editable.
+  referralCode    String?      @unique
+  firstName       String?
+  lastName        String?
+  dateOfBirth     DateTime?
   /// Drives avatar selection (UserAvatar.tsx) — see the Gender enum doc.
-  gender         Gender       @default(OTHER)
-  currency       String       @default("INR")
+  gender          Gender       @default(OTHER)
+  currency        String       @default("INR")
   /// Set only by the admin panel (users.suspend permission). Read by the
   /// player backend on every authenticated request (auth.middleware.ts) and
   /// at login/refresh (auth.service.ts) to reject a suspended account
   /// immediately, not just on its next fresh login.
-  status         PlayerStatus @default(ACTIVE)
+  status          PlayerStatus @default(ACTIVE)
   /// Bumped on every genuinely new login (auth.service.ts's
   /// issueTokensForNewLogin) — never on a token refresh, which continues the
   /// same session unchanged. Embedded in every access token's `sv` claim;
@@ -77,7 +84,7 @@ model Player {
   /// other device's session on its very next request (immediately, if that
   /// device also has a live socket connection — see socket.server.ts's
   /// session:revoked push), enforcing one active session per account.
-  sessionVersion Int          @default(0)
+  sessionVersion  Int          @default(0)
   /// Set the first time this phone number is proven via a correct OTP —
   /// either at OTP login/signup (auth.service.ts verifyOtp) or via the
   /// dedicated confirm-phone step KYC requires (kyc.controller.ts), which
@@ -91,9 +98,9 @@ model Player {
   /// sync with that history's latest reviewed outcome (see kyc.service.ts
   /// submitKyc/admin's reviewKyc, both of which update both together in one
   /// transaction) so the withdrawal gate never has to join/query history.
-  kycStatus      KycStatus    @default(NOT_SUBMITTED)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  kycStatus       KycStatus    @default(NOT_SUBMITTED)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   wallet              Wallet?
   entries             LedgerEntry[]
@@ -105,6 +112,9 @@ model Player {
   loginEvents         LoginEvent[]
   kycSubmissions      KycSubmission[]
   passwordResetTokens PasswordResetToken[]
+  referralsMade       Referral[]                  @relation("Referrer")
+  referralReceived    Referral?                   @relation("Referred")
+  referralRewards     ReferralRewardTransaction[]
 
   @@map("players")
 }
@@ -120,18 +130,18 @@ enum KycStatus {
 /// durable history/audit trail. Player.kycStatus above is the fast-path
 /// "current status" read, kept in sync with whichever row here is latest.
 model KycSubmission {
-  id            String    @id @default(uuid())
-  playerId      String
-  player        Player    @relation(fields: [playerId], references: [id])
-  panNumber     String
+  id                String    @id @default(uuid())
+  playerId          String
+  player            Player    @relation(fields: [playerId], references: [id])
+  panNumber         String
   /// Filenames only (see backend/src/lib/uploads.ts KYC_UPLOAD_DIR) — never
   /// served publicly, unlike support-ticket attachments. Only readable
   /// through admin/backend's authenticated document-streaming route, which
   /// reads them off the same shared uploads volume the player backend wrote
   /// them to (see docker-compose.prod.yml).
-  panCardFile   String
-  photoFile     String
-  status        KycStatus @default(PENDING)
+  panCardFile       String
+  photoFile         String
+  status            KycStatus @default(PENDING)
   /// Set only on REJECTED — shown back to the player so they know what to
   /// fix before resubmitting.
   rejectionReason   String?
@@ -178,13 +188,13 @@ enum LoginEventResult {
 /// login-anomaly-detection input, not a financial record, so it's
 /// best-effort: a write failure here never blocks a real login attempt.
 model LoginEvent {
-  id        String            @id @default(uuid())
+  id        String           @id @default(uuid())
   /// Null when the attempt fails before a matching account is found (e.g.
   /// wrong phone number entirely) — the phone below is still recorded so a
   /// pattern of failed attempts against a not-yet-registered number is
   /// still visible.
   playerId  String?
-  player    Player?           @relation(fields: [playerId], references: [id])
+  player    Player?          @relation(fields: [playerId], references: [id])
   phone     String
   method    LoginEventMethod
   result    LoginEventResult
@@ -192,7 +202,7 @@ model LoginEvent {
   reason    String?
   ipAddress String?
   userAgent String?
-  createdAt DateTime          @default(now())
+  createdAt DateTime         @default(now())
 
   @@index([playerId, createdAt])
   @@index([phone, createdAt])
@@ -201,20 +211,26 @@ model LoginEvent {
 }
 
 model Wallet {
-  id            String   @id @default(uuid())
-  playerId      String   @unique
-  player        Player   @relation(fields: [playerId], references: [id])
+  id               String   @id @default(uuid())
+  playerId         String   @unique
+  player           Player   @relation(fields: [playerId], references: [id])
   /// The real, provider-reconciled playable balance — the only figure the
   /// gaming webhook ever touches.
-  balance       Decimal  @db.Decimal(18, 2)
-  /// Bonus/locked tracking has no backing feature yet (no promotions/bonus
-  /// wagering engine exists) — these columns exist so the wallet API's
-  /// response shape is stable, but they are always 0 today. See backend
-  /// README "Not yet done".
-  bonusBalance  Decimal  @default(0) @db.Decimal(18, 2)
-  lockedBalance Decimal  @default(0) @db.Decimal(18, 2)
-  currency      String
-  updatedAt     DateTime @updatedAt
+  balance          Decimal  @db.Decimal(18, 2)
+  /// First real consumer: referral cash rewards (referral.service.ts
+  /// creditReferralReward). Not wired into betting/withdrawal — no
+  /// wagering-requirement engine exists, so this is a tracked, visible
+  /// promotional balance only, not yet spendable or withdrawable. Locked/
+  /// bonus tracking otherwise has no other backing feature.
+  bonusBalance     Decimal  @default(0) @db.Decimal(18, 2)
+  /// Referral coin rewards (see ReferralRewardTransaction). Same caveat as
+  /// bonusBalance — tracked and visible, not yet spendable on a bet (that
+  /// would mean intercepting the real-money gaming webhook flow, out of
+  /// scope until a real wagering engine exists).
+  bonusCoinBalance Int      @default(0)
+  lockedBalance    Decimal  @default(0) @db.Decimal(18, 2)
+  currency         String
+  updatedAt        DateTime @updatedAt
 
   @@map("wallets")
 }
@@ -290,12 +306,240 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+enum ReferralStatus {
+  PENDING
+  REGISTERED
+  QUALIFIED
+  REWARDED
+  REJECTED
+  CANCELLED
+}
+
+enum ReferralRiskStatus {
+  NORMAL
+  REVIEW
+  BLOCKED
+}
+
+/// DUPLICATE_DEVICE/MULTIPLE_ACCOUNTS/UNUSUAL_ACTIVITY exist as values an
+/// admin can attach manually (referral.riskFlags admin action) — no device-
+/// fingerprinting or cross-account-correlation infra exists in this
+/// codebase to auto-detect them. DUPLICATE_IP and RAPID_REGISTRATION are
+/// the two auto-detected at attribution time (referral.service.ts).
+enum ReferralRiskFlagType {
+  SELF_REFERRAL
+  DUPLICATE_DEVICE
+  DUPLICATE_IP
+  RAPID_REGISTRATION
+  SUSPICIOUS_PATTERN
+  MULTIPLE_ACCOUNTS
+  UNUSUAL_ACTIVITY
+}
+
+enum ReferralQualificationRule {
+  REGISTRATION_ONLY
+  VERIFICATION
+  DEPOSIT
+  ACTIVITY
+  /// Registration + deposit >= minDepositAmount + activity >= minActivityAmount, all required.
+  MULTIPLE
+}
+
+enum ReferralCampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum ReferralRewardTxType {
+  REFERRAL_CASH_REWARD
+  REFERRAL_COIN_REWARD
+  REFERRAL_REVERSAL
+  REFERRAL_EXPIRY
+  ADMIN_ADJUSTMENT
+}
+
+enum ReferralRewardTxStatus {
+  COMPLETED
+  REVERSED
+  EXPIRED
+}
+
+/// Single global config row (id is always "default" — no multi-tenant
+/// need here). A ReferralCampaign, when active, overrides these reward
+/// amounts/qualification rule for referrals attributed during its window;
+/// this row is what applies the rest of the time. No generic
+/// AdminSetting/config table exists elsewhere in this schema to reuse —
+/// every admin-configurable value in this codebase today is a hardcoded
+/// constant per-feature, so this is the first of its kind, scoped
+/// narrowly to referral settings rather than a speculative generic system.
+model ReferralSettings {
+  id                   String                    @id @default("default")
+  enabled              Boolean                   @default(false)
+  qualificationRule    ReferralQualificationRule @default(REGISTRATION_ONLY)
+  minDepositAmount     Decimal                   @default(0) @db.Decimal(18, 2)
+  minActivityAmount    Decimal                   @default(0) @db.Decimal(18, 2)
+  referrerCashReward   Decimal                   @default(0) @db.Decimal(18, 2)
+  referrerCoinReward   Int                       @default(0)
+  referredCashReward   Decimal                   @default(0) @db.Decimal(18, 2)
+  referredCoinReward   Int                       @default(0)
+  /// Null = never expires.
+  rewardExpiryDays     Int?
+  maxRewardsPerUser    Int?
+  maxReferredPerUser   Int?
+  dailyReferralLimit   Int?
+  monthlyReferralLimit Int?
+  minAccountAgeDays    Int                       @default(0)
+  kycRequired          Boolean                   @default(false)
+  rewardCooldownHours  Int                       @default(0)
+  /// Free-text country codes (e.g. "IN"); empty = no geographic
+  /// restriction. Stored but NOT enforced — no IP-geolocation service
+  /// exists in this codebase to check a signup's actual country against
+  /// this list. Kept so the setting is ready the moment one is added.
+  allowedCountries     String[]                  @default([])
+  termsText            String?                   @db.Text
+  updatedByAdminId     String?
+  updatedAt            DateTime                  @updatedAt
+
+  @@map("referral_settings")
+}
+
+/// A time-boxed override of ReferralSettings' reward amounts/qualification
+/// rule. Referral rows snapshot which campaign (if any) was active at
+/// attribution time (campaignId) — changing or ending a campaign later
+/// never retroactively changes an already-attributed referral's reward math.
+model ReferralCampaign {
+  id                 String                    @id @default(uuid())
+  name               String
+  description        String?
+  startAt            DateTime
+  endAt              DateTime
+  status             ReferralCampaignStatus    @default(DRAFT)
+  qualificationRule  ReferralQualificationRule @default(REGISTRATION_ONLY)
+  referrerCashReward Decimal                   @default(0) @db.Decimal(18, 2)
+  referrerCoinReward Int                       @default(0)
+  referredCashReward Decimal                   @default(0) @db.Decimal(18, 2)
+  referredCoinReward Int                       @default(0)
+  minDepositAmount   Decimal                   @default(0) @db.Decimal(18, 2)
+  minActivityAmount  Decimal                   @default(0) @db.Decimal(18, 2)
+  /// Null = unlimited total reward issuances under this campaign.
+  maxRewards         Int?
+  /// Null = falls back to ReferralSettings.rewardExpiryDays.
+  expiryDays         Int?
+  /// No FK — same convention as WithdrawalRequest.decidedByAdminId etc.:
+  /// stays readable if that admin account is later deleted.
+  createdByAdminId   String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  referrals Referral[]
+
+  @@index([status, startAt, endAt])
+  @@map("referral_campaigns")
+}
+
+/// The core attribution record: one row per referred (new) player, created
+/// once at registration and never re-pointed to a different referrer
+/// afterward (referredId is unique — one referrer per account, enforced at
+/// the database level, not just in application code).
+model Referral {
+  id                    String             @id @default(uuid())
+  referrerId            String
+  referrer              Player             @relation("Referrer", fields: [referrerId], references: [id])
+  referredId            String             @unique
+  referred              Player             @relation("Referred", fields: [referredId], references: [id])
+  /// Snapshot of the code actually used, even if the referrer's code is
+  /// later regenerated (it isn't today, but this keeps history accurate
+  /// if that ever changes).
+  referralCode          String
+  campaignId            String?
+  campaign              ReferralCampaign?  @relation(fields: [campaignId], references: [id])
+  status                ReferralStatus     @default(REGISTERED)
+  riskStatus            ReferralRiskStatus @default(NORMAL)
+  riskScore             Int                @default(0)
+  registrationIp        String?
+  registrationUserAgent String?
+  registeredAt          DateTime           @default(now())
+  qualifiedAt           DateTime?
+  rewardedAt            DateTime?
+  rejectedAt            DateTime?
+  cancelledAt           DateTime?
+  adminNote             String?
+  /// No FK — same convention as elsewhere (WithdrawalRequest.decidedByAdminId).
+  reviewedByAdminId     String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  riskFlags ReferralRiskFlag[]
+  rewards   ReferralRewardTransaction[]
+
+  @@index([referrerId])
+  @@index([status])
+  @@index([campaignId])
+  @@index([riskStatus])
+  @@map("referrals")
+}
+
+model ReferralRiskFlag {
+  id         String               @id @default(uuid())
+  referralId String
+  referral   Referral             @relation(fields: [referralId], references: [id])
+  type       ReferralRiskFlagType
+  detail     String?
+  createdAt  DateTime             @default(now())
+
+  @@index([referralId])
+  @@map("referral_risk_flags")
+}
+
+/// The referral reward ledger (spec §6) — separate from LedgerEntry (which
+/// represents the real, withdrawable balance and has no BONUS/REFERRAL
+/// type) since referral rewards credit the promotional bonusBalance/
+/// bonusCoinBalance columns on Wallet instead. Same idempotency principle
+/// as LedgerEntry: `reference` is a unique, deterministic key (e.g.
+/// "referral:{referralId}:referrer:cash") so issuing a reward twice is a
+/// no-op, not a double credit. One row per distinct movement (cash and
+/// coin rewards are two separate rows, not packed into one).
+model ReferralRewardTransaction {
+  id            String                 @id @default(uuid())
+  playerId      String
+  player        Player                 @relation(fields: [playerId], references: [id])
+  referralId    String
+  referral      Referral               @relation(fields: [referralId], references: [id])
+  type          ReferralRewardTxType
+  /// Cash amount for CASH/REVERSAL-of-cash/EXPIRY-of-cash rows, coin count
+  /// for COIN rows — semantics follow `type`, same convention as
+  /// LedgerEntry.amount (signed: negative for a reversal/expiry).
+  amount        Decimal                @default(0) @db.Decimal(18, 2)
+  currency      String                 @default("INR")
+  balanceBefore Decimal?               @db.Decimal(18, 2)
+  balanceAfter  Decimal?               @db.Decimal(18, 2)
+  status        ReferralRewardTxStatus @default(COMPLETED)
+  reference     String                 @unique
+  description   String?
+  /// Set on a REFERRAL_REVERSAL/REFERRAL_EXPIRY row, pointing back at the
+  /// original reward it reverses — the original row is never deleted or
+  /// mutated, financial history stays immutable.
+  reversalOfId  String?
+  /// No FK — same convention as elsewhere.
+  actorAdminId  String?
+  expiresAt     DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([playerId])
+  @@index([referralId])
+  @@index([status])
+  @@map("referral_reward_transactions")
+}
+
 model Provider {
-  id       String   @id @default(uuid())
-  code     String   @unique
-  name     String
-  rtp      Float?
-  syncedAt DateTime @default(now())
+  id                String   @id @default(uuid())
+  code              String   @unique
+  name              String
+  rtp               Float?
+  syncedAt          DateTime @default(now())
   /// Manually confirmed (not derived from any provider API field) that
   /// real-money mode:"real" launches actually work for this studio — see
   /// backend README "Real-money studio enablement". Verified via a direct
@@ -304,7 +548,7 @@ model Provider {
   /// explicitly flagged true here sort ahead of the rest of the catalog —
   /// an unverified studio is treated the same as a known-broken one for
   /// sorting purposes, since "untested" isn't the same as "safe."
-  realMoneyVerified Boolean @default(false)
+  realMoneyVerified Boolean  @default(false)
 
   games Game[]
 
@@ -328,24 +572,24 @@ model Category {
 }
 
 model Game {
-  id         String    @id @default(uuid())
+  id                    String    @id @default(uuid())
   /// Provider's game_id.
-  gameId     String    @unique
-  gameCode   String
-  gameName   String
-  providerId String
-  provider   Provider  @relation(fields: [providerId], references: [id])
-  categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id])
-  rtp        Float?
-  bannerUrl  String?
+  gameId                String    @unique
+  gameCode              String
+  gameName              String
+  providerId            String
+  provider              Provider  @relation(fields: [providerId], references: [id])
+  categoryId            String?
+  category              Category? @relation(fields: [categoryId], references: [id])
+  rtp                   Float?
+  bannerUrl             String?
   /// Admin-panel toggle (games.manage) — catalog.service.ts filters player-
   /// facing reads to enabled:true and bumps the catalog cache version on
   /// change, so a disabled game disappears from the player app promptly.
   /// Deliberately untouched by syncCatalog() — an admin's manual disable
   /// must survive routine re-syncing, see availableFromProvider below for
   /// the sync-driven equivalent.
-  enabled    Boolean   @default(true)
+  enabled               Boolean   @default(true)
   /// Set true whenever this game appears in a syncCatalog() run, false for
   /// any previously-synced game that didn't (the provider stopped listing
   /// it, without us finding out any other way — there's no delete/removal
@@ -355,8 +599,8 @@ model Game {
   /// admin's manual disable must never get silently reversed by a re-sync
   /// either — the two booleans track two unrelated facts about the same
   /// row, and both must be true for the game to actually be launchable.
-  availableFromProvider Boolean @default(true)
-  syncedAt   DateTime  @default(now())
+  availableFromProvider Boolean   @default(true)
+  syncedAt              DateTime  @default(now())
 
   /// Every player-facing catalog query filters enabled:true and
   /// availableFromProvider:true first, then narrows by category or

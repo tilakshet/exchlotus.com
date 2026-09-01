@@ -7,6 +7,8 @@ import { generateRefreshToken, hashRefreshToken, signAccessToken } from "./token
 import { verifyCaptcha } from "./captcha.service"
 import { AuthError } from "./auth.errors"
 import { recordLoginEvent, type LoginEventContext } from "./login-event.service"
+import { attributeReferral } from "../referral/referral.service"
+import { logger } from "../../lib/logger"
 import type { AuthTokens } from "./auth.types"
 
 const OTP_TTL_MINUTES = 5
@@ -58,6 +60,8 @@ export async function register(
     gender: "MALE" | "FEMALE" | "OTHER"
     captchaId: string
     captchaCode: string
+    /** Another player's referralCode, if this signup came from a referral link/entry — see referral.service.ts attributeReferral. */
+    referralCode?: string
   },
   context?: LoginEventContext
 ): Promise<AuthTokens> {
@@ -96,11 +100,24 @@ export async function register(
       // of through a separate OTP proof, so submitKyc's phoneVerifiedAt gate
       // stays meaningful without OTP.
       phoneVerifiedAt: new Date(),
+      // Denormalized snapshot only — see schema.prisma doc comment. The
+      // Referral row attributeReferral() creates below is the real,
+      // validated relationship the reward engine acts on.
+      referredByCode: input.referralCode?.trim() || null,
       wallet: { create: { balance: 0, currency: "INR" } },
     },
   })
 
   await recordLoginEvent({ playerId: player.id, phone: input.phone, method: "REGISTER", result: "SUCCESS", context })
+
+  // Best-effort, deliberately: a referral-attribution bug must never block
+  // account creation. attributeReferral() itself never throws for an
+  // invalid/unknown code — this catch is only a backstop for a genuine
+  // unexpected failure (e.g. a transient DB error).
+  attributeReferral(player.id, input.referralCode, { ip: context?.ip, userAgent: context?.userAgent }).catch((err) => {
+    logger.error({ err, playerId: player.id }, "Referral attribution failed")
+  })
+
   return issueTokens(player)
 }
 

@@ -1,6 +1,8 @@
 import { prisma } from "../../lib/prisma"
+import { logger } from "../../lib/logger"
 import { GamingApiError } from "../../lib/api-error"
 import { applyLedgerEntry, getWalletBalance } from "../wallet/wallet.service"
+import { evaluateQualificationForExternalId } from "../referral/referral.service"
 import type { GamingWebhookRequest } from "./gaming-webhook.validators"
 
 export async function handleGamingWebhook(request: GamingWebhookRequest): Promise<unknown> {
@@ -38,6 +40,14 @@ export async function handleGamingWebhook(request: GamingWebhookRequest): Promis
         gameId: request.game,
         sessionId: request.session_id,
         amount: -Math.abs(request.bet),
+      })
+      // Best-effort, after the bet is fully committed — fires on every bet
+      // but exits fast for the vast majority of players who have no
+      // pending ACTIVITY/MULTIPLE-rule referral (see
+      // evaluateQualificationForExternalId). Never affects the webhook
+      // response either way.
+      evaluateQualificationForExternalId(request.user_id).catch((err) => {
+        logger.error({ err, externalId: request.user_id }, "Referral qualification check failed after bet")
       })
       return { status: true, balance: result.balance }
     }

@@ -25,6 +25,10 @@ const registerSchema = z.object({
   email: z.string().email().optional(),
   password: z.string().min(8).max(72), // bcrypt truncates beyond 72 bytes
   gender: genderSchema,
+  // Another player's referral code — validated server-side (existence,
+  // referrer active, not self, not already attributed) in
+  // referral.service.ts attributeReferral, never trusted as-is.
+  referralCode: z.string().max(40).optional(),
   ...captchaFields,
 })
 

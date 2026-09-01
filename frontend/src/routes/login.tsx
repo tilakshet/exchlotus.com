@@ -21,8 +21,8 @@ interface LoginSearch {
   sessionRevoked?: boolean;
   /** Set after a successful Reset Password, so the login view can show a confirmation banner. */
   resetDone?: boolean;
-  /** Pre-fills Sign Up's promo code field — carried in via a shared referral link (see dashboard.refer-earn.tsx). */
-  promo?: string;
+  /** Pre-fills and submits Sign Up's referral code — carried in via a shared referral link (see dashboard.refer-earn.tsx / backend referral.service.ts referralLink, which generates `?ref=CODE`). `promo` is also accepted for backward compatibility with links shared before this param was renamed. */
+  referralCode?: string;
 }
 
 export const Route = createFileRoute("/login")({
@@ -39,7 +39,12 @@ export const Route = createFileRoute("/login")({
     idle: search.idle === "1" || search.idle === true,
     sessionRevoked: search.sessionRevoked === "1" || search.sessionRevoked === true,
     resetDone: search.resetDone === "1" || search.resetDone === true,
-    promo: typeof search.promo === "string" && search.promo.trim() !== "" ? search.promo.trim().slice(0, 40) : undefined,
+    referralCode:
+      typeof search.ref === "string" && search.ref.trim() !== ""
+        ? search.ref.trim().slice(0, 40)
+        : typeof search.promo === "string" && search.promo.trim() !== ""
+          ? search.promo.trim().slice(0, 40)
+          : undefined,
   }),
   component: LoginPage,
 });
@@ -100,12 +105,12 @@ type View = "login" | "register" | "forgot" | "reset";
  * (identify → set new password), also with no OTP.
  */
 function LoginPage() {
-  const { redirect, view: initialView, suspended, idle, sessionRevoked, resetDone, promo } = Route.useSearch();
+  const { redirect, view: initialView, suspended, idle, sessionRevoked, resetDone, referralCode } = Route.useSearch();
   const navigate = useNavigate();
-  // A shared referral link (?promo=CODE) jumps straight to Sign Up rather
+  // A shared referral link (?ref=CODE) jumps straight to Sign Up rather
   // than the default Login screen — the whole point of the link is to get a
   // new player registering with that code already in hand.
-  const [view, setView] = useState<View>(initialView ?? (promo ? "register" : "login"));
+  const [view, setView] = useState<View>(initialView ?? (referralCode ? "register" : "login"));
   // Carries the resetToken from Forgot Password's identify step into its
   // set-new-password step — never put in the URL/search params, it's a
   // one-time credential (see auth.service.ts resetPassword).
@@ -201,7 +206,7 @@ function LoginPage() {
 
           <div className="mt-2 max-w-md">
             {view === "login" && <LoginForm onSuccess={onSuccess} />}
-            {view === "register" && <RegisterForm onSuccess={onSuccess} initialPromoCode={promo} />}
+            {view === "register" && <RegisterForm onSuccess={onSuccess} initialReferralCode={referralCode} />}
             {view === "forgot" && (
               <ForgotPasswordForm
                 onIdentified={(token) => {
@@ -621,7 +626,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function RegisterForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; initialPromoCode?: string }) {
+function RegisterForm({ onSuccess, initialReferralCode }: { onSuccess: () => void; initialReferralCode?: string }) {
   const { register: createAccount } = useAuth();
   const captcha = useCaptcha();
   const [formError, setFormError] = useState<string | null>(null);
@@ -633,11 +638,13 @@ function RegisterForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; 
     resolver: zodResolver(passwordSignUpSchema),
     defaultValues: { agreeTerms: false },
   });
-  // Promo code isn't collected by password Sign Up today (register()
-  // doesn't accept a referral code — see auth.service.ts) — kept as a
-  // display-only field like before, purely for parity with the shared
-  // referral link's pre-fill.
-  const [promoCode] = useState(initialPromoCode ?? "");
+  // Pre-filled from a shared referral link's ?ref=CODE (see
+  // dashboard.refer-earn.tsx), but still editable — someone can also type
+  // in a friend's code by hand. Validated entirely server-side
+  // (auth.service.ts register() → referral.service.ts attributeReferral):
+  // an invalid/unknown code is silently ignored rather than blocking
+  // account creation.
+  const [referralCode, setReferralCode] = useState(initialReferralCode ?? "");
 
   async function onSubmit(values: PasswordSignUpValues) {
     setFormError(null);
@@ -646,7 +653,7 @@ function RegisterForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; 
       return;
     }
     try {
-      await createAccount(values.username, `+91${values.phone}`, values.password, values.gender, captcha.captchaId, captcha.value);
+      await createAccount(values.username, `+91${values.phone}`, values.password, values.gender, captcha.captchaId, captcha.value, referralCode.trim() || undefined);
       onSuccess();
     } catch (err) {
       setFormError(friendlyErrorMessage(err instanceof ApiError ? err : err));
@@ -699,35 +706,34 @@ function RegisterForm({ onSuccess, initialPromoCode }: { onSuccess: () => void; 
         error={errors.gender?.message}
       />
 
-      {promoCode && (
-        <div>
-          <label
-            htmlFor="signup-promo"
-            className="mb-1.5 block text-xs font-bold"
-            style={{ color: "var(--landing-text-secondary)" }}
-          >
-            Promocode
-          </label>
-          <div
-            className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
-            style={inputBoxStyle()}
-          >
-            <Ticket
-              className="size-4.5 shrink-0"
-              style={{ color: "var(--landing-text-muted)" }}
-              aria-hidden="true"
-            />
-            <input
-              id="signup-promo"
-              type="text"
-              disabled
-              value={promoCode}
-              className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
-              style={{ color: "var(--landing-text-primary)" }}
-            />
-          </div>
+      <div>
+        <label
+          htmlFor="signup-referral"
+          className="mb-1.5 block text-xs font-bold"
+          style={{ color: "var(--landing-text-secondary)" }}
+        >
+          Referral Code (Optional)
+        </label>
+        <div
+          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          style={inputBoxStyle()}
+        >
+          <Ticket
+            className="size-4.5 shrink-0"
+            style={{ color: "var(--landing-text-muted)" }}
+            aria-hidden="true"
+          />
+          <input
+            id="signup-referral"
+            type="text"
+            placeholder="Friend's referral code"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+            className="w-full bg-transparent py-3 text-sm uppercase outline-none placeholder:text-(--landing-text-muted) placeholder:normal-case"
+            style={{ color: "var(--landing-text-primary)" }}
+          />
         </div>
-      )}
+      </div>
 
       <div>
         <label

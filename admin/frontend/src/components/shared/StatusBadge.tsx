@@ -65,6 +65,28 @@ export const MFA_STATUS_CONFIG: Record<string, StatusConfig> = {
   false: { label: "MFA not set up", tone: "warning", icon: ShieldAlert },
 }
 
+export const REFERRAL_STATUS_CONFIG: Record<string, StatusConfig> = {
+  PENDING: { label: "Pending", tone: "default", icon: Circle },
+  REGISTERED: { label: "Registered", tone: "warning", icon: Clock },
+  QUALIFIED: { label: "Qualified", tone: "default", icon: CheckCircle2 },
+  REWARDED: { label: "Rewarded", tone: "success", icon: CheckCircle2 },
+  REJECTED: { label: "Rejected", tone: "destructive", icon: XCircle },
+  CANCELLED: { label: "Cancelled", tone: "destructive", icon: XCircle },
+}
+
+export const REFERRAL_RISK_STATUS_CONFIG: Record<string, StatusConfig> = {
+  NORMAL: { label: "Normal", tone: "success", icon: CheckCircle2 },
+  REVIEW: { label: "Needs review", tone: "warning", icon: ShieldAlert },
+  BLOCKED: { label: "Blocked", tone: "destructive", icon: XCircle },
+}
+
+export const REFERRAL_CAMPAIGN_STATUS_CONFIG: Record<string, StatusConfig> = {
+  DRAFT: { label: "Draft", tone: "default", icon: Circle },
+  ACTIVE: { label: "Active", tone: "success", icon: CheckCircle2 },
+  PAUSED: { label: "Paused", tone: "warning", icon: Clock },
+  ENDED: { label: "Ended", tone: "default", icon: Archive },
+}
+
 export const LEDGER_TYPE_CONFIG: Record<string, StatusConfig> = {
   DEPOSIT: { label: "Deposit", tone: "success", icon: ArrowDownToLine },
   WITHDRAWAL: { label: "Withdrawal", tone: "warning", icon: ArrowUpFromLine },

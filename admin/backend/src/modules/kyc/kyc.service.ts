@@ -2,7 +2,27 @@ import type { Request } from "express"
 import { prisma } from "../../lib/prisma"
 import { writeAuditLog } from "../../lib/audit"
 import { AdminApiError } from "../../lib/api-error"
+import { env } from "../../lib/env"
+import { logger } from "../../lib/logger"
 import type { KycStatus, Prisma } from "../../generated/prisma"
+
+/**
+ * Best-effort, fire-and-forget notification to backend/ (a separate
+ * process, same DB) that this player's KYC status just changed — the only
+ * thing referral.service.ts's VERIFICATION/MULTIPLE qualification rules
+ * need to re-check. Authenticated with a static shared secret (same
+ * pattern as GAMING_WEBHOOK_SHARED_SECRET), never blocks or fails the KYC
+ * decision itself if backend/ is unreachable.
+ */
+function notifyReferralEngine(playerId: string): void {
+  fetch(`${env.PLAYER_BACKEND_INTERNAL_URL}/api/referral/internal/evaluate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.REFERRAL_INTERNAL_SECRET}` },
+    body: JSON.stringify({ playerId }),
+  }).catch((err) => {
+    logger.warn({ err, playerId }, "Failed to notify referral engine of KYC approval — will only re-check on the player's next deposit/bet")
+  })
+}
 
 export interface ListKycOptions {
   status?: KycStatus
@@ -75,7 +95,7 @@ export async function reviewKycSubmission(
     throw new AdminApiError("REASON_REQUIRED", "A reason is required when rejecting a KYC submission")
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const updated = await tx.kycSubmission.update({
       where: { id },
       data: {
@@ -99,4 +119,10 @@ export async function reviewKycSubmission(
 
     return { id: updated.id, status: updated.status }
   })
+
+  if (decision === "APPROVED") {
+    notifyReferralEngine(submission.playerId)
+  }
+
+  return result
 }

@@ -20,6 +20,10 @@ export type AdminApiErrorCode =
   | "GATEWAY_ERROR"
   | "KYC_NOT_PENDING"
   | "REASON_REQUIRED"
+  | "REFERRAL_NOT_ELIGIBLE"
+  | "REFERRAL_ALREADY_REWARDED"
+  | "REFERRAL_NOT_REWARDED"
+  | "CAMPAIGN_NOT_FOUND"
 
 export class AdminApiError extends Error {
   constructor(
@@ -53,6 +57,10 @@ const STATUS_BY_CODE: Record<AdminApiErrorCode, number> = {
   GATEWAY_ERROR: 502,
   KYC_NOT_PENDING: 409,
   REASON_REQUIRED: 422,
+  REFERRAL_NOT_ELIGIBLE: 409,
+  REFERRAL_ALREADY_REWARDED: 409,
+  REFERRAL_NOT_REWARDED: 409,
+  CAMPAIGN_NOT_FOUND: 404,
 }
 
 export function statusForError(err: AdminApiError): number {

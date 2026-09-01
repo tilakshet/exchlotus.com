@@ -21,6 +21,9 @@ import { Route as AuthenticatedGamesRouteImport } from './routes/_authenticated.
 import { Route as AuthenticatedKycRouteImport } from './routes/_authenticated.kyc'
 import { Route as AuthenticatedLoginActivityRouteImport } from './routes/_authenticated.login-activity'
 import { Route as AuthenticatedMonitoringRouteImport } from './routes/_authenticated.monitoring'
+import { Route as AuthenticatedReferralCampaignsRouteImport } from './routes/_authenticated.referral-campaigns'
+import { Route as AuthenticatedReferralSettingsRouteImport } from './routes/_authenticated.referral-settings'
+import { Route as AuthenticatedReferralsRouteImport } from './routes/_authenticated.referrals'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated.reports'
 import { Route as AuthenticatedRolesRouteImport } from './routes/_authenticated.roles'
 import { Route as AuthenticatedSupportRouteImport } from './routes/_authenticated.support'
@@ -31,6 +34,8 @@ import { Route as AuthenticatedGamesIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedGamesIdRouteImport } from './routes/_authenticated.games.$id'
 import { Route as AuthenticatedKycIndexRouteImport } from './routes/_authenticated.kyc.index'
 import { Route as AuthenticatedKycIdRouteImport } from './routes/_authenticated.kyc.$id'
+import { Route as AuthenticatedReferralsIndexRouteImport } from './routes/_authenticated.referrals.index'
+import { Route as AuthenticatedReferralsIdRouteImport } from './routes/_authenticated.referrals.$id'
 import { Route as AuthenticatedSupportIndexRouteImport } from './routes/_authenticated.support.index'
 import { Route as AuthenticatedSupportIdRouteImport } from './routes/_authenticated.support.$id'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated.users.index'
@@ -97,6 +102,23 @@ const AuthenticatedMonitoringRoute = AuthenticatedMonitoringRouteImport.update({
   path: '/monitoring',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedReferralCampaignsRoute =
+  AuthenticatedReferralCampaignsRouteImport.update({
+    id: '/referral-campaigns',
+    path: '/referral-campaigns',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedReferralSettingsRoute =
+  AuthenticatedReferralSettingsRouteImport.update({
+    id: '/referral-settings',
+    path: '/referral-settings',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedReferralsRoute = AuthenticatedReferralsRouteImport.update({
+  id: '/referrals',
+  path: '/referrals',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -149,6 +171,18 @@ const AuthenticatedKycIdRoute = AuthenticatedKycIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedKycRoute,
 } as any)
+const AuthenticatedReferralsIndexRoute =
+  AuthenticatedReferralsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedReferralsRoute,
+  } as any)
+const AuthenticatedReferralsIdRoute =
+  AuthenticatedReferralsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedReferralsRoute,
+  } as any)
 const AuthenticatedSupportIndexRoute =
   AuthenticatedSupportIndexRouteImport.update({
     id: '/',
@@ -183,6 +217,9 @@ export interface FileRoutesByFullPath {
   '/kyc': typeof AuthenticatedKycRouteWithChildren
   '/login-activity': typeof AuthenticatedLoginActivityRoute
   '/monitoring': typeof AuthenticatedMonitoringRoute
+  '/referral-campaigns': typeof AuthenticatedReferralCampaignsRoute
+  '/referral-settings': typeof AuthenticatedReferralSettingsRoute
+  '/referrals': typeof AuthenticatedReferralsRouteWithChildren
   '/reports': typeof AuthenticatedReportsRoute
   '/roles': typeof AuthenticatedRolesRoute
   '/support': typeof AuthenticatedSupportRouteWithChildren
@@ -191,10 +228,12 @@ export interface FileRoutesByFullPath {
   '/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/games/$id': typeof AuthenticatedGamesIdRoute
   '/kyc/$id': typeof AuthenticatedKycIdRoute
+  '/referrals/$id': typeof AuthenticatedReferralsIdRoute
   '/support/$id': typeof AuthenticatedSupportIdRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
   '/games/': typeof AuthenticatedGamesIndexRoute
   '/kyc/': typeof AuthenticatedKycIndexRoute
+  '/referrals/': typeof AuthenticatedReferralsIndexRoute
   '/support/': typeof AuthenticatedSupportIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
 }
@@ -208,16 +247,20 @@ export interface FileRoutesByTo {
   '/game-activity': typeof AuthenticatedGameActivityRoute
   '/login-activity': typeof AuthenticatedLoginActivityRoute
   '/monitoring': typeof AuthenticatedMonitoringRoute
+  '/referral-campaigns': typeof AuthenticatedReferralCampaignsRoute
+  '/referral-settings': typeof AuthenticatedReferralSettingsRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/roles': typeof AuthenticatedRolesRoute
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/games/$id': typeof AuthenticatedGamesIdRoute
   '/kyc/$id': typeof AuthenticatedKycIdRoute
+  '/referrals/$id': typeof AuthenticatedReferralsIdRoute
   '/support/$id': typeof AuthenticatedSupportIdRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
   '/games': typeof AuthenticatedGamesIndexRoute
   '/kyc': typeof AuthenticatedKycIndexRoute
+  '/referrals': typeof AuthenticatedReferralsIndexRoute
   '/support': typeof AuthenticatedSupportIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
 }
@@ -235,6 +278,9 @@ export interface FileRoutesById {
   '/_authenticated/kyc': typeof AuthenticatedKycRouteWithChildren
   '/_authenticated/login-activity': typeof AuthenticatedLoginActivityRoute
   '/_authenticated/monitoring': typeof AuthenticatedMonitoringRoute
+  '/_authenticated/referral-campaigns': typeof AuthenticatedReferralCampaignsRoute
+  '/_authenticated/referral-settings': typeof AuthenticatedReferralSettingsRoute
+  '/_authenticated/referrals': typeof AuthenticatedReferralsRouteWithChildren
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/roles': typeof AuthenticatedRolesRoute
   '/_authenticated/support': typeof AuthenticatedSupportRouteWithChildren
@@ -243,10 +289,12 @@ export interface FileRoutesById {
   '/_authenticated/withdrawals': typeof AuthenticatedWithdrawalsRoute
   '/_authenticated/games/$id': typeof AuthenticatedGamesIdRoute
   '/_authenticated/kyc/$id': typeof AuthenticatedKycIdRoute
+  '/_authenticated/referrals/$id': typeof AuthenticatedReferralsIdRoute
   '/_authenticated/support/$id': typeof AuthenticatedSupportIdRoute
   '/_authenticated/users/$id': typeof AuthenticatedUsersIdRoute
   '/_authenticated/games/': typeof AuthenticatedGamesIndexRoute
   '/_authenticated/kyc/': typeof AuthenticatedKycIndexRoute
+  '/_authenticated/referrals/': typeof AuthenticatedReferralsIndexRoute
   '/_authenticated/support/': typeof AuthenticatedSupportIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
 }
@@ -264,6 +312,9 @@ export interface FileRouteTypes {
     | '/kyc'
     | '/login-activity'
     | '/monitoring'
+    | '/referral-campaigns'
+    | '/referral-settings'
+    | '/referrals'
     | '/reports'
     | '/roles'
     | '/support'
@@ -272,10 +323,12 @@ export interface FileRouteTypes {
     | '/withdrawals'
     | '/games/$id'
     | '/kyc/$id'
+    | '/referrals/$id'
     | '/support/$id'
     | '/users/$id'
     | '/games/'
     | '/kyc/'
+    | '/referrals/'
     | '/support/'
     | '/users/'
   fileRoutesByTo: FileRoutesByTo
@@ -289,16 +342,20 @@ export interface FileRouteTypes {
     | '/game-activity'
     | '/login-activity'
     | '/monitoring'
+    | '/referral-campaigns'
+    | '/referral-settings'
     | '/reports'
     | '/roles'
     | '/transactions'
     | '/withdrawals'
     | '/games/$id'
     | '/kyc/$id'
+    | '/referrals/$id'
     | '/support/$id'
     | '/users/$id'
     | '/games'
     | '/kyc'
+    | '/referrals'
     | '/support'
     | '/users'
   id:
@@ -315,6 +372,9 @@ export interface FileRouteTypes {
     | '/_authenticated/kyc'
     | '/_authenticated/login-activity'
     | '/_authenticated/monitoring'
+    | '/_authenticated/referral-campaigns'
+    | '/_authenticated/referral-settings'
+    | '/_authenticated/referrals'
     | '/_authenticated/reports'
     | '/_authenticated/roles'
     | '/_authenticated/support'
@@ -323,10 +383,12 @@ export interface FileRouteTypes {
     | '/_authenticated/withdrawals'
     | '/_authenticated/games/$id'
     | '/_authenticated/kyc/$id'
+    | '/_authenticated/referrals/$id'
     | '/_authenticated/support/$id'
     | '/_authenticated/users/$id'
     | '/_authenticated/games/'
     | '/_authenticated/kyc/'
+    | '/_authenticated/referrals/'
     | '/_authenticated/support/'
     | '/_authenticated/users/'
   fileRoutesById: FileRoutesById
@@ -423,6 +485,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMonitoringRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/referral-campaigns': {
+      id: '/_authenticated/referral-campaigns'
+      path: '/referral-campaigns'
+      fullPath: '/referral-campaigns'
+      preLoaderRoute: typeof AuthenticatedReferralCampaignsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/referral-settings': {
+      id: '/_authenticated/referral-settings'
+      path: '/referral-settings'
+      fullPath: '/referral-settings'
+      preLoaderRoute: typeof AuthenticatedReferralSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/referrals': {
+      id: '/_authenticated/referrals'
+      path: '/referrals'
+      fullPath: '/referrals'
+      preLoaderRoute: typeof AuthenticatedReferralsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/reports': {
       id: '/_authenticated/reports'
       path: '/reports'
@@ -493,6 +576,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKycIdRouteImport
       parentRoute: typeof AuthenticatedKycRoute
     }
+    '/_authenticated/referrals/': {
+      id: '/_authenticated/referrals/'
+      path: '/'
+      fullPath: '/referrals/'
+      preLoaderRoute: typeof AuthenticatedReferralsIndexRouteImport
+      parentRoute: typeof AuthenticatedReferralsRoute
+    }
+    '/_authenticated/referrals/$id': {
+      id: '/_authenticated/referrals/$id'
+      path: '/$id'
+      fullPath: '/referrals/$id'
+      preLoaderRoute: typeof AuthenticatedReferralsIdRouteImport
+      parentRoute: typeof AuthenticatedReferralsRoute
+    }
     '/_authenticated/support/': {
       id: '/_authenticated/support/'
       path: '/'
@@ -550,6 +647,22 @@ const AuthenticatedKycRouteChildren: AuthenticatedKycRouteChildren = {
 const AuthenticatedKycRouteWithChildren =
   AuthenticatedKycRoute._addFileChildren(AuthenticatedKycRouteChildren)
 
+interface AuthenticatedReferralsRouteChildren {
+  AuthenticatedReferralsIdRoute: typeof AuthenticatedReferralsIdRoute
+  AuthenticatedReferralsIndexRoute: typeof AuthenticatedReferralsIndexRoute
+}
+
+const AuthenticatedReferralsRouteChildren: AuthenticatedReferralsRouteChildren =
+  {
+    AuthenticatedReferralsIdRoute: AuthenticatedReferralsIdRoute,
+    AuthenticatedReferralsIndexRoute: AuthenticatedReferralsIndexRoute,
+  }
+
+const AuthenticatedReferralsRouteWithChildren =
+  AuthenticatedReferralsRoute._addFileChildren(
+    AuthenticatedReferralsRouteChildren,
+  )
+
 interface AuthenticatedSupportRouteChildren {
   AuthenticatedSupportIdRoute: typeof AuthenticatedSupportIdRoute
   AuthenticatedSupportIndexRoute: typeof AuthenticatedSupportIndexRoute
@@ -586,6 +699,9 @@ interface AuthenticatedRouteChildren {
   AuthenticatedKycRoute: typeof AuthenticatedKycRouteWithChildren
   AuthenticatedLoginActivityRoute: typeof AuthenticatedLoginActivityRoute
   AuthenticatedMonitoringRoute: typeof AuthenticatedMonitoringRoute
+  AuthenticatedReferralCampaignsRoute: typeof AuthenticatedReferralCampaignsRoute
+  AuthenticatedReferralSettingsRoute: typeof AuthenticatedReferralSettingsRoute
+  AuthenticatedReferralsRoute: typeof AuthenticatedReferralsRouteWithChildren
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedRolesRoute: typeof AuthenticatedRolesRoute
   AuthenticatedSupportRoute: typeof AuthenticatedSupportRouteWithChildren
@@ -604,6 +720,9 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedKycRoute: AuthenticatedKycRouteWithChildren,
   AuthenticatedLoginActivityRoute: AuthenticatedLoginActivityRoute,
   AuthenticatedMonitoringRoute: AuthenticatedMonitoringRoute,
+  AuthenticatedReferralCampaignsRoute: AuthenticatedReferralCampaignsRoute,
+  AuthenticatedReferralSettingsRoute: AuthenticatedReferralSettingsRoute,
+  AuthenticatedReferralsRoute: AuthenticatedReferralsRouteWithChildren,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedRolesRoute: AuthenticatedRolesRoute,
   AuthenticatedSupportRoute: AuthenticatedSupportRouteWithChildren,

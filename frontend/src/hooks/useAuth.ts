@@ -37,9 +37,10 @@ export function useAuth() {
       gender: Gender,
       captchaId: string,
       captchaCode: string,
+      referralCode?: string,
       email?: string
     ) => {
-      const tokens = await authApi.registerAccount({ username, phone, email, password, gender, captchaId, captchaCode })
+      const tokens = await authApi.registerAccount({ username, phone, email, password, gender, captchaId, captchaCode, referralCode })
       dispatch(credentialsReceived({ user: { username, phone, email, currency: "INR" }, tokens }))
     },
     [dispatch]

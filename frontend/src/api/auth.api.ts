@@ -18,6 +18,8 @@ export function registerAccount(input: {
   email?: string
   password: string
   gender: Gender
+  /** Another player's referralCode — validated server-side, see auth.service.ts register(). */
+  referralCode?: string
 } & CaptchaFields): Promise<AuthTokens> {
   return apiRequest<AuthTokens>("/api/auth/register", { method: "POST", body: input, anonymous: true })
 }
