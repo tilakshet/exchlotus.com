@@ -36,7 +36,7 @@ export const Route = createFileRoute("/dashboard/account/deposit")({
 
 const MIN_DEPOSIT = 100
 const MAX_DEPOSIT = 100_000
-const quickAmounts = [300, 400, 500, 1000]
+const quickAmounts = [100, 200, 300, 400, 500]
 const PROCESSING_FEE = 0
 
 const depositSchema = z.object({
@@ -129,7 +129,7 @@ function DepositPage() {
                 </p>
               )}
 
-              <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
                 {quickAmounts.map((preset) => {
                   const active = numericAmount === preset
                   return (
