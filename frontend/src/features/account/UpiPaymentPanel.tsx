@@ -19,23 +19,51 @@ function isIOS(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
 }
 
+export function isAndroid(): boolean {
+  if (typeof navigator === "undefined") return false
+  return /Android/.test(navigator.userAgent)
+}
+
+/**
+ * Unlike the generic `upi://` scheme, GPay/PhonePe/Paytm each register their
+ * own custom URL scheme on iOS specifically for UPI deep-linking, so an
+ * `<a href>` to one of these (tapped directly, not set via script) does
+ * open the installed app with the payment pre-filled. Same query params as
+ * the gateway's original `upi://pay?...` link — only the scheme/host differ.
+ */
+const IOS_UPI_APPS = [
+  { name: "GPay", scheme: "tez://upi/pay" },
+  { name: "PhonePe", scheme: "phonepe://pay" },
+  { name: "Paytm", scheme: "paytmmp://pay" },
+] as const
+
+function buildIOSAppLinks(paymentUrl: string): { name: string; url: string }[] {
+  const query = paymentUrl.split("?")[1] ?? ""
+  return IOS_UPI_APPS.map(({ name, scheme }) => ({ name, url: query ? `${scheme}?${query}` : scheme }))
+}
+
 /**
  * Fallback for when the PayIn gateway returns a raw `upi://` app-intent
  * link instead of a hosted checkout page (see isWebPaymentUrl in
  * dashboard.account.deposit.tsx) — there's no page for the browser to
- * navigate to, so this renders the same URI as a scannable QR code
- * (desktop) plus, on platforms where it actually works (see isIOS above),
- * a real `<a href>` (a direct user-gesture click on an anchor is what
- * actually triggers custom-scheme app links reliably, unlike a
- * script-driven `location.href` set after an async gap).
+ * navigate to. A QR code only makes sense on desktop, where there's no UPI
+ * app to hand the link to in the first place — on a phone we go straight
+ * for opening the app, since that's the whole point of being on the device
+ * that has it installed.
  */
 export function UpiPaymentPanel({ paymentUrl, amount, onCancel }: { paymentUrl: string; amount: number; onCancel: () => void }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   // No SSR here (a pure client-rendered Vite app) — navigator is always
   // available at render time, no effect/state indirection needed.
   const onIOS = isIOS()
+  const onAndroid = isAndroid()
+  const isMobile = onIOS || onAndroid
+  const iosAppLinks = onIOS ? buildIOSAppLinks(paymentUrl) : []
 
   useEffect(() => {
+    // QR is desktop-only UI (see doc comment above) — skip generating it on
+    // mobile, nothing renders it there.
+    if (isMobile) return
     let cancelled = false
     QRCode.toDataURL(paymentUrl, { margin: 1, width: 240 }).then((url) => {
       if (!cancelled) setQrDataUrl(url)
@@ -43,48 +71,65 @@ export function UpiPaymentPanel({ paymentUrl, amount, onCancel }: { paymentUrl: 
     return () => {
       cancelled = true
     }
-  }, [paymentUrl])
+  }, [paymentUrl, isMobile])
 
   return (
     <section className="flex flex-col items-center gap-4 rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6 text-center">
-      <h2 className="text-lg font-semibold text-[color:var(--acc-text-primary)]">Scan to Pay {formatInr(amount)}</h2>
+      <h2 className="text-lg font-semibold text-[color:var(--acc-text-primary)]">Pay {formatInr(amount)}</h2>
       <p className="text-sm text-[color:var(--acc-text-secondary)]">
-        {onIOS ? "Open your UPI app and use its own QR scanner to scan this code." : "Open any UPI app and scan this code — or, on your phone, tap the button below instead."}
+        {onIOS ? "Tap your UPI app below to pay." : onAndroid ? "Choose your UPI app to pay. Didn't see the app list? Tap below." : "Open any UPI app on your phone and scan this code."}
       </p>
 
-      <div className="flex size-56 items-center justify-center rounded-[var(--acc-radius-md)] border border-[color:var(--acc-border)] bg-white p-3">
-        {qrDataUrl ? (
-          <img src={qrDataUrl} alt="UPI payment QR code" className="size-full" />
-        ) : (
-          <QrCodeIcon className="size-10 animate-pulse text-[color:var(--acc-text-secondary)]" aria-hidden="true" />
-        )}
-      </div>
+      {!isMobile && (
+        <div className="flex size-56 items-center justify-center rounded-[var(--acc-radius-md)] border border-[color:var(--acc-border)] bg-white p-3">
+          {qrDataUrl ? (
+            <img src={qrDataUrl} alt="UPI payment QR code" className="size-full" />
+          ) : (
+            <QrCodeIcon className="size-10 animate-pulse text-[color:var(--acc-text-secondary)]" aria-hidden="true" />
+          )}
+        </div>
+      )}
 
       {onIOS ? (
-        // No tappable upi:// link here on purpose — see isIOS's doc comment.
-        // iOS has been observed taking that exact tap to WhatsApp instead of
-        // a UPI app, so the fix is steering people to the one path that
-        // actually works (their UPI app's own scanner), not offering a
-        // button known to fail.
-        <div
-          className="flex items-start gap-2.5 rounded-[var(--acc-radius-md)] border px-4 py-3 text-left text-sm"
-          style={{ borderColor: "var(--acc-border)", background: "var(--acc-input-bg)", color: "var(--acc-text-secondary)" }}
-        >
-          <Smartphone className="mt-0.5 size-5 shrink-0" style={{ color: "var(--acc-accent)" }} aria-hidden="true" />
-          <span>
-            <strong className="text-[color:var(--acc-text-primary)]">On iPhone/iPad:</strong> open GPay, PhonePe, Paytm, or your bank's UPI app and use its
-            "Scan QR" option on the code above. Don't scan it with the Camera app or tap a link — iOS can't open UPI links directly and may open an
-            unrelated app instead.
-          </span>
+        // No tappable link to the gateway's raw `upi://` URL — iOS has been
+        // observed taking that exact tap to WhatsApp instead of a UPI app
+        // (see isIOS's doc comment). GPay/PhonePe/Paytm each register their
+        // own scheme though (buildIOSAppLinks), so those work as real links.
+        <div className="flex w-full flex-col gap-2.5">
+          <div className="grid grid-cols-3 gap-2">
+            {iosAppLinks.map(({ name, url }) => (
+              <a
+                key={name}
+                href={url}
+                className="flex h-11 items-center justify-center rounded-[var(--acc-radius-md)] px-2 text-sm font-bold outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
+                style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
+              >
+                {name}
+              </a>
+            ))}
+          </div>
+          <div
+            className="flex items-start gap-2.5 rounded-[var(--acc-radius-md)] border px-4 py-3 text-left text-sm"
+            style={{ borderColor: "var(--acc-border)", background: "var(--acc-input-bg)", color: "var(--acc-text-secondary)" }}
+          >
+            <Smartphone className="mt-0.5 size-5 shrink-0" style={{ color: "var(--acc-accent)" }} aria-hidden="true" />
+            <span>
+              <strong className="text-[color:var(--acc-text-primary)]">Using a different UPI app?</strong> Open it, tap its "Scan QR" option, then switch
+              to a desktop or another device to scan the code — don't use the Camera app, since iOS can't open UPI links directly and may open an
+              unrelated app.
+            </span>
+          </div>
         </div>
       ) : (
-        <a
-          href={paymentUrl}
-          className="flex h-12 w-full items-center justify-center rounded-[var(--acc-radius-md)] px-8 text-base font-bold outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)] sm:w-auto"
-          style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
-        >
-          Open UPI App
-        </a>
+        onAndroid && (
+          <a
+            href={paymentUrl}
+            className="flex h-12 w-full items-center justify-center rounded-[var(--acc-radius-md)] px-8 text-base font-bold outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)] sm:w-auto"
+            style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
+          >
+            Open UPI App
+          </a>
+        )
       )}
 
       <p className="text-xs text-[color:var(--acc-text-secondary)]">Your balance updates automatically once the payment is confirmed — usually within a minute.</p>
