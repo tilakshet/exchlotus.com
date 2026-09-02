@@ -19,8 +19,11 @@ export interface LoginEventItem {
 export function listLoginEvents(params: {
   playerId?: string
   phone?: string
+  search?: string
   result?: LoginEventResult
   method?: LoginEventMethod
+  dateFrom?: string
+  dateTo?: string
   cursor?: string
   limit?: number
 }) {

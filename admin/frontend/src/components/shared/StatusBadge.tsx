@@ -87,6 +87,13 @@ export const REFERRAL_CAMPAIGN_STATUS_CONFIG: Record<string, StatusConfig> = {
   ENDED: { label: "Ended", tone: "default", icon: Archive },
 }
 
+export const PAYMENT_ORDER_STATUS_CONFIG: Record<string, StatusConfig> = {
+  PENDING: { label: "Pending", tone: "warning", icon: Clock },
+  SUCCESS: { label: "Success", tone: "success", icon: CheckCircle2 },
+  FAILED: { label: "Failed", tone: "destructive", icon: XCircle },
+  EXPIRED: { label: "Expired", tone: "default", icon: Circle },
+}
+
 export const LEDGER_TYPE_CONFIG: Record<string, StatusConfig> = {
   DEPOSIT: { label: "Deposit", tone: "success", icon: ArrowDownToLine },
   WITHDRAWAL: { label: "Withdrawal", tone: "warning", icon: ArrowUpFromLine },

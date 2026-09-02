@@ -6,7 +6,8 @@ import { requireAdminAuth } from "../auth/admin-auth.middleware"
 import { requirePermission } from "../rbac/rbac.middleware"
 import { AdminApiError, statusForError } from "../../lib/api-error"
 import { param } from "../../lib/params"
-import { getKycSubmission, listKycSubmissions, reviewKycSubmission } from "./kyc.service"
+import { countKycSubmissions, getKycSubmission, listKycSubmissions, reviewKycSubmission } from "./kyc.service"
+import { runCsvExport } from "../../lib/export"
 
 // Same relative path the player backend writes to (backend/src/lib/uploads.ts
 // KYC_UPLOAD_DIR) — reachable here because both containers mount the same
@@ -26,6 +27,7 @@ const STATUSES = ["PENDING", "APPROVED", "REJECTED", "NOT_SUBMITTED"] as const
 
 const listQuerySchema = z.object({
   status: z.enum(STATUSES).optional(),
+  search: z.string().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
 })
@@ -34,6 +36,23 @@ kycRouter.get("/", requirePermission("kyc.view"), async (req, res) => {
   const parsed = listQuerySchema.safeParse(req.query)
   if (!parsed.success) return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   res.json(await listKycSubmissions(parsed.data))
+})
+
+kycRouter.get("/export", requirePermission("kyc.export"), async (req, res) => {
+  const parsed = listQuerySchema.safeParse(req.query)
+  if (!parsed.success) return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
+  const filters = { status: parsed.data.status, search: parsed.data.search }
+
+  await runCsvExport(req, res, {
+    actorAdminId: req.adminAuth!.id,
+    module: "kyc",
+    filename: `kyc-export-${new Date().toISOString().slice(0, 10)}.csv`,
+    header: ["Submission ID", "Player", "Phone", "PAN", "Status", "Rejection Reason", "Submitted", "Reviewed"],
+    countRows: () => countKycSubmissions(filters),
+    fetchPage: (cursor, limit) => listKycSubmissions({ ...filters, cursor, limit }),
+    toRow: (item) => [item.id, item.player.username, item.player.phone ?? "", item.panNumber, item.status, item.rejectionReason ?? "", item.submittedAt, item.reviewedAt ?? ""],
+    filtersForAudit: filters,
+  })
 })
 
 kycRouter.get("/:id", requirePermission("kyc.view"), async (req, res) => {

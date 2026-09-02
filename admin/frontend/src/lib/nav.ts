@@ -1,6 +1,9 @@
 import {
+  AlertOctagon,
   ArrowDownToLine,
   BarChart3,
+  BookUser,
+  CreditCard,
   Dices,
   Gamepad2,
   Gauge,
@@ -48,13 +51,16 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Refer & Earn", to: "/referrals", permission: "referrals.view", icon: Gift },
       { label: "Games", to: "/games", permission: "games.view", icon: Gamepad2 },
       { label: "Game Activity", to: "/game-activity", permission: "ledger.view", icon: Dices },
+      { label: "Launch Failures", to: "/game-launch-failures", permission: "game-launches.view", icon: AlertOctagon },
     ],
   },
   {
     label: "Finance",
     items: [
       { label: "Deposits", to: "/deposits", permission: "ledger.view", icon: ArrowDownToLine },
+      { label: "Payment Attempts", to: "/payments", permission: "payments.view", icon: CreditCard },
       { label: "Withdrawals", to: "/withdrawals", permission: "withdrawals.view", icon: Landmark },
+      { label: "Bank Accounts", to: "/bank-accounts", permission: "bank-accounts.view", icon: BookUser },
       { label: "Transactions", to: "/transactions", permission: "ledger.view", icon: ScrollText },
     ],
   },

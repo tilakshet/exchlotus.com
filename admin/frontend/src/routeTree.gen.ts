@@ -14,13 +14,16 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedAdminsRouteImport } from './routes/_authenticated.admins'
 import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated.audit'
+import { Route as AuthenticatedBankAccountsRouteImport } from './routes/_authenticated.bank-accounts'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedDepositsRouteImport } from './routes/_authenticated.deposits'
 import { Route as AuthenticatedGameActivityRouteImport } from './routes/_authenticated.game-activity'
+import { Route as AuthenticatedGameLaunchFailuresRouteImport } from './routes/_authenticated.game-launch-failures'
 import { Route as AuthenticatedGamesRouteImport } from './routes/_authenticated.games'
 import { Route as AuthenticatedKycRouteImport } from './routes/_authenticated.kyc'
 import { Route as AuthenticatedLoginActivityRouteImport } from './routes/_authenticated.login-activity'
 import { Route as AuthenticatedMonitoringRouteImport } from './routes/_authenticated.monitoring'
+import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated.payments'
 import { Route as AuthenticatedReferralCampaignsRouteImport } from './routes/_authenticated.referral-campaigns'
 import { Route as AuthenticatedReferralSettingsRouteImport } from './routes/_authenticated.referral-settings'
 import { Route as AuthenticatedReferralsRouteImport } from './routes/_authenticated.referrals'
@@ -65,6 +68,12 @@ const AuthenticatedAuditRoute = AuthenticatedAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedBankAccountsRoute =
+  AuthenticatedBankAccountsRouteImport.update({
+    id: '/bank-accounts',
+    path: '/bank-accounts',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -79,6 +88,12 @@ const AuthenticatedGameActivityRoute =
   AuthenticatedGameActivityRouteImport.update({
     id: '/game-activity',
     path: '/game-activity',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedGameLaunchFailuresRoute =
+  AuthenticatedGameLaunchFailuresRouteImport.update({
+    id: '/game-launch-failures',
+    path: '/game-launch-failures',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedGamesRoute = AuthenticatedGamesRouteImport.update({
@@ -100,6 +115,11 @@ const AuthenticatedLoginActivityRoute =
 const AuthenticatedMonitoringRoute = AuthenticatedMonitoringRouteImport.update({
   id: '/monitoring',
   path: '/monitoring',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedReferralCampaignsRoute =
@@ -210,13 +230,16 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admins': typeof AuthenticatedAdminsRoute
   '/audit': typeof AuthenticatedAuditRoute
+  '/bank-accounts': typeof AuthenticatedBankAccountsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/deposits': typeof AuthenticatedDepositsRoute
   '/game-activity': typeof AuthenticatedGameActivityRoute
+  '/game-launch-failures': typeof AuthenticatedGameLaunchFailuresRoute
   '/games': typeof AuthenticatedGamesRouteWithChildren
   '/kyc': typeof AuthenticatedKycRouteWithChildren
   '/login-activity': typeof AuthenticatedLoginActivityRoute
   '/monitoring': typeof AuthenticatedMonitoringRoute
+  '/payments': typeof AuthenticatedPaymentsRoute
   '/referral-campaigns': typeof AuthenticatedReferralCampaignsRoute
   '/referral-settings': typeof AuthenticatedReferralSettingsRoute
   '/referrals': typeof AuthenticatedReferralsRouteWithChildren
@@ -242,11 +265,14 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admins': typeof AuthenticatedAdminsRoute
   '/audit': typeof AuthenticatedAuditRoute
+  '/bank-accounts': typeof AuthenticatedBankAccountsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/deposits': typeof AuthenticatedDepositsRoute
   '/game-activity': typeof AuthenticatedGameActivityRoute
+  '/game-launch-failures': typeof AuthenticatedGameLaunchFailuresRoute
   '/login-activity': typeof AuthenticatedLoginActivityRoute
   '/monitoring': typeof AuthenticatedMonitoringRoute
+  '/payments': typeof AuthenticatedPaymentsRoute
   '/referral-campaigns': typeof AuthenticatedReferralCampaignsRoute
   '/referral-settings': typeof AuthenticatedReferralSettingsRoute
   '/reports': typeof AuthenticatedReportsRoute
@@ -271,13 +297,16 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/admins': typeof AuthenticatedAdminsRoute
   '/_authenticated/audit': typeof AuthenticatedAuditRoute
+  '/_authenticated/bank-accounts': typeof AuthenticatedBankAccountsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/deposits': typeof AuthenticatedDepositsRoute
   '/_authenticated/game-activity': typeof AuthenticatedGameActivityRoute
+  '/_authenticated/game-launch-failures': typeof AuthenticatedGameLaunchFailuresRoute
   '/_authenticated/games': typeof AuthenticatedGamesRouteWithChildren
   '/_authenticated/kyc': typeof AuthenticatedKycRouteWithChildren
   '/_authenticated/login-activity': typeof AuthenticatedLoginActivityRoute
   '/_authenticated/monitoring': typeof AuthenticatedMonitoringRoute
+  '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/referral-campaigns': typeof AuthenticatedReferralCampaignsRoute
   '/_authenticated/referral-settings': typeof AuthenticatedReferralSettingsRoute
   '/_authenticated/referrals': typeof AuthenticatedReferralsRouteWithChildren
@@ -305,13 +334,16 @@ export interface FileRouteTypes {
     | '/login'
     | '/admins'
     | '/audit'
+    | '/bank-accounts'
     | '/dashboard'
     | '/deposits'
     | '/game-activity'
+    | '/game-launch-failures'
     | '/games'
     | '/kyc'
     | '/login-activity'
     | '/monitoring'
+    | '/payments'
     | '/referral-campaigns'
     | '/referral-settings'
     | '/referrals'
@@ -337,11 +369,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/admins'
     | '/audit'
+    | '/bank-accounts'
     | '/dashboard'
     | '/deposits'
     | '/game-activity'
+    | '/game-launch-failures'
     | '/login-activity'
     | '/monitoring'
+    | '/payments'
     | '/referral-campaigns'
     | '/referral-settings'
     | '/reports'
@@ -365,13 +400,16 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/admins'
     | '/_authenticated/audit'
+    | '/_authenticated/bank-accounts'
     | '/_authenticated/dashboard'
     | '/_authenticated/deposits'
     | '/_authenticated/game-activity'
+    | '/_authenticated/game-launch-failures'
     | '/_authenticated/games'
     | '/_authenticated/kyc'
     | '/_authenticated/login-activity'
     | '/_authenticated/monitoring'
+    | '/_authenticated/payments'
     | '/_authenticated/referral-campaigns'
     | '/_authenticated/referral-settings'
     | '/_authenticated/referrals'
@@ -436,6 +474,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAuditRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/bank-accounts': {
+      id: '/_authenticated/bank-accounts'
+      path: '/bank-accounts'
+      fullPath: '/bank-accounts'
+      preLoaderRoute: typeof AuthenticatedBankAccountsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -455,6 +500,13 @@ declare module '@tanstack/react-router' {
       path: '/game-activity'
       fullPath: '/game-activity'
       preLoaderRoute: typeof AuthenticatedGameActivityRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/game-launch-failures': {
+      id: '/_authenticated/game-launch-failures'
+      path: '/game-launch-failures'
+      fullPath: '/game-launch-failures'
+      preLoaderRoute: typeof AuthenticatedGameLaunchFailuresRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/games': {
@@ -483,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/monitoring'
       fullPath: '/monitoring'
       preLoaderRoute: typeof AuthenticatedMonitoringRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/payments': {
+      id: '/_authenticated/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AuthenticatedPaymentsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/referral-campaigns': {
@@ -692,13 +751,16 @@ const AuthenticatedUsersRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminsRoute: typeof AuthenticatedAdminsRoute
   AuthenticatedAuditRoute: typeof AuthenticatedAuditRoute
+  AuthenticatedBankAccountsRoute: typeof AuthenticatedBankAccountsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDepositsRoute: typeof AuthenticatedDepositsRoute
   AuthenticatedGameActivityRoute: typeof AuthenticatedGameActivityRoute
+  AuthenticatedGameLaunchFailuresRoute: typeof AuthenticatedGameLaunchFailuresRoute
   AuthenticatedGamesRoute: typeof AuthenticatedGamesRouteWithChildren
   AuthenticatedKycRoute: typeof AuthenticatedKycRouteWithChildren
   AuthenticatedLoginActivityRoute: typeof AuthenticatedLoginActivityRoute
   AuthenticatedMonitoringRoute: typeof AuthenticatedMonitoringRoute
+  AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedReferralCampaignsRoute: typeof AuthenticatedReferralCampaignsRoute
   AuthenticatedReferralSettingsRoute: typeof AuthenticatedReferralSettingsRoute
   AuthenticatedReferralsRoute: typeof AuthenticatedReferralsRouteWithChildren
@@ -713,13 +775,16 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminsRoute: AuthenticatedAdminsRoute,
   AuthenticatedAuditRoute: AuthenticatedAuditRoute,
+  AuthenticatedBankAccountsRoute: AuthenticatedBankAccountsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDepositsRoute: AuthenticatedDepositsRoute,
   AuthenticatedGameActivityRoute: AuthenticatedGameActivityRoute,
+  AuthenticatedGameLaunchFailuresRoute: AuthenticatedGameLaunchFailuresRoute,
   AuthenticatedGamesRoute: AuthenticatedGamesRouteWithChildren,
   AuthenticatedKycRoute: AuthenticatedKycRouteWithChildren,
   AuthenticatedLoginActivityRoute: AuthenticatedLoginActivityRoute,
   AuthenticatedMonitoringRoute: AuthenticatedMonitoringRoute,
+  AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedReferralCampaignsRoute: AuthenticatedReferralCampaignsRoute,
   AuthenticatedReferralSettingsRoute: AuthenticatedReferralSettingsRoute,
   AuthenticatedReferralsRoute: AuthenticatedReferralsRouteWithChildren,

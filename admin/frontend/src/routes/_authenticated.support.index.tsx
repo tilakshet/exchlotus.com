@@ -1,18 +1,21 @@
 import { useState } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { LifeBuoy } from "lucide-react"
+import { LifeBuoy, X } from "lucide-react"
 import { listTickets, type SupportTicketStatus } from "@/api/support.api"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { FilterBar, type ActiveFilter } from "@/components/shared/FilterBar"
+import { DateRangePicker } from "@/components/shared/DateRangePicker"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { ErrorState } from "@/components/shared/ErrorState"
 import { StatusBadge, TICKET_STATUS_CONFIG } from "@/components/shared/StatusBadge"
+import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { TableSkeletonRows } from "@/components/shared/TableSkeleton"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { getPresetRange, type DateRange, type DateRangePreset } from "@/lib/dateRanges"
 import { formatDateTime } from "@/lib/utils"
 
 export const Route = createFileRoute("/_authenticated/support/")({
@@ -24,16 +27,30 @@ type StatusFilter = SupportTicketStatus | "ALL"
 function SupportPage() {
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<StatusFilter>("OPEN")
+  const [unassigned, setUnassigned] = useState(false)
+  const [dateFilterOn, setDateFilterOn] = useState(false)
+  const [datePreset, setDatePreset] = useState<DateRangePreset>("last30")
+  const [dateRange, setDateRange] = useState<DateRange>(() => getPresetRange("last30"))
   const debouncedSearch = useDebouncedValue(search, 300)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["support-tickets", debouncedSearch, status],
-    queryFn: () => listTickets({ search: debouncedSearch || undefined, status: status === "ALL" ? undefined : status, limit: 50 }),
+    queryKey: ["support-tickets", debouncedSearch, status, unassigned, dateFilterOn, dateRange],
+    queryFn: () =>
+      listTickets({
+        search: debouncedSearch || undefined,
+        status: status === "ALL" ? undefined : status,
+        unassigned: unassigned || undefined,
+        dateFrom: dateFilterOn ? dateRange.dateFrom.toISOString() : undefined,
+        dateTo: dateFilterOn ? dateRange.dateTo.toISOString() : undefined,
+        limit: 50,
+      }),
   })
 
   const activeFilters: ActiveFilter[] = []
   if (status !== "ALL") activeFilters.push({ key: "status", label: `Status: ${status}`, onClear: () => setStatus("ALL") })
   if (search) activeFilters.push({ key: "search", label: `Search: ${search}`, onClear: () => setSearch("") })
+  if (unassigned) activeFilters.push({ key: "unassigned", label: "Unassigned only", onClear: () => setUnassigned(false) })
+  if (dateFilterOn) activeFilters.push({ key: "date", label: "Date range", onClear: () => setDateFilterOn(false) })
 
   return (
     <div className="flex flex-col gap-4">
@@ -44,6 +61,8 @@ function SupportPage() {
         onClearAll={() => {
           setSearch("")
           setStatus("ALL")
+          setUnassigned(false)
+          setDateFilterOn(false)
         }}
       >
         <SearchInput value={search} onChange={setSearch} placeholder="Search subject, username, player ID…" className="w-72" />
@@ -59,6 +78,21 @@ function SupportPage() {
             <SelectItem value="CLOSED">Closed</SelectItem>
           </SelectContent>
         </Select>
+        <Button variant={unassigned ? "default" : "outline"} size="sm" onClick={() => setUnassigned((v) => !v)}>
+          Unassigned only
+        </Button>
+        {dateFilterOn ? (
+          <div className="flex items-center gap-1">
+            <DateRangePicker preset={datePreset} value={dateRange} onChange={(range, preset) => { setDateRange(range); setDatePreset(preset) }} />
+            <Button variant="ghost" size="icon" className="size-8" onClick={() => setDateFilterOn(false)} aria-label="Clear date filter">
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setDateFilterOn(true)}>
+            + Date range
+          </Button>
+        )}
       </FilterBar>
 
       {isError ? (

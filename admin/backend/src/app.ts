@@ -23,6 +23,9 @@ import { supportRouter } from "./modules/support/support.controller"
 import { loginEventsRouter } from "./modules/login-events/login-events.controller"
 import { kycRouter } from "./modules/kyc/kyc.controller"
 import { referralsRouter } from "./modules/referrals/referrals.controller"
+import { paymentsRouter } from "./modules/payments/payments.controller"
+import { bankAccountsRouter } from "./modules/bank-accounts/bank-accounts.controller"
+import { gameLaunchFailuresRouter } from "./modules/game-launch-failures/game-launch-failures.controller"
 
 export function createApp() {
   const app = express()
@@ -58,6 +61,9 @@ export function createApp() {
   app.use("/admin-api/login-events", loginEventsRouter)
   app.use("/admin-api/kyc", kycRouter)
   app.use("/admin-api/referrals", referralsRouter)
+  app.use("/admin-api/payments", paymentsRouter)
+  app.use("/admin-api/bank-accounts", bankAccountsRouter)
+  app.use("/admin-api/game-launch-failures", gameLaunchFailuresRouter)
 
   app.use((req, res) => {
     res.status(404).json({ error: "NOT_FOUND", path: req.path })

@@ -11,6 +11,9 @@ const listQuerySchema = z.object({
   adminId: z.string().optional(),
   entityType: z.string().optional(),
   entityId: z.string().optional(),
+  action: z.string().optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().positive().max(200).optional(),
 })

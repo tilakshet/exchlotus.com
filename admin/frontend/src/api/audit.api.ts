@@ -16,6 +16,15 @@ export interface AuditLogItem {
   createdAt: string
 }
 
-export function listAuditLogs(params: { adminId?: string; entityType?: string; entityId?: string; cursor?: string; limit?: number }) {
+export function listAuditLogs(params: {
+  adminId?: string
+  entityType?: string
+  entityId?: string
+  action?: string
+  dateFrom?: string
+  dateTo?: string
+  cursor?: string
+  limit?: number
+}) {
   return apiRequest<{ items: AuditLogItem[]; nextCursor: string | null }>("/admin-api/audit", { query: params })
 }

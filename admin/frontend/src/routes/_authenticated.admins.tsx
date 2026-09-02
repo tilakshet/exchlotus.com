@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { PageHeader } from "@/components/shared/PageHeader"
+import { SearchInput } from "@/components/shared/SearchInput"
+import { FilterBar, type ActiveFilter } from "@/components/shared/FilterBar"
 import { StatusBadge, ADMIN_STATUS_CONFIG, MFA_STATUS_CONFIG } from "@/components/shared/StatusBadge"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -190,8 +192,28 @@ function AdminsPage() {
   const { hasPermission, user: currentAdmin } = useAdminAuth()
   const { data: admins, isLoading, isError, refetch } = useQuery({ queryKey: ["admins"], queryFn: listAdmins })
   const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: listRoles })
+  const [search, setSearch] = useState("")
+  const [roleId, setRoleId] = useState("ALL")
 
   const canManage = hasPermission("admins.manage")
+
+  // Client-side, not a server query param: staff accounts are a small,
+  // bounded list (organizational headcount, not customer volume) — unlike
+  // Users/Withdrawals/KYC, there's no realistic scale here that needs
+  // server-side search/pagination.
+  const filtered = (admins ?? []).filter((a) => {
+    if (roleId !== "ALL" && a.roleId !== roleId) return false
+    if (!search) return true
+    const q = search.toLowerCase()
+    return a.email.toLowerCase().includes(q) || `${a.firstName} ${a.lastName}`.toLowerCase().includes(q)
+  })
+
+  const activeFilters: ActiveFilter[] = []
+  if (search) activeFilters.push({ key: "search", label: `Search: ${search}`, onClear: () => setSearch("") })
+  if (roleId !== "ALL") {
+    const role = roles?.find((r) => r.id === roleId)
+    activeFilters.push({ key: "role", label: `Role: ${role?.name.replaceAll("_", " ") ?? roleId}`, onClear: () => setRoleId("ALL") })
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -200,6 +222,29 @@ function AdminsPage() {
         description="Platform staff accounts, roles, and MFA status."
         actions={canManage && roles ? <CreateAdminDialog roles={roles} /> : undefined}
       />
+
+      <FilterBar
+        activeFilters={activeFilters}
+        onClearAll={() => {
+          setSearch("")
+          setRoleId("ALL")
+        }}
+      >
+        <SearchInput value={search} onChange={setSearch} placeholder="Search name or email…" className="w-64" />
+        <Select value={roleId} onValueChange={setRoleId}>
+          <SelectTrigger className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All roles</SelectItem>
+            {roles?.map((r) => (
+              <SelectItem key={r.id} value={r.id}>
+                {r.name.replaceAll("_", " ")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
       {isError ? (
         <ErrorState title="Unable to load admins" onRetry={() => refetch()} />
@@ -218,14 +263,14 @@ function AdminsPage() {
           </TableHeader>
           <TableBody>
             {isLoading && <TableSkeletonRows columns={canManage ? 7 : 6} />}
-            {!isLoading && admins?.length === 0 && (
+            {!isLoading && filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="p-0">
-                  <EmptyState icon={UsersIcon} title="No admins yet" />
+                  <EmptyState icon={UsersIcon} title={search || roleId !== "ALL" ? "No admins match these filters" : "No admins yet"} />
                 </TableCell>
               </TableRow>
             )}
-            {admins?.map((admin) => (
+            {filtered.map((admin) => (
               <TableRow key={admin.id}>
                 <TableCell>
                   {admin.firstName} {admin.lastName}
