@@ -564,6 +564,60 @@
     filter: brightness(0.97);
 }
 
+/* Every text-input row on the login/register/forgot/reset forms — flat and
+   static before (no focus treatment at all beyond the browser default,
+   which the surrounding form actively strips via outline-none on the
+   <input> itself). One shared class instead of restyling each field, and
+   :focus-within (not :focus) so the whole pill lights up together with
+   whatever's actually focused inside it — the icon, the input, doesn't
+   matter which. */
+.login-input-box {
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.login-input-box:hover {
+    border-color: var(--landing-border-strong);
+}
+
+.login-input-box:focus-within {
+    border-color: color-mix(in srgb, var(--landing-gold) 55%, var(--landing-border-strong));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--landing-gold) 14%, transparent);
+}
+
+/* The CAPTCHA code display — previously indistinguishable from a plain
+   input box despite showing something the player reads, not types. A
+   faint diagonal hatch (classic CAPTCHA visual language, kept subtle
+   enough to stay legible) plus a gold-tinted border gives it its own
+   identity, and the digits get a soft glow instead of flat text. */
+.login-captcha-display {
+    position: relative;
+    overflow: hidden;
+    border-color: color-mix(in srgb, var(--landing-gold) 30%, var(--landing-border-strong)) !important;
+    background-image: repeating-linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--landing-gold) 5%, transparent) 0 2px,
+        transparent 2px 10px
+    );
+}
+
+.login-captcha-display > span {
+    position: relative;
+    text-shadow: 0 0 14px color-mix(in srgb, var(--landing-gold) 45%, transparent);
+}
+
+/* CAPTCHA refresh button — was a flat icon-in-a-box with only a disabled
+   fade; now matches the hover language every other interactive control on
+   this page already has (border-strong on hover, gold tint + spin already
+   present on the icon while loading). */
+.login-icon-btn {
+    transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.login-icon-btn:hover:not(:disabled) {
+    border-color: var(--landing-border-strong);
+    background: color-mix(in srgb, var(--landing-gold) 8%, var(--landing-bg-2));
+}
+
 /* A real, always-visible horizontal scrollbar (not the hidden-track +
    edge-fade pattern) for short pill/chip rows where the row itself is the
    only visual cue that there's more content off-screen. */
