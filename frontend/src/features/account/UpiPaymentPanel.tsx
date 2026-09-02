@@ -14,7 +14,7 @@ import { formatInr } from "@/lib/utils"
  * fine there. iPadOS reports its platform as "MacIntel" with touch support
  * (no separate "iPad" UA token since iPadOS 13), hence the touch check.
  */
-function isIOS(): boolean {
+export function isIOS(): boolean {
   if (typeof navigator === "undefined") return false
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
 }
@@ -37,7 +37,7 @@ const IOS_UPI_APPS = [
   { name: "Paytm", scheme: "paytmmp://pay" },
 ] as const
 
-function buildIOSAppLinks(paymentUrl: string): { name: string; url: string }[] {
+export function buildIOSAppLinks(paymentUrl: string): { name: string; url: string }[] {
   const query = paymentUrl.split("?")[1] ?? ""
   return IOS_UPI_APPS.map(({ name, scheme }) => ({ name, url: query ? `${scheme}?${query}` : scheme }))
 }
@@ -54,7 +54,7 @@ const IOS_APP_ATTEMPT_TIMEOUT_MS = 1200
  * move on to the next one. Same technique most iOS deep-linking SDKs use,
  * since there's no direct "is this app installed" API.
  */
-function tryOpenIOSAppsInSequence(links: { name: string; url: string }[]): () => void {
+export function tryOpenIOSAppsInSequence(links: { name: string; url: string }[]): () => void {
   let cancelled = false
   let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -113,11 +113,6 @@ export function UpiPaymentPanel({ paymentUrl, amount, onCancel }: { paymentUrl: 
       cancelled = true
     }
   }, [paymentUrl, isMobile])
-
-  useEffect(() => {
-    if (!onIOS) return
-    return tryOpenIOSAppsInSequence(buildIOSAppLinks(paymentUrl))
-  }, [onIOS, paymentUrl])
 
   return (
     <section className="flex flex-col items-center gap-4 rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6 text-center">

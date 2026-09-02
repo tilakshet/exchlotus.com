@@ -9,7 +9,7 @@ import { useCreateDepositOrder } from "@/hooks/useWallet"
 import { ApiError, friendlyErrorMessage } from "@/api/api-error"
 import { ComingSoon } from "@/features/account/ComingSoon"
 import { StepHeading } from "@/features/account/StepHeading"
-import { UpiPaymentPanel, isAndroid } from "@/features/account/UpiPaymentPanel"
+import { UpiPaymentPanel, isAndroid, isIOS, buildIOSAppLinks, tryOpenIOSAppsInSequence } from "@/features/account/UpiPaymentPanel"
 import { formatInr } from "@/lib/utils"
 
 /**
@@ -86,12 +86,14 @@ function DepositPage() {
         window.location.href = order.paymentUrl
       } else if (order.paymentUrl) {
         setUpiOrder({ paymentUrl: order.paymentUrl, amount: values.amount })
-        // Android's intent system handles `upi://` natively (UpiPaymentPanel's
-        // isAndroid doc comment) — fire the redirect here, still inside the
-        // submit handler's task, so it carries the click's user-activation.
-        // A useEffect in the panel below fires on a later render after this
-        // task ends, which loses that activation and gets silently blocked.
+        // Fire the app-open attempt here, still inside the submit handler's
+        // task, so it carries the click's user-activation — a useEffect in
+        // the panel below only fires on a later render after this task
+        // ends, which loses that activation and gets silently blocked on
+        // both platforms (Android's intent system, UpiPaymentPanel's isIOS
+        // doc comment for why iOS needs the per-app sequence instead).
         if (isAndroid()) window.location.href = order.paymentUrl
+        else if (isIOS()) tryOpenIOSAppsInSequence(buildIOSAppLinks(order.paymentUrl))
       }
     } catch {
       // Surfaced via deposit.isError/deposit.error below.
