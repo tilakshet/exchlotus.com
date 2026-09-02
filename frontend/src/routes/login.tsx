@@ -506,8 +506,19 @@ function GenderField({
  * browser, only the server-side record makes it enforceable) with a
  * refresh button, and the user retypes it below. Server-validated on
  * submit (captcha.service.ts) — never trust this client-side alone.
+ *
+ * `variant="otp"` is presentation only — same generate-a-code /
+ * type-it-back-in / re-fetch-on-refresh mechanism either way, just
+ * relabeled "One Time OTP" / "Resend OTP" for Login, Sign Up, and Forgot
+ * Password per product decision. This is NOT a real OTP — nothing is sent
+ * anywhere (no SMS gateway exists in this codebase); the code is shown
+ * directly on screen exactly like the numeric CAPTCHA it's built on.
+ * Reset Password keeps the literal "CAPTCHA" label (out of scope for the
+ * relabel).
  */
-function CaptchaField({ captcha, error }: { captcha: CaptchaState; error?: string }) {
+function CaptchaField({ captcha, error, variant = "captcha" }: { captcha: CaptchaState; error?: string; variant?: "captcha" | "otp" }) {
+  const label = variant === "otp" ? "One Time OTP" : "CAPTCHA";
+  const actionLabel = variant === "otp" ? "Resend OTP" : "Refresh CAPTCHA";
   return (
     <div>
       <label
@@ -515,7 +526,7 @@ function CaptchaField({ captcha, error }: { captcha: CaptchaState; error?: strin
         className="mb-1.5 block text-xs font-bold"
         style={{ color: "var(--landing-text-secondary)" }}
       >
-        CAPTCHA*
+        {label}*
       </label>
       <div className="mb-2 flex items-center gap-2">
         <div
@@ -529,11 +540,16 @@ function CaptchaField({ captcha, error }: { captcha: CaptchaState; error?: strin
           type="button"
           onClick={() => captcha.refresh()}
           disabled={captcha.loading}
-          aria-label="Refresh CAPTCHA"
-          className="login-icon-btn flex size-11 shrink-0 items-center justify-center rounded-(--landing-radius-sm) outline-none transition-opacity disabled:opacity-60"
+          aria-label={actionLabel}
+          className={`login-icon-btn flex shrink-0 items-center justify-center gap-1.5 rounded-(--landing-radius-sm) outline-none transition-opacity disabled:opacity-60 ${variant === "otp" ? "h-11 px-3.5" : "size-11"}`}
           style={inputBoxStyle()}
         >
           <RefreshCw className={`size-4.5 ${captcha.loading ? "animate-spin" : ""}`} style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
+          {variant === "otp" && (
+            <span className="text-xs font-bold whitespace-nowrap" style={{ color: "var(--landing-text-secondary)" }}>
+              Resend OTP
+            </span>
+          )}
         </button>
       </div>
       <div
@@ -545,7 +561,7 @@ function CaptchaField({ captcha, error }: { captcha: CaptchaState; error?: strin
           type="text"
           inputMode="numeric"
           maxLength={4}
-          placeholder="Enter CAPTCHA"
+          placeholder={variant === "otp" ? "Enter OTP" : "Enter CAPTCHA"}
           aria-invalid={!!error}
           className="w-full bg-transparent py-3 text-sm tracking-[0.3em] outline-none placeholder:text-(--landing-text-muted)"
           style={{ color: "var(--landing-text-primary)" }}
@@ -556,7 +572,7 @@ function CaptchaField({ captcha, error }: { captcha: CaptchaState; error?: strin
       <FieldError message={error} />
       {captcha.error && !captcha.loading && (
         <p role="alert" className="mt-1 text-xs text-red-400">
-          Couldn&rsquo;t load CAPTCHA: {captcha.error} —{" "}
+          Couldn&rsquo;t load {label}: {captcha.error} —{" "}
           <button
             type="button"
             onClick={() => captcha.refresh()}
@@ -646,7 +662,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         </Link>
       </div>
 
-      <CaptchaField captcha={captcha} />
+      <CaptchaField captcha={captcha} variant="otp" />
 
       <button
         type="submit"
@@ -828,7 +844,7 @@ function RegisterForm({ onSuccess, initialReferralCode }: { onSuccess: () => voi
         <FieldError message={errors.confirmPassword?.message} />
       </div>
 
-      <CaptchaField captcha={captcha} />
+      <CaptchaField captcha={captcha} variant="otp" />
 
       <div>
         <label
@@ -928,7 +944,7 @@ function ForgotPasswordForm({ onIdentified }: { onIdentified: (resetToken: strin
         <FieldError message={errors.identifier?.message} />
       </div>
 
-      <CaptchaField captcha={captcha} />
+      <CaptchaField captcha={captcha} variant="otp" />
 
       <button
         type="submit"
