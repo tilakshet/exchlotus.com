@@ -34,9 +34,13 @@ export const Route = createFileRoute("/dashboard/account/deposit")({
   component: DepositPage,
 })
 
-const MIN_DEPOSIT = 100
+// Oro/housholdbajar (the active PayIn gateway) rejects any amount under
+// ₹300 — confirmed against their live API, which returns a real 422 for
+// less and only succeeds at 300+. Must stay in sync with whatever the
+// gateway enforces, not an arbitrary UX choice.
+const MIN_DEPOSIT = 300
 const MAX_DEPOSIT = 100_000
-const quickAmounts = [100, 200, 300, 400, 500]
+const quickAmounts = [300, 500, 1000, 2000, 5000]
 const PROCESSING_FEE = 0
 
 const depositSchema = z.object({
@@ -60,7 +64,7 @@ function DepositPage() {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<DepositInput, unknown, DepositValues>({ resolver: zodResolver(depositSchema), defaultValues: { amount: 100 as unknown as DepositInput["amount"] } })
+  } = useForm<DepositInput, unknown, DepositValues>({ resolver: zodResolver(depositSchema), defaultValues: { amount: MIN_DEPOSIT as unknown as DepositInput["amount"] } })
   const amount = watch("amount")
   const numericAmount = Number(amount) || 0
   const totalPayable = numericAmount + PROCESSING_FEE
