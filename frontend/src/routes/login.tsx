@@ -84,6 +84,24 @@ const forgotIdentifierSchema = z.object({
 });
 type ForgotIdentifierValues = z.infer<typeof forgotIdentifierSchema>;
 
+/**
+ * Every OTHER phone field in this app is a fixed "+91" prefix next to a
+ * local-digits-only input (see PhoneField) — the account's stored
+ * Player.phone is always "+91XXXXXXXXXX". This field is free text ("Mobile
+ * Number / Email"), so someone typing their number the same bare way they
+ * would everywhere else ("9876543210") silently matched no account:
+ * requestPasswordReset is deliberately enumeration-safe (same response
+ * whether or not an account exists — see auth.service.ts), so step 1
+ * "succeeded" anyway with a token that was never actually persisted, and
+ * step 2 failed with a generic RESET_TOKEN_INVALID with no clue why.
+ * Normalizing a bare local number to match here closes that gap without
+ * weakening the enumeration-safety at all.
+ */
+function normalizeIdentifier(raw: string): string {
+  const trimmed = raw.trim();
+  return /^\d{7,13}$/.test(trimmed) ? `+91${trimmed}` : trimmed;
+}
+
 const resetPasswordFormSchema = z
   .object({
     newPassword: z.string().min(8, "At least 8 characters").max(72),
@@ -230,6 +248,10 @@ function LoginPage() {
               <ResetPasswordForm
                 resetToken={resetToken}
                 onDone={() => navigate({ to: "/login", search: (prev) => ({ ...prev, view: "login", resetDone: true }) })}
+                onRestart={() => {
+                  setResetToken(null);
+                  goToView("forgot");
+                }}
               />
             )}
           </div>
@@ -854,7 +876,7 @@ function ForgotPasswordForm({ onIdentified }: { onIdentified: (resetToken: strin
     }
     try {
       const { resetToken } = await authApi.forgotPassword({
-        identifier: values.identifier,
+        identifier: normalizeIdentifier(values.identifier),
         captchaId: captcha.captchaId,
         captchaCode: captcha.value,
       });
@@ -920,9 +942,15 @@ function ForgotPasswordForm({ onIdentified }: { onIdentified: (resetToken: strin
 }
 
 /** Forgot Password, step 2: new password + CAPTCHA, authorized by the resetToken from step 1. */
-function ResetPasswordForm({ resetToken, onDone }: { resetToken: string | null; onDone: () => void }) {
+function ResetPasswordForm({ resetToken, onDone, onRestart }: { resetToken: string | null; onDone: () => void; onRestart: () => void }) {
   const captcha = useCaptcha();
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(resetToken ? null : "Your reset session has expired.");
+  // Once the token's dead (never issued, expired, or already used), no
+  // amount of retrying THIS form can succeed — the only way forward is
+  // back to step 1 for a new one. Surfacing a direct "start over" action
+  // here instead of just an error message, so the user isn't left to
+  // figure out on their own that they need to navigate away and back.
+  const [tokenDead, setTokenDead] = useState(!resetToken);
   const {
     register,
     handleSubmit,
@@ -932,7 +960,8 @@ function ResetPasswordForm({ resetToken, onDone }: { resetToken: string | null; 
   async function onSubmit(values: ResetPasswordFormValues) {
     setFormError(null);
     if (!resetToken) {
-      setFormError("Your reset session has expired — start again.");
+      setFormError("Your reset session has expired.");
+      setTokenDead(true);
       return;
     }
     if (!captcha.captchaId || captcha.value.length !== 4) {
@@ -949,6 +978,7 @@ function ResetPasswordForm({ resetToken, onDone }: { resetToken: string | null; 
       onDone();
     } catch (err) {
       setFormError(friendlyErrorMessage(err instanceof ApiError ? err : err));
+      if (err instanceof ApiError && err.code === "RESET_TOKEN_INVALID") setTokenDead(true);
       captcha.refresh();
     }
   }
@@ -960,76 +990,87 @@ function ResetPasswordForm({ resetToken, onDone }: { resetToken: string | null; 
       noValidate
     >
       <FormError message={formError} />
-
-      <div>
-        <label
-          htmlFor="reset-new-password"
-          className="mb-1.5 block text-xs font-bold"
-          style={{ color: "var(--landing-text-secondary)" }}
+      {tokenDead ? (
+        <button
+          type="button"
+          onClick={onRestart}
+          className="login-btn-primary rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
         >
-          New Password*
-        </label>
-        <div
-          className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
-          style={inputBoxStyle()}
-        >
-          <Lock
-            className="size-4.5 shrink-0"
-            style={{ color: "var(--landing-text-muted)" }}
-            aria-hidden="true"
-          />
-          <input
-            id="reset-new-password"
-            type="password"
-            placeholder="••••••••"
-            aria-invalid={!!errors.newPassword}
-            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
-            style={{ color: "var(--landing-text-primary)" }}
-            {...register("newPassword")}
-          />
-        </div>
-        <FieldError message={errors.newPassword?.message} />
-      </div>
+          Start Over
+        </button>
+      ) : (
+        <>
+          <div>
+            <label
+              htmlFor="reset-new-password"
+              className="mb-1.5 block text-xs font-bold"
+              style={{ color: "var(--landing-text-secondary)" }}
+            >
+              New Password*
+            </label>
+            <div
+              className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+              style={inputBoxStyle()}
+            >
+              <Lock
+                className="size-4.5 shrink-0"
+                style={{ color: "var(--landing-text-muted)" }}
+                aria-hidden="true"
+              />
+              <input
+                id="reset-new-password"
+                type="password"
+                placeholder="••••••••"
+                aria-invalid={!!errors.newPassword}
+                className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
+                style={{ color: "var(--landing-text-primary)" }}
+                {...register("newPassword")}
+              />
+            </div>
+            <FieldError message={errors.newPassword?.message} />
+          </div>
 
-      <div>
-        <label
-          htmlFor="reset-confirm-password"
-          className="mb-1.5 block text-xs font-bold"
-          style={{ color: "var(--landing-text-secondary)" }}
-        >
-          Confirm Password*
-        </label>
-        <div
-          className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
-          style={inputBoxStyle()}
-        >
-          <Lock
-            className="size-4.5 shrink-0"
-            style={{ color: "var(--landing-text-muted)" }}
-            aria-hidden="true"
-          />
-          <input
-            id="reset-confirm-password"
-            type="password"
-            placeholder="••••••••"
-            aria-invalid={!!errors.confirmPassword}
-            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
-            style={{ color: "var(--landing-text-primary)" }}
-            {...register("confirmPassword")}
-          />
-        </div>
-        <FieldError message={errors.confirmPassword?.message} />
-      </div>
+          <div>
+            <label
+              htmlFor="reset-confirm-password"
+              className="mb-1.5 block text-xs font-bold"
+              style={{ color: "var(--landing-text-secondary)" }}
+            >
+              Confirm Password*
+            </label>
+            <div
+              className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+              style={inputBoxStyle()}
+            >
+              <Lock
+                className="size-4.5 shrink-0"
+                style={{ color: "var(--landing-text-muted)" }}
+                aria-hidden="true"
+              />
+              <input
+                id="reset-confirm-password"
+                type="password"
+                placeholder="••••••••"
+                aria-invalid={!!errors.confirmPassword}
+                className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
+                style={{ color: "var(--landing-text-primary)" }}
+                {...register("confirmPassword")}
+              />
+            </div>
+            <FieldError message={errors.confirmPassword?.message} />
+          </div>
 
-      <CaptchaField captcha={captcha} />
+          <CaptchaField captcha={captcha} />
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {isSubmitting ? "Resetting…" : "Reset Password"}
-      </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="login-btn-primary mt-2 rounded-(--landing-radius-sm) py-3.5 text-sm font-black outline-none focus-visible:ring-2 focus-visible:ring-(--landing-text-primary) disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSubmitting ? "Resetting…" : "Reset Password"}
+          </button>
+        </>
+      )}
     </form>
   );
 }

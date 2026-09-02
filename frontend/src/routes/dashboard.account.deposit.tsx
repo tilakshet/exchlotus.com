@@ -36,7 +36,7 @@ export const Route = createFileRoute("/dashboard/account/deposit")({
 
 const MIN_DEPOSIT = 100
 const MAX_DEPOSIT = 100_000
-const quickAmounts = [100, 500, 1000, 2000]
+const quickAmounts = [300, 400, 500, 1000]
 const PROCESSING_FEE = 0
 
 const depositSchema = z.object({
