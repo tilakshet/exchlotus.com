@@ -42,6 +42,47 @@ function buildIOSAppLinks(paymentUrl: string): { name: string; url: string }[] {
   return IOS_UPI_APPS.map(({ name, scheme }) => ({ name, url: query ? `${scheme}?${query}` : scheme }))
 }
 
+const IOS_APP_ATTEMPT_TIMEOUT_MS = 1200
+
+/**
+ * There's no iOS equivalent of Android's UPI Intent chooser (isIOS's doc
+ * comment) — no single link means "ask the OS which installed app should
+ * handle this." The closest approximation: try each app's scheme in turn,
+ * and use the fact that switching to an installed app backgrounds Safari
+ * (fires `visibilitychange`) to detect success — if the page is still
+ * visible after a short timeout, that scheme wasn't claimed by anything, so
+ * move on to the next one. Same technique most iOS deep-linking SDKs use,
+ * since there's no direct "is this app installed" API.
+ */
+function tryOpenIOSAppsInSequence(links: { name: string; url: string }[]): () => void {
+  let cancelled = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  function onVisibilityChange() {
+    if (document.hidden) cleanup()
+  }
+  function cleanup() {
+    document.removeEventListener("visibilitychange", onVisibilityChange)
+    if (timer) clearTimeout(timer)
+  }
+
+  function attempt(index: number) {
+    if (cancelled || index >= links.length) return
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    window.location.href = links[index].url
+    timer = setTimeout(() => {
+      cleanup()
+      if (!cancelled && !document.hidden) attempt(index + 1)
+    }, IOS_APP_ATTEMPT_TIMEOUT_MS)
+  }
+
+  attempt(0)
+  return () => {
+    cancelled = true
+    cleanup()
+  }
+}
+
 /**
  * Fallback for when the PayIn gateway returns a raw `upi://` app-intent
  * link instead of a hosted checkout page (see isWebPaymentUrl in
@@ -73,11 +114,20 @@ export function UpiPaymentPanel({ paymentUrl, amount, onCancel }: { paymentUrl: 
     }
   }, [paymentUrl, isMobile])
 
+  useEffect(() => {
+    if (!onIOS) return
+    return tryOpenIOSAppsInSequence(buildIOSAppLinks(paymentUrl))
+  }, [onIOS, paymentUrl])
+
   return (
     <section className="flex flex-col items-center gap-4 rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6 text-center">
       <h2 className="text-lg font-semibold text-[color:var(--acc-text-primary)]">Pay {formatInr(amount)}</h2>
       <p className="text-sm text-[color:var(--acc-text-secondary)]">
-        {onIOS ? "Tap your UPI app below to pay." : onAndroid ? "Choose your UPI app to pay. Didn't see the app list? Tap below." : "Open any UPI app on your phone and scan this code."}
+        {onIOS
+          ? "Opening your UPI app… if nothing happens, tap it below."
+          : onAndroid
+            ? "Choose your UPI app to pay. Didn't see the app list? Tap below."
+            : "Open any UPI app on your phone and scan this code."}
       </p>
 
       {!isMobile && (
