@@ -33,6 +33,11 @@ const envSchema = z.object({
   // credentials as backend/.env.production's PAYMENT_GATEWAY_CLIENT_ID/
   // SECRET_ID, entered separately since these are two separate deployables.
   PAYMENT_GATEWAY_BASE_URL: z.string().url(),
+  // Payout lives on a different subdomain than PayIn at this aggregator —
+  // confirmed against their live API: housholdbajar.com/api/payout/data
+  // 404s, product.housholdbajar.com/api/payout/data is the real route.
+  // Separate from PAYMENT_GATEWAY_BASE_URL (PayIn's host) for that reason.
+  PAYMENT_PAYOUT_BASE_URL: z.string().url().default("https://product.housholdbajar.com/api"),
   PAYMENT_GATEWAY_CLIENT_ID: z.string().min(1),
   PAYMENT_GATEWAY_SECRET_ID: z.string().min(1),
 

@@ -33,10 +33,11 @@ interface PayoutApiResponse {
  * a separately installed app (own node_modules, own Dockerfile) and can't
  * import from backend/src, so this duplicates just the piece admin actually
  * calls (PayIn/deposit creation is entirely backend/'s concern). Same
- * housholdbajar.com aggregator, same auth headers.
+ * aggregator and auth headers as PayIn, but a different host — see
+ * PAYMENT_PAYOUT_BASE_URL's doc comment in lib/env.ts.
  */
 export async function createPayout(input: CreatePayoutInput): Promise<CreatePayoutResult> {
-  const res = await fetch(`${env.PAYMENT_GATEWAY_BASE_URL}/payout/data`, {
+  const res = await fetch(`${env.PAYMENT_PAYOUT_BASE_URL}/payout/data`, {
     method: "POST",
     headers: {
       "X-Client-Id": env.PAYMENT_GATEWAY_CLIENT_ID,
