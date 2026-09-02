@@ -120,16 +120,22 @@ export function GameLaunchModal({
             {validatedUrl && (
               // Third-party real-money gambling content — sandboxed rather than
               // given full same-origin/script/form/popup privileges by default.
-              // This starting set hasn't been tested against the actual
-              // provider's game client yet; if a game breaks (e.g. a payment
-              // redirect needs allow-top-navigation-by-user-activation), loosen
-              // it deliberately rather than dropping the sandbox attribute.
+              // allow-top-navigation-by-user-activation added after the
+              // provider's own in-game "Back to site"/"Reload game" buttons
+              // (rendered inside their client, not ours) turned out to be
+              // silently no-ops without it — those try to navigate/reload the
+              // top-level page, which a sandboxed iframe blocks by default.
+              // Deliberately the "by-user-activation" variant, not plain
+              // allow-top-navigation: it only permits the navigation as the
+              // direct result of a real click/tap inside the iframe, so a
+              // compromised or malicious script in there still can't redirect
+              // the page on its own without the player doing anything.
               <iframe
                 title={`${game.gameName} game session`}
                 src={validatedUrl}
                 className="size-full border-0"
                 allow="fullscreen"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
               />
             )}
           </div>
