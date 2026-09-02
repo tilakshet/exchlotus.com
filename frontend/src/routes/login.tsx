@@ -105,12 +105,20 @@ type View = "login" | "register" | "forgot" | "reset";
  * (identify → set new password), also with no OTP.
  */
 function LoginPage() {
-  const { redirect, view: initialView, suspended, idle, sessionRevoked, resetDone, referralCode } = Route.useSearch();
+  const { redirect, view: viewParam, suspended, idle, sessionRevoked, resetDone, referralCode } = Route.useSearch();
   const navigate = useNavigate();
-  // A shared referral link (?ref=CODE) jumps straight to Sign Up rather
-  // than the default Login screen — the whole point of the link is to get a
-  // new player registering with that code already in hand.
-  const [view, setView] = useState<View>(initialView ?? (referralCode ? "register" : "login"));
+  // Derived directly from the URL on every render — not copied into local
+  // state. A `useState(viewParam ?? ...)` initializer only runs on the
+  // component's first mount, so a later search-param-only navigation (e.g.
+  // clicking "Forgot Password?", which changes ?view= without unmounting
+  // this route) silently updated the URL while the rendered view stayed
+  // stuck on whatever it was — the URL and the screen could drift apart
+  // (repeated clicks looked like nothing happened; a refresh, which does
+  // fully remount, would suddenly "jump" to whatever the URL had drifted
+  // to). Reading it straight from useSearch() makes the URL the single
+  // source of truth, so every navigation path (Link clicks, goToView,
+  // back/forward, refresh) always agrees with what's on screen.
+  const view: View = viewParam ?? (referralCode ? "register" : "login");
   // Carries the resetToken from Forgot Password's identify step into its
   // set-new-password step — never put in the URL/search params, it's a
   // one-time credential (see auth.service.ts resetPassword).
@@ -120,8 +128,11 @@ function LoginPage() {
     navigate({ to: (redirect ?? "/dashboard") as "/dashboard" });
   }
 
+  // `replace: true` — these are tab-style mode switches on one page, not
+  // meaningfully distinct pages, so they don't pile up in the back-button
+  // history (matches how the old local-state toggle used to feel).
   function goToView(next: View) {
-    setView(next);
+    navigate({ to: "/login", search: (prev) => ({ ...prev, view: next }), replace: true });
   }
 
   const titleByView: Record<View, string> = {
@@ -135,7 +146,7 @@ function LoginPage() {
     <div className="login-gaming-bg relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
       <div className="relative grid w-full max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(460px,560px)_1fr] lg:gap-16">
         <div
-          className="login-card relative rounded-(--landing-radius-lg) p-7 shadow-token-4 sm:p-10 lg:min-h-[620px]"
+          className="login-card landing-glow relative rounded-(--landing-radius-lg) p-7 shadow-token-4 sm:p-10 lg:min-h-[620px]"
           style={{ background: "var(--landing-bg-3)" }}
         >
           <Link
@@ -218,7 +229,7 @@ function LoginPage() {
             {view === "reset" && (
               <ResetPasswordForm
                 resetToken={resetToken}
-                onDone={() => navigate({ to: "/login", search: { view: "login", resetDone: true } })}
+                onDone={() => navigate({ to: "/login", search: (prev) => ({ ...prev, view: "login", resetDone: true }) })}
               />
             )}
           </div>
@@ -383,7 +394,7 @@ function PhoneField({
         Enter Mobile Number*
       </label>
       <div
-        className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+        className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
         style={inputBoxStyle()}
       >
         <Phone
@@ -433,7 +444,7 @@ function GenderField({
         Gender*
       </label>
       <div
-        className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+        className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
         style={inputBoxStyle()}
       >
         <select
@@ -486,25 +497,25 @@ function CaptchaField({ captcha, error }: { captcha: CaptchaState; error?: strin
       </label>
       <div className="mb-2 flex items-center gap-2">
         <div
-          className="select-none rounded-(--landing-radius-sm) px-4 py-2.5 font-mono text-lg font-black tracking-[0.4em]"
+          className="login-captcha-display flex select-none items-center justify-center rounded-(--landing-radius-sm) px-4 py-2.5 font-mono text-lg font-black tracking-[0.4em]"
           style={{ ...inputBoxStyle(), color: "var(--landing-text-primary)" }}
           aria-hidden="true"
         >
-          {captcha.loading ? "····" : (captcha.code ?? "— — — —")}
+          <span>{captcha.loading ? "····" : (captcha.code ?? "— — — —")}</span>
         </div>
         <button
           type="button"
           onClick={() => captcha.refresh()}
           disabled={captcha.loading}
           aria-label="Refresh CAPTCHA"
-          className="flex size-11 shrink-0 items-center justify-center rounded-(--landing-radius-sm) outline-none transition-opacity disabled:opacity-60"
+          className="login-icon-btn flex size-11 shrink-0 items-center justify-center rounded-(--landing-radius-sm) outline-none transition-opacity disabled:opacity-60"
           style={inputBoxStyle()}
         >
           <RefreshCw className={`size-4.5 ${captcha.loading ? "animate-spin" : ""}`} style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
         </button>
       </div>
       <div
-        className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+        className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
         style={inputBoxStyle()}
       >
         <input
@@ -584,7 +595,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           Password*
         </label>
         <div
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
           style={inputBoxStyle()}
         >
           <Lock
@@ -605,7 +616,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         <FieldError message={errors.password?.message} />
         <Link
           to="/login"
-          search={{ view: "forgot" }}
+          search={(prev) => ({ ...prev, view: "forgot" })}
           className="mt-1.5 inline-block text-xs underline outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
           style={{ color: "var(--landing-text-muted)" }}
         >
@@ -678,7 +689,7 @@ function RegisterForm({ onSuccess, initialReferralCode }: { onSuccess: () => voi
           Full Name*
         </label>
         <div
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
           style={inputBoxStyle()}
         >
           <input
@@ -715,7 +726,7 @@ function RegisterForm({ onSuccess, initialReferralCode }: { onSuccess: () => voi
           Referral Code (Optional)
         </label>
         <div
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
           style={inputBoxStyle()}
         >
           <Ticket
@@ -744,7 +755,7 @@ function RegisterForm({ onSuccess, initialReferralCode }: { onSuccess: () => voi
           Password*
         </label>
         <div
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
           style={inputBoxStyle()}
         >
           <Lock
@@ -774,7 +785,7 @@ function RegisterForm({ onSuccess, initialReferralCode }: { onSuccess: () => voi
           Confirm Password*
         </label>
         <div
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
           style={inputBoxStyle()}
         >
           <Lock
@@ -874,7 +885,7 @@ function ForgotPasswordForm({ onIdentified }: { onIdentified: (resetToken: strin
           Mobile Number / Email*
         </label>
         <div
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
           style={inputBoxStyle()}
         >
           <Phone
@@ -959,7 +970,7 @@ function ResetPasswordForm({ resetToken, onDone }: { resetToken: string | null; 
           New Password*
         </label>
         <div
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
           style={inputBoxStyle()}
         >
           <Lock
@@ -989,7 +1000,7 @@ function ResetPasswordForm({ resetToken, onDone }: { resetToken: string | null; 
           Confirm Password*
         </label>
         <div
-          className="flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
+          className="login-input-box flex items-center gap-2 rounded-(--landing-radius-sm) px-3"
           style={inputBoxStyle()}
         >
           <Lock
