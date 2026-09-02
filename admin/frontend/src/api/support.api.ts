@@ -43,8 +43,13 @@ export interface SupportTicketDetail {
   }
 }
 
-export function listTickets(params: { status?: SupportTicketStatus; search?: string; cursor?: string; limit?: number } = {}) {
-  return apiRequest<{ items: SupportTicketRow[]; nextCursor: string | null }>("/admin-api/support", { query: params })
+export function listTickets(
+  params: { status?: SupportTicketStatus; search?: string; unassigned?: boolean; dateFrom?: string; dateTo?: string; cursor?: string; limit?: number } = {}
+) {
+  const { unassigned, ...rest } = params
+  return apiRequest<{ items: SupportTicketRow[]; nextCursor: string | null }>("/admin-api/support", {
+    query: { ...rest, unassigned: unassigned === undefined ? undefined : String(unassigned) },
+  })
 }
 
 export function getOpenTicketCount() {

@@ -4,8 +4,12 @@ import type { Prisma } from "../../generated/prisma"
 export interface ListLoginEventsOptions {
   playerId?: string
   phone?: string
+  /** Matches phone or the linked player's username — broader than `phone` alone. */
+  search?: string
   result?: "SUCCESS" | "FAILURE"
   method?: "PASSWORD" | "OTP" | "REGISTER"
+  dateFrom?: Date
+  dateTo?: Date
   cursor?: string
   limit?: number
 }
@@ -16,8 +20,19 @@ export async function listLoginEvents(options: ListLoginEventsOptions) {
   const where: Prisma.LoginEventWhereInput = {
     ...(options.playerId ? { playerId: options.playerId } : {}),
     ...(options.phone ? { phone: { contains: options.phone } } : {}),
+    ...(options.search
+      ? { OR: [{ phone: { contains: options.search } }, { player: { username: { contains: options.search, mode: "insensitive" } } }] }
+      : {}),
     ...(options.result ? { result: options.result } : {}),
     ...(options.method ? { method: options.method } : {}),
+    ...(options.dateFrom || options.dateTo
+      ? {
+          createdAt: {
+            ...(options.dateFrom ? { gte: options.dateFrom } : {}),
+            ...(options.dateTo ? { lte: options.dateTo } : {}),
+          },
+        }
+      : {}),
   }
 
   const rows = await prisma.loginEvent.findMany({

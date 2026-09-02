@@ -26,14 +26,44 @@ function notifyReferralEngine(playerId: string): void {
 
 export interface ListKycOptions {
   status?: KycStatus
+  /** Matches username, phone, or PAN number — same shape as users.service.ts listUsers' search. */
+  search?: string
   cursor?: string
   limit?: number
+}
+
+export function countKycSubmissions(options: Pick<ListKycOptions, "status" | "search">) {
+  return prisma.kycSubmission.count({
+    where: {
+      ...(options.status ? { status: options.status } : {}),
+      ...(options.search
+        ? {
+            OR: [
+              { panNumber: { contains: options.search, mode: "insensitive" } },
+              { player: { username: { contains: options.search, mode: "insensitive" } } },
+              { player: { phone: { contains: options.search } } },
+            ],
+          }
+        : {}),
+    },
+  })
 }
 
 export async function listKycSubmissions(options: ListKycOptions) {
   const limit = Math.min(options.limit ?? 25, 100)
 
-  const where: Prisma.KycSubmissionWhereInput = options.status ? { status: options.status } : {}
+  const where: Prisma.KycSubmissionWhereInput = {
+    ...(options.status ? { status: options.status } : {}),
+    ...(options.search
+      ? {
+          OR: [
+            { panNumber: { contains: options.search, mode: "insensitive" } },
+            { player: { username: { contains: options.search, mode: "insensitive" } } },
+            { player: { phone: { contains: options.search } } },
+          ],
+        }
+      : {}),
+  }
 
   const rows = await prisma.kycSubmission.findMany({
     where,

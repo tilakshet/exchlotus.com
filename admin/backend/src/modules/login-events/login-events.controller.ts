@@ -15,8 +15,11 @@ loginEventsRouter.use(requireAdminAuth)
 const listQuerySchema = z.object({
   playerId: z.string().optional(),
   phone: z.string().optional(),
+  search: z.string().optional(),
   result: z.enum(["SUCCESS", "FAILURE"]).optional(),
   method: z.enum(["PASSWORD", "OTP", "REGISTER"]).optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().positive().max(200).optional(),
 })

@@ -2,8 +2,21 @@ import { Router } from "express"
 import { z } from "zod"
 import { requireAuth } from "../auth/auth.middleware"
 import { logger } from "../../lib/logger"
+import { prisma } from "../../lib/prisma"
 import { gamingProviderClient } from "../provider-integration/gaming-provider/gaming-provider.client"
 import { getWalletDetails } from "../wallet/wallet.service"
+
+/**
+ * Best-effort only — never awaited on the response path, never throws into
+ * it. A DB write failing here must not turn an already-failed launch into
+ * a 500; the logger.error call at each site is the real, always-reliable
+ * record, this is just an admin-queryable one on top of it.
+ */
+function recordLaunchFailure(playerId: string, gameId: string, mode: string, reason: string): void {
+  prisma.gameLaunchFailure.create({ data: { playerId, gameId, mode, reason } }).catch((err) => {
+    logger.warn({ err, playerId, gameId }, "Failed to record game launch failure")
+  })
+}
 
 export const gameSessionRouter = Router()
 gameSessionRouter.use(requireAuth)
@@ -60,6 +73,7 @@ gameSessionRouter.post("/launch", async (req, res) => {
         { gameId: parsed.data.gameId, requestedMode: parsed.data.mode, returnedMode },
         "Gaming provider did not confirm a real-money session for a real-money request"
       )
+      recordLaunchFailure(req.auth!.sub, parsed.data.gameId, parsed.data.mode, `no real-money session confirmed (returned: ${returnedMode ?? "none"})`)
       return res.status(502).json({
         error: "GAME_UNAVAILABLE",
         message: "This game is temporarily unavailable. Please try another game or try again shortly.",
@@ -75,6 +89,7 @@ gameSessionRouter.post("/launch", async (req, res) => {
     // "try another game" instead of a generic error, and keeps the full
     // provider error body in the log (not the response) for debugging.
     logger.error({ err, gameId: parsed.data.gameId, mode: parsed.data.mode }, "Game launch rejected by provider")
+    recordLaunchFailure(req.auth!.sub, parsed.data.gameId, parsed.data.mode, err instanceof Error ? err.message : "unknown error")
     res.status(502).json({
       error: "GAME_UNAVAILABLE",
       message: "This game is temporarily unavailable. Please try another game or try again shortly.",

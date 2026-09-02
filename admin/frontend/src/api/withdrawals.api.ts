@@ -18,8 +18,19 @@ export interface WithdrawalItem {
   decidedAt: string | null
 }
 
-export function listWithdrawals(params: { status?: string } = {}) {
-  return apiRequest<WithdrawalItem[]>("/admin-api/withdrawals", { query: params })
+export interface ListWithdrawalsParams {
+  status?: string
+  search?: string
+  dateFrom?: string
+  dateTo?: string
+  cursor?: string
+  limit?: number
+}
+
+export function listWithdrawals(params: ListWithdrawalsParams = {}) {
+  return apiRequest<{ items: WithdrawalItem[]; nextCursor: string | null }>("/admin-api/withdrawals", {
+    query: params as Record<string, string | number | undefined>,
+  })
 }
 
 export function approveWithdrawal(id: string) {

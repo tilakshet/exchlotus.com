@@ -5,6 +5,9 @@ export interface ListAuditLogOptions {
   adminId?: string
   entityType?: string
   entityId?: string
+  action?: string
+  dateFrom?: Date
+  dateTo?: Date
   cursor?: string
   limit?: number
 }
@@ -16,6 +19,15 @@ export async function listAuditLogs(options: ListAuditLogOptions) {
     ...(options.adminId ? { adminId: options.adminId } : {}),
     ...(options.entityType ? { entityType: options.entityType } : {}),
     ...(options.entityId ? { entityId: options.entityId } : {}),
+    ...(options.action ? { action: { contains: options.action, mode: "insensitive" } } : {}),
+    ...(options.dateFrom || options.dateTo
+      ? {
+          createdAt: {
+            ...(options.dateFrom ? { gte: options.dateFrom } : {}),
+            ...(options.dateTo ? { lte: options.dateTo } : {}),
+          },
+        }
+      : {}),
   }
 
   const rows = await prisma.adminAuditLog.findMany({

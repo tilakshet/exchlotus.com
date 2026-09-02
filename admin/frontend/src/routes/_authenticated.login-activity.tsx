@@ -1,18 +1,21 @@
 import { useState } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { KeyRound } from "lucide-react"
+import { KeyRound, X } from "lucide-react"
 import { listLoginEvents, type LoginEventMethod, type LoginEventResult } from "@/api/login-events.api"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { FilterBar, type ActiveFilter } from "@/components/shared/FilterBar"
+import { DateRangePicker } from "@/components/shared/DateRangePicker"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { ErrorState } from "@/components/shared/ErrorState"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { TableSkeletonRows } from "@/components/shared/TableSkeleton"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { getPresetRange, type DateRange, type DateRangePreset } from "@/lib/dateRanges"
 import { formatDateTime } from "@/lib/utils"
 
 export const Route = createFileRoute("/_authenticated/login-activity")({
@@ -23,27 +26,48 @@ const RESULT_LABEL: Record<LoginEventResult, string> = { SUCCESS: "Success", FAI
 const METHOD_LABEL: Record<LoginEventMethod, string> = { PASSWORD: "Password", OTP: "OTP", REGISTER: "Sign up" }
 
 function LoginActivityPage() {
-  const [phone, setPhone] = useState("")
+  const [search, setSearch] = useState("")
   const [result, setResult] = useState<LoginEventResult | "">("")
   const [method, setMethod] = useState<LoginEventMethod | "">("")
-  const debouncedPhone = useDebouncedValue(phone, 300)
+  const [dateFilterOn, setDateFilterOn] = useState(false)
+  const [datePreset, setDatePreset] = useState<DateRangePreset>("last7")
+  const [dateRange, setDateRange] = useState<DateRange>(() => getPresetRange("last7"))
+  const debouncedSearch = useDebouncedValue(search, 300)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["login-events", debouncedPhone, result, method],
-    queryFn: () => listLoginEvents({ phone: debouncedPhone || undefined, result: result || undefined, method: method || undefined, limit: 100 }),
+    queryKey: ["login-events", debouncedSearch, result, method, dateFilterOn, dateRange],
+    queryFn: () =>
+      listLoginEvents({
+        search: debouncedSearch || undefined,
+        result: result || undefined,
+        method: method || undefined,
+        dateFrom: dateFilterOn ? dateRange.dateFrom.toISOString() : undefined,
+        dateTo: dateFilterOn ? dateRange.dateTo.toISOString() : undefined,
+        limit: 100,
+      }),
   })
 
   const activeFilters: ActiveFilter[] = [
+    ...(search ? [{ key: "search", label: `Search: ${search}`, onClear: () => setSearch("") }] : []),
     ...(result ? [{ key: "result", label: `Result: ${RESULT_LABEL[result]}`, onClear: () => setResult("") }] : []),
     ...(method ? [{ key: "method", label: `Method: ${METHOD_LABEL[method]}`, onClear: () => setMethod("") }] : []),
+    ...(dateFilterOn ? [{ key: "date", label: "Date range", onClear: () => setDateFilterOn(false) }] : []),
   ]
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Login activity" description="Every login and sign-up attempt, success and failure — IP/device tracking and anomaly detection input." />
 
-      <FilterBar activeFilters={activeFilters} onClearAll={() => { setResult(""); setMethod("") }}>
-        <SearchInput value={phone} onChange={setPhone} placeholder="Filter by phone number" className="w-56" />
+      <FilterBar
+        activeFilters={activeFilters}
+        onClearAll={() => {
+          setSearch("")
+          setResult("")
+          setMethod("")
+          setDateFilterOn(false)
+        }}
+      >
+        <SearchInput value={search} onChange={setSearch} placeholder="Search username or phone…" className="w-64" />
         <Select value={result || "all"} onValueChange={(v) => setResult(v === "all" ? "" : (v as LoginEventResult))}>
           <SelectTrigger className="w-36">
             <SelectValue placeholder="Result" />
@@ -65,6 +89,18 @@ function LoginActivityPage() {
             <SelectItem value="REGISTER">Sign up</SelectItem>
           </SelectContent>
         </Select>
+        {dateFilterOn ? (
+          <div className="flex items-center gap-1">
+            <DateRangePicker preset={datePreset} value={dateRange} onChange={(range, preset) => { setDateRange(range); setDatePreset(preset) }} />
+            <Button variant="ghost" size="icon" className="size-8" onClick={() => setDateFilterOn(false)} aria-label="Clear date filter">
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setDateFilterOn(true)}>
+            + Date range
+          </Button>
+        )}
       </FilterBar>
 
       {isError ? (
@@ -90,8 +126,8 @@ function LoginActivityPage() {
                 <TableCell colSpan={8} className="p-0">
                   <EmptyState
                     icon={KeyRound}
-                    title={phone || result || method ? "No login attempts match this filter" : "No login activity yet"}
-                    description={phone || result || method ? undefined : "Player logins and sign-ups will show up here as they happen."}
+                    title={search || result || method ? "No login attempts match this filter" : "No login activity yet"}
+                    description={search || result || method ? undefined : "Player logins and sign-ups will show up here as they happen."}
                   />
                 </TableCell>
               </TableRow>

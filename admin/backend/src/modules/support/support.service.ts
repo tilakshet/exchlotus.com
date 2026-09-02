@@ -8,6 +8,10 @@ import type { Prisma, SupportTicketStatus } from "../../generated/prisma"
 export interface ListTicketsOptions {
   status?: SupportTicketStatus
   search?: string
+  /** Tickets no admin has replied to yet (assignedAdminId is set on first reply — see replyToTicket below). */
+  unassigned?: boolean
+  dateFrom?: Date
+  dateTo?: Date
   cursor?: string
   limit?: number
 }
@@ -17,6 +21,15 @@ export async function listTickets(options: ListTicketsOptions) {
 
   const where: Prisma.SupportTicketWhereInput = {
     ...(options.status ? { status: options.status } : {}),
+    ...(options.unassigned ? { assignedAdminId: null } : {}),
+    ...(options.dateFrom || options.dateTo
+      ? {
+          createdAt: {
+            ...(options.dateFrom ? { gte: options.dateFrom } : {}),
+            ...(options.dateTo ? { lte: options.dateTo } : {}),
+          },
+        }
+      : {}),
     ...(options.search
       ? {
           OR: [

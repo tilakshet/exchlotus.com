@@ -115,6 +115,7 @@ model Player {
   referralsMade       Referral[]                  @relation("Referrer")
   referralReceived    Referral?                   @relation("Referred")
   referralRewards     ReferralRewardTransaction[]
+  gameLaunchFailures  GameLaunchFailure[]
 
   @@map("players")
 }
@@ -532,6 +533,25 @@ model ReferralRewardTransaction {
   @@index([referralId])
   @@index([status])
   @@map("referral_reward_transactions")
+}
+
+/// A best-effort record of a FAILED game-session launch (game-session.controller.ts)
+/// — never written on a successful launch, so this table adds zero cost/risk
+/// to the hot path. Previously a launch failure only ever reached a log
+/// line (see logger.error calls in that controller) with no admin
+/// visibility at all into which games/players were actually affected.
+model GameLaunchFailure {
+  id        String   @id @default(uuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id])
+  gameId    String
+  mode      String
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([gameId, createdAt])
+  @@index([playerId, createdAt])
+  @@map("game_launch_failures")
 }
 
 model Provider {

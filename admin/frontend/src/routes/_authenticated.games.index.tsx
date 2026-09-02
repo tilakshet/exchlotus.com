@@ -2,7 +2,7 @@ import { useState } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { Dices } from "lucide-react"
-import { listGames, listProviders } from "@/api/games.api"
+import { listCategories, listGames, listProviders } from "@/api/games.api"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { FilterBar, type ActiveFilter } from "@/components/shared/FilterBar"
@@ -29,17 +29,20 @@ type EnabledFilter = "ALL" | "true" | "false"
 function GamesPage() {
   const [search, setSearch] = useState("")
   const [providerCode, setProviderCode] = useState("ALL")
+  const [categoryCode, setCategoryCode] = useState("ALL")
   const [enabled, setEnabled] = useState<EnabledFilter>("ALL")
   const debouncedSearch = useDebouncedValue(search, 300)
 
   const providers = useQuery({ queryKey: ["games", "providers"], queryFn: listProviders })
+  const categories = useQuery({ queryKey: ["games", "categories"], queryFn: listCategories })
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["games", debouncedSearch, providerCode, enabled],
+    queryKey: ["games", debouncedSearch, providerCode, categoryCode, enabled],
     queryFn: () =>
       listGames({
         search: debouncedSearch || undefined,
         providerCode: providerCode === "ALL" ? undefined : providerCode,
+        categoryCode: categoryCode === "ALL" ? undefined : categoryCode,
         enabled: enabled === "ALL" ? undefined : enabled === "true",
         pageSize: 50,
       }),
@@ -47,6 +50,10 @@ function GamesPage() {
 
   const activeFilters: ActiveFilter[] = []
   if (providerCode !== "ALL") activeFilters.push({ key: "provider", label: `Provider: ${providerCode}`, onClear: () => setProviderCode("ALL") })
+  if (categoryCode !== "ALL") {
+    const cat = categories.data?.find((c) => c.code === categoryCode)
+    activeFilters.push({ key: "category", label: `Category: ${cat?.name ?? categoryCode}`, onClear: () => setCategoryCode("ALL") })
+  }
   if (enabled !== "ALL") activeFilters.push({ key: "enabled", label: enabled === "true" ? "Enabled only" : "Disabled only", onClear: () => setEnabled("ALL") })
   if (search) activeFilters.push({ key: "search", label: `Search: ${search}`, onClear: () => setSearch("") })
 
@@ -61,6 +68,7 @@ function GamesPage() {
             filters={{
               search: debouncedSearch || undefined,
               providerCode: providerCode === "ALL" ? undefined : providerCode,
+              categoryCode: categoryCode === "ALL" ? undefined : categoryCode,
               enabled: enabled === "ALL" ? undefined : enabled,
             }}
           />
@@ -72,6 +80,7 @@ function GamesPage() {
         onClearAll={() => {
           setSearch("")
           setProviderCode("ALL")
+          setCategoryCode("ALL")
           setEnabled("ALL")
         }}
       >
@@ -85,6 +94,19 @@ function GamesPage() {
             {providers.data?.map((p) => (
               <SelectItem key={p.code} value={p.code}>
                 {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={categoryCode} onValueChange={setCategoryCode}>
+          <SelectTrigger className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All categories</SelectItem>
+            {categories.data?.map((c) => (
+              <SelectItem key={c.code} value={c.code}>
+                {c.name}
               </SelectItem>
             ))}
           </SelectContent>

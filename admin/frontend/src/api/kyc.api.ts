@@ -16,7 +16,7 @@ export interface KycDetail extends KycListItem {
   player: KycListItem["player"] & { status: string; phoneVerified: boolean }
 }
 
-export function listKycSubmissions(params: { status?: KycStatus; cursor?: string; limit?: number }) {
+export function listKycSubmissions(params: { status?: KycStatus; search?: string; cursor?: string; limit?: number }) {
   return apiRequest<{ items: KycListItem[]; nextCursor: string | null }>("/admin-api/kyc", { query: params })
 }
 

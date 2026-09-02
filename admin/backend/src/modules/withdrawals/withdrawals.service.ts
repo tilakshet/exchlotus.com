@@ -6,30 +6,84 @@ import { writeAuditLog } from "../../lib/audit"
 import { AdminApiError } from "../../lib/api-error"
 import { createPayout } from "./gateway/oro-payout.client"
 
-export async function listWithdrawals(status?: string) {
+export interface ListWithdrawalsOptions {
+  status?: string
+  /** Matches username, phone, or the account holder name on the linked bank account. */
+  search?: string
+  dateFrom?: Date
+  dateTo?: Date
+  cursor?: string
+  limit?: number
+}
+
+function buildWithdrawalsWhere(options: Omit<ListWithdrawalsOptions, "cursor" | "limit">): Prisma.WithdrawalRequestWhereInput {
+  return {
+    ...(options.status ? { status: options.status as never } : {}),
+    ...(options.dateFrom || options.dateTo
+      ? {
+          requestedAt: {
+            ...(options.dateFrom ? { gte: options.dateFrom } : {}),
+            ...(options.dateTo ? { lte: options.dateTo } : {}),
+          },
+        }
+      : {}),
+    ...(options.search
+      ? {
+          OR: [
+            { player: { username: { contains: options.search, mode: "insensitive" } } },
+            { player: { phone: { contains: options.search } } },
+            { bankAccount: { accountHolderName: { contains: options.search, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  }
+}
+
+export function countWithdrawals(options: Omit<ListWithdrawalsOptions, "cursor" | "limit">) {
+  return prisma.withdrawalRequest.count({ where: buildWithdrawalsWhere(options) })
+}
+
+/**
+ * Previously an unbounded findMany (no take/cursor at all) — fine while the
+ * queue was small, but a genuine risk once withdrawal volume grows: same
+ * cursor-pagination shape as users.service.ts/kyc.service.ts now, so a busy
+ * period never returns thousands of rows in one response.
+ */
+export async function listWithdrawals(options: ListWithdrawalsOptions = {}) {
+  const limit = Math.min(options.limit ?? 50, 100)
+  const where = buildWithdrawalsWhere(options)
+
   const rows = await prisma.withdrawalRequest.findMany({
-    where: status ? { status: status as never } : undefined,
+    where,
     orderBy: { requestedAt: "desc" },
+    take: limit + 1,
+    ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
     include: { player: true, bankAccount: true },
   })
 
-  return rows.map((row) => ({
-    id: row.id,
-    playerId: row.playerId,
-    username: row.player.username,
-    amount: row.amount.toNumber(),
-    status: row.status,
-    bankAccount: {
-      accountHolderName: row.bankAccount.accountHolderName,
-      bankName: row.bankAccount.bankName,
-      accountNumber: row.bankAccount.accountNumber,
-      ifsc: row.bankAccount.ifsc,
-    },
-    gatewayUtr: row.gatewayUtr,
-    reason: row.reason,
-    requestedAt: row.requestedAt.toISOString(),
-    decidedAt: row.decidedAt?.toISOString() ?? null,
-  }))
+  const hasMore = rows.length > limit
+  const page = hasMore ? rows.slice(0, limit) : rows
+
+  return {
+    items: page.map((row) => ({
+      id: row.id,
+      playerId: row.playerId,
+      username: row.player.username,
+      amount: row.amount.toNumber(),
+      status: row.status,
+      bankAccount: {
+        accountHolderName: row.bankAccount.accountHolderName,
+        bankName: row.bankAccount.bankName,
+        accountNumber: row.bankAccount.accountNumber,
+        ifsc: row.bankAccount.ifsc,
+      },
+      gatewayUtr: row.gatewayUtr,
+      reason: row.reason,
+      requestedAt: row.requestedAt.toISOString(),
+      decidedAt: row.decidedAt?.toISOString() ?? null,
+    })),
+    nextCursor: hasMore ? page[page.length - 1].id : null,
+  }
 }
 
 /**

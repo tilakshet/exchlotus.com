@@ -7,7 +7,7 @@ import { toast } from "@/lib/toast"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
-type ExportModule = "users" | "ledger" | "games" | "reports" | "referrals"
+type ExportModule = "users" | "ledger" | "games" | "reports" | "referrals" | "withdrawals" | "kyc" | "payments" | "bank-accounts" | "game-launch-failures"
 type ExportFormat = "csv" | "pdf"
 
 /**

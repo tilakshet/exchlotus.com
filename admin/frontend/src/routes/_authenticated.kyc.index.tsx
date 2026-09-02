@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 import { ShieldCheck } from "lucide-react"
 import { listKycSubmissions, type KycStatus } from "@/api/kyc.api"
 import { PageHeader } from "@/components/shared/PageHeader"
+import { SearchInput } from "@/components/shared/SearchInput"
 import { FilterBar, type ActiveFilter } from "@/components/shared/FilterBar"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { ErrorState } from "@/components/shared/ErrorState"
@@ -11,6 +12,7 @@ import { StatusBadge, KYC_STATUS_CONFIG } from "@/components/shared/StatusBadge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { TableSkeletonRows } from "@/components/shared/TableSkeleton"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { formatDateTime } from "@/lib/utils"
 
 export const Route = createFileRoute("/_authenticated/kyc/")({
@@ -21,20 +23,30 @@ type StatusFilter = KycStatus | "ALL"
 
 function KycListPage() {
   const [status, setStatus] = useState<StatusFilter>("PENDING")
+  const [search, setSearch] = useState("")
+  const debouncedSearch = useDebouncedValue(search, 300)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["kyc", status],
-    queryFn: () => listKycSubmissions({ status: status === "ALL" ? undefined : status, limit: 100 }),
+    queryKey: ["kyc", status, debouncedSearch],
+    queryFn: () => listKycSubmissions({ status: status === "ALL" ? undefined : status, search: debouncedSearch || undefined, limit: 100 }),
   })
 
   const activeFilters: ActiveFilter[] = []
   if (status !== "ALL") activeFilters.push({ key: "status", label: `Status: ${status}`, onClear: () => setStatus("ALL") })
+  if (search) activeFilters.push({ key: "search", label: `Search: ${search}`, onClear: () => setSearch("") })
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="KYC Verification" description="Player-submitted PAN and identity documents awaiting review." />
 
-      <FilterBar activeFilters={activeFilters} onClearAll={() => setStatus("ALL")}>
+      <FilterBar
+        activeFilters={activeFilters}
+        onClearAll={() => {
+          setStatus("ALL")
+          setSearch("")
+        }}
+      >
+        <SearchInput value={search} onChange={setSearch} placeholder="Search username, phone, or PAN…" className="w-64" />
         <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
           <SelectTrigger className="w-44">
             <SelectValue />

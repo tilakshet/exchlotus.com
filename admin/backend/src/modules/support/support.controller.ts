@@ -19,6 +19,9 @@ const STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const
 const listQuerySchema = z.object({
   status: z.enum(STATUSES).optional(),
   search: z.string().optional(),
+  unassigned: z.coerce.boolean().optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
 })
