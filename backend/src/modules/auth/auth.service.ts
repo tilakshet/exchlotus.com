@@ -253,7 +253,11 @@ export async function resetPassword(input: { resetToken: string; newPassword: st
   const tokenHash = hashResetToken(input.resetToken)
   const stored = await prisma.passwordResetToken.findUnique({ where: { tokenHash } })
   if (!stored || stored.usedAt || stored.expiresAt < new Date() || !stored.playerId) {
-    throw new AuthError("RESET_TOKEN_INVALID", "This reset link is invalid or has expired — request a new one")
+    // "Reset link" was misleading copy carried over from an email-link
+    // mental model — this flow never sends a link anywhere, the token is
+    // just carried in-session from the identify step to this one. Plain
+    // language about what to do next, not what technically went wrong.
+    throw new AuthError("RESET_TOKEN_INVALID", "We couldn't verify this password reset. It may have expired or already been used — please start over.")
   }
 
   const passwordHash = await hashPassword(input.newPassword)
