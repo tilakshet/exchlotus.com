@@ -14,6 +14,22 @@ import { paymentGateway } from "./gateway/oro-gateway.client"
 
 class PaymentError extends Error {}
 
+// NPCI mandates (effective Feb 2025) that a UPI transaction id be ≤35
+// alphanumeric characters, no special characters — our PaymentOrder.id is a
+// hyphenated UUID (36 chars), which gets silently rejected at the bank/NPCI
+// switch when passed through as the transaction reference, well after the
+// gateway's own create-order call has already succeeded (that's why the
+// order still gets created on Oro's side, but never receives a UTR). Since
+// stripping a UUID's hyphens is reversible (fixed 8-4-4-4-12 grouping), no
+// extra column is needed — this is the only id ever sent to a gateway as
+// `order_id`, and reversed back to look up the row when its callback lands.
+function toGatewayOrderId(id: string): string {
+  return id.replace(/-/g, "")
+}
+function fromGatewayOrderId(gatewayOrderId: string): string {
+  return `${gatewayOrderId.slice(0, 8)}-${gatewayOrderId.slice(8, 12)}-${gatewayOrderId.slice(12, 16)}-${gatewayOrderId.slice(16, 20)}-${gatewayOrderId.slice(20, 32)}`
+}
+
 export async function createDepositOrder(playerExternalId: string, amount: number) {
   const player = await prisma.player.findUnique({ where: { externalId: playerExternalId } })
   if (!player) {
@@ -34,7 +50,7 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
   let result
   try {
     result = await paymentGateway.createPayinOrder({
-      orderId: order.id,
+      orderId: toGatewayOrderId(order.id),
       amount,
       name: player.username,
       mobileNumber: player.phone,
@@ -75,7 +91,14 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
  * double-crediting.
  */
 export async function handlePayinCallback(payload: { order_id: string; amount: number; status: string }): Promise<void> {
-  const order = await prisma.paymentOrder.findUnique({ where: { id: payload.order_id } })
+  // Falls back to the raw order_id for any order created before this
+  // gateway-order-id change deployed — it was sent to the gateway as a raw
+  // UUID, so its callback echoes that back rather than the stripped form
+  // fromGatewayOrderId expects. Safe to remove once nothing pre-dating the
+  // change is still in flight.
+  const order =
+    (await prisma.paymentOrder.findUnique({ where: { id: fromGatewayOrderId(payload.order_id) } })) ??
+    (await prisma.paymentOrder.findUnique({ where: { id: payload.order_id } }))
   if (!order) {
     logger.warn({ orderId: payload.order_id }, "PayIn callback for unknown order_id — ignoring")
     return

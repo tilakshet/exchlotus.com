@@ -32,9 +32,9 @@ export function isAndroid(): boolean {
  * the gateway's original `upi://pay?...` link — only the scheme/host differ.
  */
 const IOS_UPI_APPS = [
-  { name: "GPay", scheme: "tez://upi/pay" },
-  { name: "PhonePe", scheme: "phonepe://pay" },
-  { name: "Paytm", scheme: "paytmmp://pay" },
+  { name: "GPay", scheme: "gpay://upi/pay" },
+  { name: "PhonePe", scheme: "phonepe://upi/pay" },
+  { name: "Paytm", scheme: "paytmmp://upi/pay" },
 ] as const
 
 export function buildIOSAppLinks(paymentUrl: string): { name: string; url: string }[] {

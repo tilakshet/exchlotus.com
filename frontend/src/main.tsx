@@ -10,6 +10,18 @@ import { queryClient } from '@/lib/query-client'
 
 const router = createRouter({ routeTree })
 
+// A route chunk's hash changes on every deploy, and the deploy replaces the
+// whole static dir — so a tab left open across a deploy can try to fetch a
+// chunk file that no longer exists. nginx's SPA fallback (try_files $uri
+// /index.html) turns that missing-file request into a 200 text/html
+// response instead of a 404, which the browser then refuses to run as a
+// module (surfaces as "'text/html' is not a valid JavaScript MIME type" on
+// Safari). Vite fires this event for exactly that case; reloading fetches
+// the current index.html and resolves to the current chunk hashes.
+window.addEventListener('vite:preloadError', () => {
+  window.location.reload()
+})
+
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
