@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { env } from "../../lib/env"
 import { prisma } from "../../lib/prisma"
@@ -15,19 +16,28 @@ import { paymentGateway } from "./gateway/oro-gateway.client"
 class PaymentError extends Error {}
 
 // NPCI mandates (effective Feb 2025) that a UPI transaction id be ≤35
-// alphanumeric characters, no special characters — our PaymentOrder.id is a
-// hyphenated UUID (36 chars), which gets silently rejected at the bank/NPCI
-// switch when passed through as the transaction reference, well after the
-// gateway's own create-order call has already succeeded (that's why the
-// order still gets created on Oro's side, but never receives a UTR). Since
-// stripping a UUID's hyphens is reversible (fixed 8-4-4-4-12 grouping), no
-// extra column is needed — this is the only id ever sent to a gateway as
-// `order_id`, and reversed back to look up the row when its callback lands.
-function toGatewayOrderId(id: string): string {
-  return id.replace(/-/g, "")
+// alphanumeric characters, no special characters — PaymentOrder.id (a
+// hyphenated UUID) breaks that rule, which gets silently rejected at the
+// bank/NPCI switch when passed through as the transaction reference, well
+// after the gateway's own create-order call has already succeeded (that's
+// why the order still gets created on Oro's side, but never receives a
+// UTR). A short, dedicated id — same prefix+random shape as Oro's own
+// example order ids (e.g. "HOUSOL5825009859") — generated once at creation
+// and stored on PaymentOrder.gatewayOrderId, looked up directly by that
+// column on callback. 20 chars total: comfortably under NPCI's ceiling, and
+// the DB's own @unique constraint (not the entropy alone) is what actually
+// guarantees no collision.
+const GATEWAY_ORDER_ID_PREFIX = "EXCH"
+export function generateGatewayOrderId(): string {
+  return GATEWAY_ORDER_ID_PREFIX + randomBytes(12).toString("hex").slice(0, 16).toUpperCase()
 }
-function fromGatewayOrderId(gatewayOrderId: string): string {
-  return `${gatewayOrderId.slice(0, 8)}-${gatewayOrderId.slice(8, 12)}-${gatewayOrderId.slice(12, 16)}-${gatewayOrderId.slice(16, 20)}-${gatewayOrderId.slice(20, 32)}`
+
+// Reconstructs a raw PaymentOrder.id from the interim hyphen-stripped-UUID
+// scheme this replaces (fixed 8-4-4-4-12 grouping) — kept only so a callback
+// for an order created under that short-lived scheme still resolves; not
+// used for any order created after gatewayOrderId existed.
+function fromStrippedUuid(stripped: string): string {
+  return `${stripped.slice(0, 8)}-${stripped.slice(8, 12)}-${stripped.slice(12, 16)}-${stripped.slice(16, 20)}-${stripped.slice(20, 32)}`
 }
 
 export async function createDepositOrder(playerExternalId: string, amount: number) {
@@ -40,7 +50,7 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
   }
 
   const order = await prisma.paymentOrder.create({
-    data: { playerId: player.id, amount },
+    data: { playerId: player.id, amount, gatewayOrderId: generateGatewayOrderId() },
   })
 
   // If the gateway call fails, the PaymentOrder row above already exists —
@@ -50,7 +60,7 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
   let result
   try {
     result = await paymentGateway.createPayinOrder({
-      orderId: toGatewayOrderId(order.id),
+      orderId: order.gatewayOrderId!,
       amount,
       name: player.username,
       mobileNumber: player.phone,
@@ -91,13 +101,17 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
  * double-crediting.
  */
 export async function handlePayinCallback(payload: { order_id: string; amount: number; status: string }): Promise<void> {
-  // Falls back to the raw order_id for any order created before this
-  // gateway-order-id change deployed — it was sent to the gateway as a raw
-  // UUID, so its callback echoes that back rather than the stripped form
-  // fromGatewayOrderId expects. Safe to remove once nothing pre-dating the
-  // change is still in flight.
+  // Three tiers, newest scheme first — covers whichever id format was live
+  // when this particular order was created, so nothing still in flight
+  // across either format change silently fails to resolve:
+  //  1. gatewayOrderId column (current scheme — generateGatewayOrderId).
+  //  2. Reconstructed from the interim hyphen-stripped-UUID scheme.
+  //  3. The raw order_id as-is — covers an order from before either fix,
+  //     when PaymentOrder.id itself (a hyphenated UUID) was sent as-is.
+  // Safe to trim down once nothing pre-dating gatewayOrderId is in flight.
   const order =
-    (await prisma.paymentOrder.findUnique({ where: { id: fromGatewayOrderId(payload.order_id) } })) ??
+    (await prisma.paymentOrder.findUnique({ where: { gatewayOrderId: payload.order_id } })) ??
+    (await prisma.paymentOrder.findUnique({ where: { id: fromStrippedUuid(payload.order_id) } })) ??
     (await prisma.paymentOrder.findUnique({ where: { id: payload.order_id } }))
   if (!order) {
     logger.warn({ orderId: payload.order_id }, "PayIn callback for unknown order_id — ignoring")
