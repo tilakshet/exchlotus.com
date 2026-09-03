@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { env } from "../../lib/env"
 import { prisma } from "../../lib/prisma"
@@ -15,21 +14,22 @@ import { paymentGateway } from "./gateway/oro-gateway.client"
 
 class PaymentError extends Error {}
 
-// NPCI mandates (effective Feb 2025) that a UPI transaction id be ≤35
-// alphanumeric characters, no special characters — PaymentOrder.id (a
-// hyphenated UUID) breaks that rule, which gets silently rejected at the
-// bank/NPCI switch when passed through as the transaction reference, well
-// after the gateway's own create-order call has already succeeded (that's
-// why the order still gets created on Oro's side, but never receives a
-// UTR). A short, dedicated id — same prefix+random shape as Oro's own
-// example order ids (e.g. "HOUSOL5825009859") — generated once at creation
-// and stored on PaymentOrder.gatewayOrderId, looked up directly by that
-// column on callback. 20 chars total: comfortably under NPCI's ceiling, and
-// the DB's own @unique constraint (not the entropy alone) is what actually
-// guarantees no collision.
-const GATEWAY_ORDER_ID_PREFIX = "EXCH"
+// PaymentOrder.id (a hyphenated UUID) can't be sent to Oro as-is: their live
+// /payin/data endpoint validates order_id as `digits_between:1,25` — numeric
+// characters only, 1-25 of them (confirmed directly against the live API
+// 2026-09-03; their own docs' example, "HOUSOL5825009859", has letters in it
+// and does NOT pass this validation in practice — trust the live behavior,
+// not the doc example). A dedicated id is generated once at creation and
+// stored on PaymentOrder.gatewayOrderId, looked up directly by that column
+// on callback. Timestamp (ms, 13 digits) + 6 random digits = 19 digits,
+// comfortably under Oro's 25-digit ceiling and NPCI's separate 35-char UPI
+// transaction-id rule; the DB's own @unique constraint (not the timestamp
+// or the random digits alone) is what actually guarantees no collision.
 export function generateGatewayOrderId(): string {
-  return GATEWAY_ORDER_ID_PREFIX + randomBytes(12).toString("hex").slice(0, 16).toUpperCase()
+  const randomDigits = Math.floor(Math.random() * 1_000_000)
+    .toString()
+    .padStart(6, "0")
+  return `${Date.now()}${randomDigits}`
 }
 
 // Reconstructs a raw PaymentOrder.id from the interim hyphen-stripped-UUID

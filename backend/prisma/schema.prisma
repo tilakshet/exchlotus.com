@@ -670,11 +670,12 @@ model PaymentOrder {
   amount         Decimal            @db.Decimal(18, 2)
   status         PaymentOrderStatus @default(PENDING)
   /// The `order_id` actually sent to the gateway — deliberately NOT this
-  /// row's own `id` (a 36-char hyphenated UUID breaks NPCI's UPI transaction
-  /// id rule: ≤35 chars, alphanumeric only). Short, prefix + random,
-  /// generated once at creation (generateGatewayOrderId, payments.service.ts)
-  /// and looked up directly on the gateway's callback — no reconstruction
-  /// needed, unlike the transient hyphen-stripped-UUID scheme this replaces.
+  /// row's own `id` (a hyphenated UUID). Oro's live /payin/data endpoint
+  /// requires order_id to be numeric only, 1-25 digits (confirmed against
+  /// the live API, not just their doc example). Generated once at creation
+  /// (generateGatewayOrderId, payments.service.ts) and looked up directly on
+  /// the gateway's callback — no reconstruction needed, unlike the transient
+  /// hyphen-stripped-UUID scheme this replaces.
   gatewayOrderId String?            @unique
   /// The gateway's own trx_id from its create-order response — for support/reconciliation lookups.
   gatewayTrxId   String?
