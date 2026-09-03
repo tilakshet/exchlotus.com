@@ -10,12 +10,21 @@ import { handlePayinCallback, handlePayoutCallback } from "./payments.service"
  * reasoning as gaming-webhook.controller.ts: a per-IP cap would drop
  * legitimate callbacks from the gateway's own infrastructure) and needs its
  * own express.json() since it sits ahead of the app-wide one in app.ts.
- * Always responds 200 regardless of outcome (unknown order, bad signature-
- * equivalent binding, etc.) — see payments.service.ts's header comments for
- * why Oro's callback can't be signature-verified, and returning a
- * differentiated status would just help an attacker probe for valid
- * order/trx ids. Cashfree's route below IS signature-verified, but still
- * replies 200 either way for the same anti-probing reason.
+ *
+ * Oro's two routes (payin/callback, payout/callback) always respond 200
+ * regardless of outcome (unknown order, processing error, ...) — see
+ * payments.service.ts's header comments for why Oro's callback can't be
+ * signature-verified, and returning a differentiated status would just help
+ * an attacker probe for valid order/trx ids.
+ *
+ * Cashfree's route is different: it IS signature-verified, so an
+ * unauthenticated prober never reaches the part that could leak anything —
+ * there's no anti-probing reason left to hide a genuine processing failure
+ * behind 200 there. It still replies 200 for a bad signature/malformed
+ * body/unrecognized event (retrying those could never succeed), but a real
+ * exception while applying a *verified* webhook gets a 5xx, so Cashfree's
+ * own retry mechanism — not a manual reconciliation — recovers from a
+ * transient failure (e.g. a DB blip mid-transaction).
  */
 export const paymentsCallbackRouter = Router()
 // Mounted ahead of the app-wide express.json() in app.ts, so this router
@@ -59,7 +68,11 @@ paymentsCallbackRouter.post("/payin/callback", async (req, res) => {
     logger.warn({ issues: parsed.error.issues }, "Malformed PayIn callback")
     return res.status(200).json({ received: true })
   }
-  await handlePayinCallback({ order_id: parsed.data.order_id, amount: Number(parsed.data.amount), status: parsed.data.status })
+  try {
+    await handlePayinCallback({ order_id: parsed.data.order_id, amount: Number(parsed.data.amount), status: parsed.data.status })
+  } catch (err) {
+    logger.error({ err, orderId: parsed.data.order_id }, "PayIn callback handling failed")
+  }
   res.status(200).json({ received: true })
 })
 
@@ -96,11 +109,20 @@ paymentsCallbackRouter.post("/payin/callback/cashfree", async (req, res) => {
     return res.status(200).json({ received: true })
   }
 
-  await handlePayinCallback({
-    order_id: parsed.data.data.order.order_id,
-    amount: parsed.data.data.payment.payment_amount,
-    status,
-  })
+  try {
+    await handlePayinCallback({
+      order_id: parsed.data.data.order.order_id,
+      amount: parsed.data.data.payment.payment_amount,
+      status,
+    })
+  } catch (err) {
+    // Signature already verified above, so a 5xx here can't be used to probe
+    // for valid order ids — it only ever reaches an authenticated Cashfree
+    // retry, which is exactly what a genuine (likely transient) failure here
+    // should trigger.
+    logger.error({ err, orderId: parsed.data.data.order.order_id }, "Cashfree callback handling failed")
+    return res.status(500).json({ received: false })
+  }
   res.status(200).json({ received: true })
 })
 
@@ -110,6 +132,10 @@ paymentsCallbackRouter.post("/payout/callback", async (req, res) => {
     logger.warn({ issues: parsed.error.issues }, "Malformed Payout callback")
     return res.status(200).json({ received: true })
   }
-  await handlePayoutCallback({ cus_trx_id: parsed.data.cus_trx_id, status: parsed.data.status, utr: parsed.data.utr })
+  try {
+    await handlePayoutCallback({ cus_trx_id: parsed.data.cus_trx_id, status: parsed.data.status, utr: parsed.data.utr })
+  } catch (err) {
+    logger.error({ err, trxId: parsed.data.cus_trx_id }, "Payout callback handling failed")
+  }
   res.status(200).json({ received: true })
 })
