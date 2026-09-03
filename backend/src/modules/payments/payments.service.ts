@@ -27,13 +27,23 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
     data: { playerId: player.id, amount },
   })
 
-  const result = await paymentGateway.createPayinOrder({
-    orderId: order.id,
-    amount,
-    name: player.username,
-    mobileNumber: player.phone,
-    redirectUrl: `${env.PAYMENT_CALLBACK_BASE_URL}/dashboard/account/deposit?status=pending`,
-  })
+  // If the gateway call fails, the PaymentOrder row above already exists —
+  // without this, it stays orphaned at PENDING forever, indistinguishable
+  // from an order still genuinely awaiting payment (see the admin
+  // Payment Attempts page, whose whole purpose is spotting exactly this).
+  let result
+  try {
+    result = await paymentGateway.createPayinOrder({
+      orderId: order.id,
+      amount,
+      name: player.username,
+      mobileNumber: player.phone,
+      redirectUrl: `${env.PAYMENT_CALLBACK_BASE_URL}/dashboard/account/deposit?status=pending`,
+    })
+  } catch (err) {
+    await prisma.paymentOrder.update({ where: { id: order.id }, data: { status: "FAILED" } })
+    throw err
+  }
 
   await prisma.paymentOrder.update({
     where: { id: order.id },

@@ -5,7 +5,7 @@ import { requirePermission } from "../rbac/rbac.middleware"
 import { AdminApiError, statusForError } from "../../lib/api-error"
 import { param } from "../../lib/params"
 import { runCsvExport } from "../../lib/export"
-import { approveWithdrawal, countWithdrawals, listWithdrawals, rejectWithdrawal } from "./withdrawals.service"
+import { approveWithdrawal, countWithdrawals, listWithdrawals, rejectWithdrawal, reconcilePayoutStatus } from "./withdrawals.service"
 
 export const withdrawalsRouter = Router()
 withdrawalsRouter.use(requireAdminAuth)
@@ -74,6 +74,15 @@ withdrawalsRouter.post("/:id/reject", requirePermission("withdrawals.approve"), 
   if (!parsed.success) return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   try {
     res.json(await rejectWithdrawal(req, param(req, "id"), req.adminAuth!.id, parsed.data.reason))
+  } catch (err) {
+    sendError(res, err)
+  }
+})
+
+/** Manual reconciliation fallback for a withdrawal stuck at PROCESSING with no payout webhook received — polls Oro's Check Payout Status API directly. */
+withdrawalsRouter.post("/:id/reconcile", requirePermission("withdrawals.approve"), async (req, res) => {
+  try {
+    res.json(await reconcilePayoutStatus(req, param(req, "id"), req.adminAuth!.id))
   } catch (err) {
     sendError(res, err)
   }

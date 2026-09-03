@@ -65,3 +65,48 @@ export async function createPayout(input: CreatePayoutInput): Promise<CreatePayo
 
   return { gatewayTrxId: json.data.trx_id, utr: json.data.utr, status: json.data.status }
 }
+
+export interface PayoutStatusResult {
+  status: string
+  utr: string | null
+}
+
+interface CheckStatusApiResponse {
+  status: string
+  data: {
+    resultCode: string
+    resultStatus: string
+    data: { TransactionId: string; TxnStatus: string; UTR: string | null }[]
+  }
+}
+
+/**
+ * Official reconciliation endpoint (Oro's own API docs, "Check Payout Status
+ * API") — a fallback for when the payout webhook (backend/'s
+ * /api/payments/payout/callback) never arrives, same problem class as the
+ * PayIn side has no equivalent for. `apiRefNum` is Oro's own `trx_id` from
+ * the original payout response (CreatePayoutResult.gatewayTrxId) — NOT our
+ * `trxid`/`cus_trx_id`, confirmed against the documented example where
+ * apiRefNum equals their trx_id, not the customer reference.
+ */
+export async function checkPayoutStatus(apiRefNum: string): Promise<PayoutStatusResult> {
+  const res = await fetch(`${env.PAYMENT_PAYOUT_BASE_URL}/payout/v1/check-status`, {
+    method: "POST",
+    headers: {
+      "X-Client-Id": env.PAYMENT_GATEWAY_CLIENT_ID,
+      "X-Secret-Id": env.PAYMENT_GATEWAY_SECRET_ID,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ apiRefNum }),
+  })
+
+  const json = (await res.json().catch(() => ({}))) as Partial<CheckStatusApiResponse> & { message?: string }
+  const row = json.data?.data?.[0]
+  if (!res.ok || !row) {
+    logger.error({ status: res.status, body: json }, "Payout status check failed")
+    throw new Error(`Payout status check failed with status ${res.status}${json.message ? `: ${json.message}` : ""}`)
+  }
+
+  return { status: row.TxnStatus, utr: row.UTR }
+}
