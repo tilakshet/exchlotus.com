@@ -4,7 +4,7 @@ import { Prisma } from "../../generated/prisma"
 import { prisma } from "../../lib/prisma"
 import { writeAuditLog } from "../../lib/audit"
 import { AdminApiError } from "../../lib/api-error"
-import { createPayout } from "./gateway/oro-payout.client"
+import { createPayout, checkPayoutStatus } from "./gateway/oro-payout.client"
 
 export interface ListWithdrawalsOptions {
   status?: string
@@ -151,6 +151,11 @@ export async function approveWithdrawal(req: Request, id: string, actorAdminId: 
       data: {
         status: nextStatus,
         gatewayTrxId: trxId,
+        // Oro's own trx_id, distinct from the trxId we generated above —
+        // needed later as `apiRefNum` for the Check Payout Status API
+        // (reconcilePayoutStatus below), since that endpoint only accepts
+        // their own id, not ours.
+        oroTrxId: payoutResult.gatewayTrxId,
         gatewayUtr: payoutResult.utr,
         decidedByAdminId: actorAdminId,
         decidedAt: new Date(),
@@ -205,5 +210,58 @@ export async function rejectWithdrawal(req: Request, id: string, actorAdminId: s
     })
 
     return { id: updated.id, status: updated.status }
+  })
+}
+
+/**
+ * Fallback for a missed payout webhook (backend/'s
+ * /api/payments/payout/callback never arriving) — polls Oro's official
+ * Check Payout Status API instead of waiting indefinitely. Same idempotency
+ * guard as handlePayoutCallback (backend/payments.service.ts): a request
+ * already PAID or FAILED is never touched again, so calling this
+ * repeatedly, or racing an actual webhook that arrives in between, can't
+ * double-write or flip a terminal status back.
+ */
+export async function reconcilePayoutStatus(req: Request, id: string, actorAdminId: string) {
+  const request = await prisma.withdrawalRequest.findUnique({ where: { id } })
+  if (!request) throw new AdminApiError("NOT_FOUND", "Withdrawal request not found")
+  if (request.status === "PAID" || request.status === "FAILED") {
+    return { id: request.id, status: request.status, gatewayUtr: request.gatewayUtr }
+  }
+  if (!request.oroTrxId) {
+    throw new AdminApiError("WITHDRAWAL_NOT_RECONCILABLE", "No gateway transaction id recorded for this withdrawal yet — it may not have been approved through the gateway.")
+  }
+
+  const result = await checkPayoutStatus(request.oroTrxId)
+  const nextStatus = result.status === "success" ? "PAID" : result.status === "failed" ? "FAILED" : request.status
+
+  if (nextStatus === request.status) {
+    return { id: request.id, status: request.status, gatewayUtr: request.gatewayUtr }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // updateMany (not update) so the where can include `status` as a guard —
+    // if a real webhook raced this and already moved it to PAID/FAILED
+    // between the read above and here, this becomes a no-op (count 0)
+    // instead of overwriting a terminal status.
+    const { count } = await tx.withdrawalRequest.updateMany({
+      where: { id: request.id, status: request.status },
+      data: { status: nextStatus, gatewayUtr: result.utr ?? request.gatewayUtr },
+    })
+
+    const current = await tx.withdrawalRequest.findUniqueOrThrow({ where: { id: request.id } })
+
+    if (count > 0) {
+      await writeAuditLog(tx, req, {
+        adminId: actorAdminId,
+        action: "withdrawal.reconcile",
+        entityType: "WithdrawalRequest",
+        entityId: request.id,
+        before: { status: request.status },
+        after: { status: current.status, gatewayUtr: current.gatewayUtr },
+      })
+    }
+
+    return { id: current.id, status: current.status, gatewayUtr: current.gatewayUtr }
   })
 }

@@ -703,6 +703,10 @@ model WithdrawalRequest {
   /// trxid WE generate and send to the payout API — matched back against
   /// the callback's cus_trx_id to identify which request it's updating.
   gatewayTrxId     String?
+  /// Oro's OWN trx_id from the payout response (distinct from gatewayTrxId
+  /// above, which is ours) — required as `apiRefNum` for their Check Payout
+  /// Status API, the reconciliation fallback for a missed payout webhook.
+  oroTrxId         String?
   gatewayUtr       String?
   /// AdminUser.id from admin/backend's schema — no FK, same reasoning as
   /// LedgerEntry.actorAdminId: this table must stay readable even if that
