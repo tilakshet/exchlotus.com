@@ -147,7 +147,7 @@ export async function handlePayinCallback(payload: { order_id: string; amount: n
  * same no-signature caveat as the PayIn callback above.
  */
 export async function handlePayoutCallback(payload: { cus_trx_id: string; status: string; utr?: string | null }): Promise<void> {
-  const request = await prisma.withdrawalRequest.findFirst({ where: { gatewayTrxId: payload.cus_trx_id } })
+  const request = await prisma.withdrawalRequest.findUnique({ where: { gatewayTrxId: payload.cus_trx_id } })
   if (!request) {
     logger.warn({ trxId: payload.cus_trx_id }, "Payout callback for unknown trx id — ignoring")
     return

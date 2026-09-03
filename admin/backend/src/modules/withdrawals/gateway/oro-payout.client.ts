@@ -20,12 +20,21 @@ export interface CreatePayoutResult {
 interface PayoutApiResponse {
   status: string
   message?: string
-  data: {
+  // Oro documents two shapes for this same endpoint: `data`-wrapped when the
+  // payout is still pending, flat (these same fields directly at the top
+  // level, no `data`) when it resolves immediately as a success — see their
+  // own "Response - Initial (Pending)" vs "Response - Final (Success)"
+  // examples. Handling only the wrapped shape would misreport an
+  // instantly-completed payout (real money already sent) as a failed
+  // request, since `data` wouldn't exist on the flat response.
+  data?: {
     trx_id: string
     cus_trx_id: string
     utr: string | null
     status: string
   }
+  trx_id?: string
+  utr?: string | null
 }
 
 /**
@@ -55,15 +64,17 @@ export async function createPayout(input: CreatePayoutInput): Promise<CreatePayo
   })
 
   // Unlike PayIn, the payout API's top-level `status` is a string
-  // ("success"/"pending"), not a boolean — presence of `data` is what
-  // actually distinguishes a real response from an error one.
-  const json = (await res.json().catch(() => ({}))) as Partial<PayoutApiResponse> & { message?: string }
-  if (!res.ok || !json.data) {
+  // ("success"/"pending"), not a boolean — presence of `data` (wrapped) or
+  // `trx_id` (flat) is what actually distinguishes a real response from an
+  // error one.
+  const json = (await res.json().catch(() => ({}))) as Partial<PayoutApiResponse>
+  const result = json.data ?? (json.trx_id && json.status ? { trx_id: json.trx_id, utr: json.utr ?? null, status: json.status } : undefined)
+  if (!res.ok || !result) {
     logger.error({ status: res.status, body: json }, "Payout request failed")
     throw new Error(`Payout request failed with status ${res.status}${json.message ? `: ${json.message}` : ""}`)
   }
 
-  return { gatewayTrxId: json.data.trx_id, utr: json.data.utr, status: json.data.status }
+  return { gatewayTrxId: result.trx_id, utr: result.utr, status: result.status }
 }
 
 export interface PayoutStatusResult {
