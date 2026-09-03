@@ -16,7 +16,7 @@ export const Route = createFileRoute("/dashboard/account/withdraw")({
   component: WithdrawPage,
 })
 
-const MIN_WITHDRAW = 1000
+const MIN_WITHDRAW = 100
 const MAX_WITHDRAW = 1_000_000
 const WITHDRAWAL_CHARGE = 0
 
