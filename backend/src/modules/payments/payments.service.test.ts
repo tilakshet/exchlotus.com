@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/prisma"
-import { handlePayinCallback } from "./payments.service"
+import { generateGatewayOrderId, handlePayinCallback } from "./payments.service"
 
 /**
  * Integration tests against the real local dev database — payments.service
@@ -41,11 +41,10 @@ describe("payments.service handlePayinCallback", () => {
 
   it("credits the wallet exactly once, even if the callback is delivered twice", async () => {
     const amount = randomDepositAmount()
-    const order = await prisma.paymentOrder.create({ data: { playerId, amount } })
-    const gatewayOrderId = order.id.replace(/-/g, "")
+    const order = await prisma.paymentOrder.create({ data: { playerId, amount, gatewayOrderId: generateGatewayOrderId() } })
 
-    await handlePayinCallback({ order_id: gatewayOrderId, amount, status: "success" })
-    await handlePayinCallback({ order_id: gatewayOrderId, amount, status: "success" })
+    await handlePayinCallback({ order_id: order.gatewayOrderId!, amount, status: "success" })
+    await handlePayinCallback({ order_id: order.gatewayOrderId!, amount, status: "success" })
 
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
     expect(wallet.balance.toNumber()).toBe(amount)
@@ -59,9 +58,9 @@ describe("payments.service handlePayinCallback", () => {
 
   it("refuses to credit when the callback amount doesn't match the order", async () => {
     const orderAmount = randomDepositAmount()
-    const order = await prisma.paymentOrder.create({ data: { playerId, amount: orderAmount } })
+    const order = await prisma.paymentOrder.create({ data: { playerId, amount: orderAmount, gatewayOrderId: generateGatewayOrderId() } })
 
-    await handlePayinCallback({ order_id: order.id.replace(/-/g, ""), amount: orderAmount + 100, status: "success" })
+    await handlePayinCallback({ order_id: order.gatewayOrderId!, amount: orderAmount + 100, status: "success" })
 
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
     expect(wallet.balance.toNumber()).toBe(0)
@@ -71,21 +70,32 @@ describe("payments.service handlePayinCallback", () => {
   })
 
   it("ignores a callback for an order id it never created", async () => {
-    await expect(
-      handlePayinCallback({ order_id: randomUUID().replace(/-/g, ""), amount: randomDepositAmount(), status: "success" })
-    ).resolves.toBeUndefined()
+    await expect(handlePayinCallback({ order_id: generateGatewayOrderId(), amount: randomDepositAmount(), status: "success" })).resolves.toBeUndefined()
   })
 
   it("marks the order FAILED on a non-success callback, without crediting", async () => {
     const amount = randomDepositAmount()
-    const order = await prisma.paymentOrder.create({ data: { playerId, amount } })
+    const order = await prisma.paymentOrder.create({ data: { playerId, amount, gatewayOrderId: generateGatewayOrderId() } })
 
-    await handlePayinCallback({ order_id: order.id.replace(/-/g, ""), amount, status: "failed" })
+    await handlePayinCallback({ order_id: order.gatewayOrderId!, amount, status: "failed" })
 
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
     expect(wallet.balance.toNumber()).toBe(0)
 
     const updatedOrder = await prisma.paymentOrder.findUniqueOrThrow({ where: { id: order.id } })
     expect(updatedOrder.status).toBe("FAILED")
+  })
+
+  it("still resolves a callback for an order created under the earlier hyphen-stripped-UUID scheme", async () => {
+    // No gatewayOrderId — simulates a PaymentOrder row from before that
+    // column existed, when a stripped PaymentOrder.id was sent to the
+    // gateway directly (see fromStrippedUuid in payments.service.ts).
+    const amount = randomDepositAmount()
+    const order = await prisma.paymentOrder.create({ data: { playerId, amount } })
+
+    await handlePayinCallback({ order_id: order.id.replace(/-/g, ""), amount, status: "success" })
+
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
+    expect(wallet.balance.toNumber()).toBe(amount)
   })
 })
