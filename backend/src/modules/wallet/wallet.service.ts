@@ -112,8 +112,14 @@ export async function getWalletDetails(playerExternalId: string): Promise<Wallet
   if (!player || !player.wallet) {
     throw new GamingApiError("INVALID_USER", `No player/wallet found for user_id ${playerExternalId}`)
   }
+  const principal = await prisma.ledgerEntry.aggregate({
+    where: { playerId: player.id, type: { in: ["DEPOSIT", "BET", "REFUND", "ADJUSTMENT"] } },
+    _sum: { amount: true },
+  })
+  const depositedPrincipal = Math.max(0, principal._sum.amount?.toNumber() ?? 0)
   return {
     balance: player.wallet.balance.toNumber(),
+    withdrawableCash: Math.max(0, player.wallet.balance.toNumber() - depositedPrincipal),
     bonusBalance: player.wallet.bonusBalance.toNumber(),
     lockedBalance: player.wallet.lockedBalance.toNumber(),
     currency: player.wallet.currency,
@@ -223,8 +229,14 @@ export async function requestWithdrawal(
 
     const decimalAmount = new Prisma.Decimal(amount)
     const currentBalance = new Prisma.Decimal(wallet.balance)
-    if (currentBalance.lessThan(decimalAmount)) {
-      throw new GamingApiError("NO_BALANCE", "Insufficient balance for withdrawal")
+    const principal = await tx.ledgerEntry.aggregate({
+      where: { playerId: player.id, type: { in: ["DEPOSIT", "BET", "REFUND", "ADJUSTMENT"] } },
+      _sum: { amount: true },
+    })
+    const depositedPrincipal = Prisma.Decimal.max(new Prisma.Decimal(0), principal._sum.amount ?? 0)
+    const withdrawableCash = Prisma.Decimal.max(new Prisma.Decimal(0), currentBalance.minus(depositedPrincipal))
+    if (withdrawableCash.lessThan(decimalAmount)) {
+      throw new GamingApiError("NO_BALANCE", "Insufficient withdrawable balance")
     }
 
     const newBalance = currentBalance.minus(decimalAmount)
