@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Lock, Phone, RefreshCw, Ticket, X } from "lucide-react";
+import { Eye, EyeOff, Lock, Phone, RefreshCw, Ticket, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCaptcha, type CaptchaState } from "@/hooks/useCaptcha";
 import * as authApi from "@/api/auth.api";
@@ -590,6 +590,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const { login } = useAuth();
   const captcha = useCaptcha();
   const [formError, setFormError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -643,13 +644,25 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           />
           <input
             id="login-password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             placeholder="••••••••"
             aria-invalid={!!errors.password}
             className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
             style={{ color: "var(--landing-text-primary)" }}
             {...register("password")}
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="login-icon-btn flex size-9 shrink-0 items-center justify-center rounded-(--landing-radius-sm) outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
+          >
+            {showPassword ? (
+              <EyeOff className="size-4.5" style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
+            ) : (
+              <Eye className="size-4.5" style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
+            )}
+          </button>
         </div>
         <FieldError message={errors.password?.message} />
         <Link

@@ -82,7 +82,11 @@ export function WalletChip() {
                 aria-hidden="true"
                 className="pointer-events-none absolute -inset-0.5 -z-10 rounded-(--landing-radius-full) bg-gradient-to-r from-(--landing-gold) via-(--landing-purple) to-(--landing-emerald) opacity-0 blur-[3px] transition-opacity duration-300 group-hover:opacity-90"
             />
-            <div className="flex items-center gap-2 rounded-(--landing-radius-full) border border-(--landing-border) bg-(--landing-bg-2) py-1.5 pr-1.5 pl-3.5 text-sm font-semibold text-(--landing-text-primary) transition-colors duration-300 group-hover:border-transparent group-hover:bg-(--landing-bg-3)">
+            <Link
+                to="/dashboard/account/deposit"
+                aria-label="Open deposit page"
+                className="flex items-center gap-2 rounded-(--landing-radius-full) border border-(--landing-border) bg-(--landing-bg-2) py-1.5 pr-1.5 pl-3.5 text-sm font-semibold text-(--landing-text-primary) outline-none transition-colors duration-300 group-hover:border-transparent group-hover:bg-(--landing-bg-3) focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
+            >
                 <span className="flex items-center gap-2 sm:gap-2.5">
                     <Wallet
                         className="size-5.5 shrink-0 text-(--landing-emerald) sm:size-6.5"
@@ -97,14 +101,10 @@ export function WalletChip() {
                         </span>
                     )}
                 </span>
-                <Link
-                    to="/dashboard/account/deposit"
-                    aria-label="Deposit"
-                    className="landing-glow flex size-7 shrink-0 items-center justify-center rounded-full bg-(--landing-gold) text-(--landing-gold-fg) outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-(--landing-text-primary)"
-                >
+                <span className="landing-glow flex size-7 shrink-0 items-center justify-center rounded-full bg-(--landing-gold) text-(--landing-gold-fg) transition-transform group-hover:scale-105">
                     <Plus className="size-4.5 sm:size-5.5" aria-hidden="true" strokeWidth={2.6} />
-                </Link>
-            </div>
+                </span>
+            </Link>
         </div>
     )
 }
