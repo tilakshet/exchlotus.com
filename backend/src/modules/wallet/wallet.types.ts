@@ -19,6 +19,8 @@ export interface ApplyLedgerEntryResult {
 
 export interface WalletDetails {
   balance: number
+  /** Current balance that represents winnings available for withdrawal. */
+  withdrawableCash: number
   /** Always 0 today — no bonus/wagering-requirement engine exists yet. See README. */
   bonusBalance: number
   /** Always 0 today — no funds-locking feature (e.g. pending KYC hold) exists yet. */

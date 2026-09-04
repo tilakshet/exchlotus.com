@@ -1,5 +1,6 @@
 export interface WalletDetails {
   balance: number
+  withdrawableCash: number
   bonusBalance: number
   lockedBalance: number
   currency: string

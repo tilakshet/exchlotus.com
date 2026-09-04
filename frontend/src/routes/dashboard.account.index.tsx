@@ -68,7 +68,7 @@ function AccountOverviewPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <StatCard icon={WalletIcon} label="Total Balance" value={wallet?.balance ?? 0} description="Deposit + withdrawable + bonus" loading={isLoading} />
         <StatCard icon={ArrowDownLeft} label="Deposit Cash" value={(wallet?.balance ?? 0) - (wallet?.bonusBalance ?? 0)} description="Balance excluding bonus funds" loading={isLoading} />
-        <StatCard icon={ArrowUpRight} label="Withdrawable Cash" value={(wallet?.balance ?? 0) - (wallet?.lockedBalance ?? 0)} description="Balance excluding locked funds" tone="success" loading={isLoading} />
+        <StatCard icon={ArrowUpRight} label="Withdrawable Cash" value={wallet?.withdrawableCash ?? 0} description="Winnings available to withdraw" tone="success" loading={isLoading} />
         <StatCard icon={Gift} label="Earned Bonus" value={wallet?.bonusBalance ?? 0} description="Bonus funds credited to your account" tone="success" loading={isLoading} />
         <StatCard icon={Lock} label="Locked Bonus" value={wallet?.lockedBalance ?? 0} description="Pending wagering requirements" loading={isLoading} />
       </div>

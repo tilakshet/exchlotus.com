@@ -38,7 +38,7 @@ function WithdrawPage() {
   const [payoutNote, setPayoutNote] = useState<string | null>(null)
   const [requestedAmount, setRequestedAmount] = useState<number | null>(null)
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
-  const availableBalance = wallet?.balance ?? 0
+  const availableBalance = wallet?.withdrawableCash ?? 0
 
   useEffect(() => {
     if (accounts.length === 0) {
