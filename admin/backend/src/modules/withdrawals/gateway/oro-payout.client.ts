@@ -63,15 +63,30 @@ export async function createPayout(input: CreatePayoutInput): Promise<CreatePayo
     }),
   })
 
+  // Read as text first, not res.json() directly — Oro has been observed
+  // returning a genuine 200 with a completely empty body (confirmed via
+  // curl: Content-Length: 0, not a client-side rendering artifact), which
+  // res.json() can't distinguish from a real parse failure. Reading raw
+  // text lets the three failure shapes below get a distinct, actionable
+  // message instead of one generic "request failed" for all of them.
+  const rawBody = await res.text()
+  let json: Partial<PayoutApiResponse> = {}
+  try {
+    if (rawBody) json = JSON.parse(rawBody)
+  } catch {
+    // leave json as {} — handled by the !result branch below via the
+    // isEmptyBody/reason logic, same as a truly empty body.
+  }
+
   // Unlike PayIn, the payout API's top-level `status` is a string
   // ("success"/"pending"), not a boolean — presence of `data` (wrapped) or
   // `trx_id` (flat) is what actually distinguishes a real response from an
   // error one.
-  const json = (await res.json().catch(() => ({}))) as Partial<PayoutApiResponse>
   const result = json.data ?? (json.trx_id && json.status ? { trx_id: json.trx_id, utr: json.utr ?? null, status: json.status } : undefined)
   if (!res.ok || !result) {
-    logger.error({ status: res.status, body: json }, "Payout request failed")
-    throw new Error(`Payout request failed with status ${res.status}${json.message ? `: ${json.message}` : ""}`)
+    logger.error({ status: res.status, body: rawBody }, "Payout request failed")
+    const reason = !rawBody ? "empty response body" : json.message ?? "unrecognized response shape"
+    throw new Error(`Payout request failed with status ${res.status}: ${reason}`)
   }
 
   return { gatewayTrxId: result.trx_id, utr: result.utr, status: result.status }

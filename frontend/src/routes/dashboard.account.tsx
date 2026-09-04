@@ -66,13 +66,13 @@ const topTabs = [
   { to: "/dashboard/account/history", label: "History", icon: HistoryIcon, exact: false },
 ] as const
 
-// Mobile bottom bar for this section — topTabs plus Profile and Support,
-// which are otherwise only reachable via the sidebar (hidden on mobile
-// below, see AccountLayout) — without this they'd have no mobile entry
-// point at all.
+// Mobile bottom bar for this section — topTabs plus Support, Profile, and
+// Refer & Earn, which are otherwise only reachable via the sidebar (hidden
+// on mobile below, see AccountLayout).
 const accountBottomNavItems = [
   ...topTabs,
   { to: "/dashboard/account/support", label: "Support", icon: LifeBuoy, exact: false },
+  { to: "/dashboard/refer-earn", label: "Refer", icon: Gift, exact: false },
   { to: "/dashboard/account/profile", label: "Profile", icon: User, exact: false },
 ]
 

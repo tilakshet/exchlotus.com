@@ -132,7 +132,7 @@ export async function listTransactionHistory(
 
   const limit = Math.min(options.limit ?? 20, 100)
   const rows = await prisma.ledgerEntry.findMany({
-    where: { playerId: player.id },
+    where: { playerId: player.id, type: { not: "BET" } },
     orderBy: { createdAt: "desc" },
     take: limit + 1,
     ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
