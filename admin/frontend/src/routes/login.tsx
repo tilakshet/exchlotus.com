@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { KeyRound, Loader2 } from "lucide-react"
 import { useAdminAuth } from "@/hooks/useAdminAuth"
@@ -12,6 +12,12 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 })
 
+function formatRemainingTime(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes} min ${seconds.toString().padStart(2, "0")} sec`
+}
+
 function LoginPage() {
   const { login, verifyMfa } = useAdminAuth()
   const navigate = useNavigate()
@@ -22,6 +28,25 @@ function LoginPage() {
   const [challenge, setChallenge] = useState<MfaChallenge | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [lockoutSeconds, setLockoutSeconds] = useState(0)
+
+  useEffect(() => {
+    if (lockoutSeconds <= 0) return
+    const timer = window.setInterval(() => {
+      setLockoutSeconds((seconds) => Math.max(0, seconds - 1))
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [lockoutSeconds])
+
+  function handleAuthError(err: unknown, fallback: string) {
+    if (err instanceof ApiError && err.status === 429) {
+      const seconds = Math.max(1, Math.ceil(err.retryAfterSeconds ?? 5 * 60))
+      setLockoutSeconds(seconds)
+      setError(`Too many failed attempts. Try again in ${formatRemainingTime(seconds)}.`)
+      return
+    }
+    setError(err instanceof ApiError ? err.message : fallback)
+  }
 
   async function handlePasswordSubmit(e: FormEvent) {
     e.preventDefault()
@@ -35,7 +60,7 @@ function LoginPage() {
         navigate({ to: "/dashboard" })
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Login failed")
+      handleAuthError(err, "Login failed")
     } finally {
       setSubmitting(false)
     }
@@ -50,7 +75,7 @@ function LoginPage() {
       await verifyMfa(challenge.challengeToken, code)
       navigate({ to: "/dashboard" })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Verification failed")
+      handleAuthError(err, "Verification failed")
     } finally {
       setSubmitting(false)
     }
@@ -96,12 +121,17 @@ function LoginPage() {
                     autoComplete="current-password"
                   />
                 </div>
-                {error && (
+                {lockoutSeconds > 0 && (
+                  <p role="status" className="text-xs text-destructive">
+                    Too many failed attempts. Try again in {formatRemainingTime(lockoutSeconds)}.
+                  </p>
+                )}
+                {error && lockoutSeconds === 0 && (
                   <p role="alert" className="text-xs text-destructive">
                     {error}
                   </p>
                 )}
-                <Button type="submit" disabled={submitting} className="mt-1">
+                <Button type="submit" disabled={submitting || lockoutSeconds > 0} className="mt-1">
                   {submitting && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
                   {submitting ? "Signing in…" : "Sign in"}
                 </Button>
@@ -124,12 +154,17 @@ function LoginPage() {
                     className="text-center text-lg tracking-[0.4em]"
                   />
                 </div>
-                {error && (
+                {lockoutSeconds > 0 && (
+                  <p role="status" className="text-xs text-destructive">
+                    Too many failed attempts. Try again in {formatRemainingTime(lockoutSeconds)}.
+                  </p>
+                )}
+                {error && lockoutSeconds === 0 && (
                   <p role="alert" className="text-xs text-destructive">
                     {error}
                   </p>
                 )}
-                <Button type="submit" disabled={submitting} className="mt-1">
+                <Button type="submit" disabled={submitting || lockoutSeconds > 0} className="mt-1">
                   {submitting && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
                   {submitting ? "Verifying…" : "Verify"}
                 </Button>
