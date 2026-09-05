@@ -32,11 +32,25 @@ export const adminApiLimiter = rateLimit({
 // than one compromised player account) and admin traffic volume is orders
 // of magnitude lower, so a stricter cap costs nothing in false positives.
 export const adminAuthLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 5 * 60 * 1000,
   limit: 8,
+  // Successful password/MFA requests should not reduce the failed-attempt budget.
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   store: redisStore("rl:admin-auth:"),
   passOnStoreError,
+  handler: (req, res, _next, options) => {
+    const rateLimitInfo = (req as typeof req & { rateLimit?: { resetTime?: Date } }).rateLimit
+    const retryAfterSeconds = rateLimitInfo?.resetTime
+      ? Math.max(1, Math.ceil((rateLimitInfo.resetTime.getTime() - Date.now()) / 1000))
+      : Math.ceil(options.windowMs / 1000)
+    res.setHeader("Retry-After", String(retryAfterSeconds))
+    res.status(options.statusCode).json({
+      error: "RATE_LIMITED",
+      message: "Too many failed attempts. Please try again later.",
+      retryAfterSeconds,
+    })
+  },
   logger,
 })

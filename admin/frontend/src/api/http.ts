@@ -79,7 +79,13 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const json = await res.json().catch(() => null)
 
   if (!res.ok) {
-    throw new ApiError(res.status, json?.error ?? "UNKNOWN_ERROR", json?.message ?? res.statusText, json?.issues)
+    throw new ApiError(
+      res.status,
+      json?.error ?? "UNKNOWN_ERROR",
+      json?.message ?? res.statusText,
+      json?.issues,
+      typeof json?.retryAfterSeconds === "number" ? json.retryAfterSeconds : undefined
+    )
   }
 
   return json as T

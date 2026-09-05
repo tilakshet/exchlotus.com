@@ -1,9 +1,14 @@
-import { Outlet } from "@tanstack/react-router"
+import { useEffect, useRef } from "react"
+import { Outlet, useNavigate } from "@tanstack/react-router"
 import { Sidebar } from "./Sidebar"
 import { TopBar } from "./TopBar"
 import { BottomNav } from "./BottomNav"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/shared/Toaster"
+import { useAdminAuth } from "@/hooks/useAdminAuth"
+
+const ADMIN_IDLE_TIMEOUT_MS = 10 * 60 * 1000
+const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = ["mousedown", "keydown", "scroll", "touchstart", "mousemove"]
 
 /**
  * Below md (768px, phone/small-tablet viewports) the fixed desktop rail
@@ -12,6 +17,33 @@ import { Toaster } from "@/components/shared/Toaster"
  * it (BottomNav is `fixed`, not part of flex flow).
  */
 export function AppShell() {
+  const { logout } = useAdminAuth()
+  const navigate = useNavigate()
+  const logoutTimer = useRef<number | null>(null)
+
+  useEffect(() => {
+    function scheduleLogout() {
+      if (logoutTimer.current !== null) window.clearTimeout(logoutTimer.current)
+      logoutTimer.current = window.setTimeout(async () => {
+        logoutTimer.current = null
+        await logout()
+        navigate({ to: "/login" })
+      }, ADMIN_IDLE_TIMEOUT_MS)
+    }
+
+    scheduleLogout()
+    for (const eventName of ACTIVITY_EVENTS) {
+      window.addEventListener(eventName, scheduleLogout, { passive: true })
+    }
+
+    return () => {
+      if (logoutTimer.current !== null) window.clearTimeout(logoutTimer.current)
+      for (const eventName of ACTIVITY_EVENTS) {
+        window.removeEventListener(eventName, scheduleLogout)
+      }
+    }
+  }, [logout, navigate])
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
