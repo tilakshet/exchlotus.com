@@ -584,31 +584,9 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--landing-gold) 14%, transparent);
 }
 
-/* The CAPTCHA code display — previously indistinguishable from a plain
-   input box despite showing something the player reads, not types. A
-   faint diagonal hatch (classic CAPTCHA visual language, kept subtle
-   enough to stay legible) plus a gold-tinted border gives it its own
-   identity, and the digits get a soft glow instead of flat text. */
-.login-captcha-display {
-    position: relative;
-    overflow: hidden;
-    border-color: color-mix(in srgb, var(--landing-gold) 30%, var(--landing-border-strong)) !important;
-    background-image: repeating-linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--landing-gold) 5%, transparent) 0 2px,
-        transparent 2px 10px
-    );
-}
-
-.login-captcha-display > span {
-    position: relative;
-    text-shadow: 0 0 14px color-mix(in srgb, var(--landing-gold) 45%, transparent);
-}
-
-/* CAPTCHA refresh button — was a flat icon-in-a-box with only a disabled
-   fade; now matches the hover language every other interactive control on
-   this page already has (border-strong on hover, gold tint + spin already
-   present on the icon while loading). */
+/* Small icon-in-a-box buttons on the auth card (e.g. the password
+   show/hide toggle) — match the hover language every other interactive
+   control on this page already has (border-strong on hover, gold tint). */
 .login-icon-btn {
     transition: border-color 150ms ease, background-color 150ms ease;
 }

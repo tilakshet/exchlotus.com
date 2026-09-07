@@ -56,6 +56,25 @@ const envSchema = z.object({
 
   /** This backend's own public origin — used to build absolute URLs (e.g. support ticket image attachments) that admin/frontend, a different domain, can load directly. Unlike PAYMENT_CALLBACK_BASE_URL (the frontend's origin), this is the API's own. */
   PUBLIC_BASE_URL: z.string().url(),
+
+  // Transactional SMS (BulkSMSConnect / DIGIXPRESS) — delivers the 6-digit
+  // OTP for Sign Up phone verification and Forgot Password (see
+  // modules/notifications/sms + auth.service.ts requestOtp). The message
+  // body MUST match the DLT-approved template character-for-character
+  // ("Dear user, your OTP for mobile verification is {#num#}. Team
+  // DIGIXPRESS") or Indian operators silently drop it.
+  //
+  // SMS_ENABLED=false (the default, for local/dev) sends nothing — requestOtp
+  // returns the code as `devCode` in the response instead, so the flow stays
+  // exercisable end to end without spending SMS credit. Production sets it true.
+  SMS_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  SMS_API_BASE_URL: z.string().url().default("https://bulksmsconnect.in/V2"),
+  SMS_API_KEY: z.string().optional(),
+  SMS_SENDER_ID: z.string().optional(),
+  SMS_TIMEOUT_MS: z.coerce.number().int().positive().max(30_000).default(8_000),
 })
 
 const parsed = envSchema.safeParse(process.env)

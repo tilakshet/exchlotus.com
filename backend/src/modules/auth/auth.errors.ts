@@ -5,10 +5,10 @@ export type AuthErrorCode =
   | "INVALID_REFRESH_TOKEN"
   | "OTP_INVALID"
   | "OTP_RATE_LIMITED"
+  | "OTP_SEND_FAILED"
+  | "PHONE_NOT_VERIFIED"
   | "NO_PASSWORD_SET"
   | "ACCOUNT_SUSPENDED"
-  | "CAPTCHA_INVALID"
-  | "CAPTCHA_UNAVAILABLE"
   | "RESET_TOKEN_INVALID"
 
 export class AuthError extends Error {

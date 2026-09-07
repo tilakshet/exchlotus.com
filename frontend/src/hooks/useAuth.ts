@@ -19,8 +19,8 @@ export function useAuth() {
   const isAuthenticated = user !== null
 
   const login = useCallback(
-    async (phone: string, password: string, captchaId: string, captchaCode: string) => {
-      const tokens = await authApi.login({ phone, password, captchaId, captchaCode })
+    async (phone: string, password: string) => {
+      const tokens = await authApi.login({ phone, password })
       // The login response only carries tokens, not profile fields — let
       // useProfile() fill in the real username on next render; avoids a
       // second blocking request before the user is considered "logged in".
@@ -35,12 +35,10 @@ export function useAuth() {
       phone: string,
       password: string,
       gender: Gender,
-      captchaId: string,
-      captchaCode: string,
       referralCode?: string,
       email?: string
     ) => {
-      const tokens = await authApi.registerAccount({ username, phone, email, password, gender, captchaId, captchaCode, referralCode })
+      const tokens = await authApi.registerAccount({ username, phone, email, password, gender, referralCode })
       dispatch(credentialsReceived({ user: { username, phone, email, currency: "INR" }, tokens }))
     },
     [dispatch]
