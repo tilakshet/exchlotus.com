@@ -202,6 +202,19 @@ function UserDetailPage() {
         }
       />
 
+      {user.kyc && (
+        <section className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-card p-4 text-sm sm:grid-cols-2">
+          <p className="font-medium sm:col-span-2">KYC verification</p>
+          <p><span className="text-muted-foreground">Status:</span> {user.kyc.status}</p>
+          <p><span className="text-muted-foreground">Source:</span> {user.kyc.verificationSource === "QRX_PAN_API" ? "QRX PAN API" : "Manual"}</p>
+          <p><span className="text-muted-foreground">PAN:</span> {user.kyc.panNumber.slice(0, 5)}****{user.kyc.panNumber.slice(-1)}</p>
+          <p><span className="text-muted-foreground">Name:</span> {user.kyc.fullName ?? "Not provided"}</p>
+          <p><span className="text-muted-foreground">Provider:</span> {user.kyc.provider ?? "Not provided"}</p>
+          <p><span className="text-muted-foreground">Request ID:</span> {user.kyc.providerRequestId ?? "Not provided"}</p>
+          <p><span className="text-muted-foreground">Verified:</span> {user.kyc.verifiedAt ? formatDateTime(user.kyc.verifiedAt) : "Not verified"}</p>
+        </section>
+      )}
+
       {user.wallet && (
         <section className="grid grid-cols-3 gap-3">
           <StatCard label="Balance" value={formatCurrency(user.wallet.balance, user.wallet.currency)} />

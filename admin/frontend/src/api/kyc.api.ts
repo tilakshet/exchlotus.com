@@ -10,10 +10,33 @@ export interface KycListItem {
   rejectionReason: string | null
   submittedAt: string
   reviewedAt: string | null
+  verificationSource: "MANUAL" | "QRX_PAN_API"
+  providerRequestId: string | null
+  verifiedAt: string | null
+  hasDocuments?: boolean
 }
 
 export interface KycDetail extends KycListItem {
   player: KycListItem["player"] & { status: string; phoneVerified: boolean }
+  panType: string | null
+  fullName: string | null
+  firstName: string | null
+  middleName: string | null
+  lastName: string | null
+  gender: string | null
+  aadhaarNumber: string | null
+  aadhaarLinked: boolean | null
+  dateOfBirth: string | null
+  buildingName: string | null
+  locality: string | null
+  streetName: string | null
+  pincode: string | null
+  city: string | null
+  state: string | null
+  country: string | null
+  mobile: string | null
+  email: string | null
+  provider: string | null
 }
 
 export function listKycSubmissions(params: { status?: KycStatus; search?: string; cursor?: string; limit?: number }) {

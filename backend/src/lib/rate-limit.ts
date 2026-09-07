@@ -108,3 +108,13 @@ export const captchaLimiter = rateLimit({
   passOnStoreError,
   logger,
 })
+
+export const panVerificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: redisStore("rl:pan-verification:"),
+  passOnStoreError,
+  logger,
+})

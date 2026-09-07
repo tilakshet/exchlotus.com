@@ -65,6 +65,10 @@ Edit all three:
   with your real domain, and generate real secrets for
   `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `GAMING_WEBHOOK_SHARED_SECRET`,
   and `GAMING_PROVIDER_API_KEY` (e.g. `openssl rand -hex 32` each).
+  Set `QRX_CLIENT_ID` and `QRX_SECRET_ID` to the credentials issued by QRX Fintech;
+  these are used only by the backend for `POST /api/kyc/verify-pan` and must
+  never be added to frontend build variables.
+
 - `admin/backend/.env.production` — set `DATABASE_URL`'s password the same
   way, set `CORS_ORIGIN` to `https://admin.` + your domain, generate a
   `JWT_ACCESS_SECRET` **different from** backend's (never reuse it — see

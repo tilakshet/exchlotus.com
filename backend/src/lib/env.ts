@@ -56,6 +56,11 @@ const envSchema = z.object({
 
   /** This backend's own public origin — used to build absolute URLs (e.g. support ticket image attachments) that admin/frontend, a different domain, can load directly. Unlike PAYMENT_CALLBACK_BASE_URL (the frontend's origin), this is the API's own. */
   PUBLIC_BASE_URL: z.string().url(),
+
+  QRX_PAN_BASE_URL: z.string().url().default("https://qrxfintech.com/api"),
+  QRX_CLIENT_ID: z.string().optional(),
+  QRX_SECRET_ID: z.string().optional(),
+  QRX_TIMEOUT_MS: z.coerce.number().int().positive().max(30_000).default(10_000),
 })
 
 const parsed = envSchema.safeParse(process.env)

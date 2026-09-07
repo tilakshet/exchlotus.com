@@ -65,7 +65,11 @@ export async function listUsers(options: ListUsersOptions) {
 export async function getUserDetail(id: string) {
   const player = await prisma.player.findUnique({
     where: { id },
-    include: { wallet: true, entries: { orderBy: { createdAt: "desc" }, take: 20 } },
+    include: {
+      wallet: true,
+      entries: { orderBy: { createdAt: "desc" }, take: 20 },
+      kycSubmissions: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
   })
   if (!player) throw new AdminApiError("NOT_FOUND", "Player not found")
 
@@ -79,6 +83,7 @@ export async function getUserDetail(id: string) {
     lastName: player.lastName,
     currency: player.currency,
     status: player.status,
+    kycStatus: player.kycStatus,
     createdAt: player.createdAt.toISOString(),
     wallet: player.wallet
       ? {
@@ -95,6 +100,17 @@ export async function getUserDetail(id: string) {
       balanceAfter: e.balanceAfter.toNumber(),
       createdAt: e.createdAt.toISOString(),
     })),
+    kyc: player.kycSubmissions[0]
+      ? {
+          status: player.kycSubmissions[0].status,
+          verificationSource: player.kycSubmissions[0].verificationSource,
+          panNumber: player.kycSubmissions[0].panNumber,
+          fullName: player.kycSubmissions[0].fullName,
+          provider: player.kycSubmissions[0].provider,
+          providerRequestId: player.kycSubmissions[0].providerRequestId,
+          verifiedAt: player.kycSubmissions[0].verifiedAt?.toISOString() ?? null,
+        }
+      : null,
   }
 }
 

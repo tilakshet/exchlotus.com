@@ -1,13 +1,29 @@
 import { prisma } from "../../lib/prisma"
 import { checkOtpCode, requestOtp } from "../auth/auth.service"
+import { QrxPanError, verifyPanWithQrx } from "./qrx-pan.service"
 
 export class KycError extends Error {
   constructor(
-    public readonly code: "ALREADY_APPROVED" | "ALREADY_PENDING" | "PHONE_NOT_VERIFIED" | "NO_PHONE_ON_FILE" | "PAN_ALREADY_USED",
+    public readonly code:
+      | "ALREADY_APPROVED"
+      | "ALREADY_PENDING"
+      | "PHONE_NOT_VERIFIED"
+      | "NO_PHONE_ON_FILE"
+      | "PAN_ALREADY_USED"
+      | "PAN_INVALID"
+      | "PAN_NOT_VERIFIED"
+      | "QRX_UNAVAILABLE"
+      | "QRX_INVALID_RESPONSE",
     message: string
   ) {
     super(message)
   }
+}
+
+function parseProviderDate(value: string | undefined): Date | null {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 /**
@@ -90,6 +106,135 @@ export async function submitKyc(
   })
 }
 
+export async function verifyPan(playerId: string, panNumber: string) {
+  const player = await prisma.player.findUniqueOrThrow({ where: { id: playerId } })
+
+  if (player.kycStatus === "APPROVED") {
+    const existing = await prisma.kycSubmission.findFirst({ where: { playerId, status: "APPROVED" }, orderBy: { createdAt: "desc" } })
+    return {
+      success: true,
+      message: "PAN is already verified",
+      kycStatus: "APPROVED" as const,
+      data: existing
+        ? {
+            pan: existing.panNumber,
+            fullname: existing.fullName,
+            panType: existing.panType,
+            gender: existing.gender,
+            dob: existing.dateOfBirth?.toISOString().slice(0, 10) ?? null,
+            aadhaarLinked: existing.aadhaarLinked,
+            verificationSource: existing.verificationSource,
+          }
+        : null,
+    }
+  }
+  if (!player.phoneVerifiedAt) {
+    throw new KycError("PHONE_NOT_VERIFIED", "Verify your mobile number before verifying PAN")
+  }
+
+  const existingUseOfPan = await prisma.kycSubmission.findFirst({
+    where: { panNumber, status: "APPROVED", playerId: { not: playerId } },
+  })
+  if (existingUseOfPan) throw new KycError("PAN_ALREADY_USED", "This PAN number is already verified on another account")
+
+  let result
+  try {
+    result = await verifyPanWithQrx(panNumber)
+  } catch (err) {
+    if (err instanceof QrxPanError) {
+      if (err.code === "NOT_VERIFIED") throw new KycError("PAN_NOT_VERIFIED", "PAN verification failed. Please check the PAN number and try again.")
+      if (err.code === "INVALID_RESPONSE") throw new KycError("QRX_INVALID_RESPONSE", "PAN verification service returned an invalid response")
+      throw new KycError("QRX_UNAVAILABLE", "PAN verification service is temporarily unavailable. Please try again later.")
+    }
+    throw err
+  }
+
+  if (result.details.pan.toUpperCase() !== panNumber) {
+    throw new KycError("QRX_INVALID_RESPONSE", "PAN verification service returned mismatched data")
+  }
+
+  const details = result.details
+  try {
+    const submission = await prisma.$transaction(async (tx) => {
+      const approvedUse = await tx.kycSubmission.findFirst({
+        where: { panNumber, status: "APPROVED", playerId: { not: playerId } },
+        select: { id: true },
+      })
+      if (approvedUse) throw new KycError("PAN_ALREADY_USED", "This PAN number is already verified on another account")
+
+      const created = await tx.kycSubmission.create({
+        data: {
+          playerId,
+          panNumber,
+          panType: details.pan_type ?? null,
+          fullName: details.fullname ?? null,
+          firstName: details.first_name ?? null,
+          middleName: details.middle_name ?? null,
+          lastName: details.last_name ?? null,
+          gender: details.gender ?? null,
+          aadhaarNumber: details.aadhaar_number ?? null,
+          aadhaarLinked: details.aadhaar_linked ?? null,
+          dateOfBirth: parseProviderDate(details.dob),
+          buildingName: details.address?.building_name ?? null,
+          locality: details.address?.locality ?? null,
+          streetName: details.address?.street_name ?? null,
+          pincode: details.address?.pincode ?? null,
+          city: details.address?.city ?? null,
+          state: details.address?.state ?? null,
+          country: details.address?.country ?? null,
+          mobile: details.mobile ?? null,
+          email: details.email ?? null,
+          status: "APPROVED",
+          verificationSource: "QRX_PAN_API",
+          provider: "QRX",
+          providerRequestId: result.requestId,
+          verifiedAt: new Date(),
+        },
+      })
+      await tx.player.update({ where: { id: playerId }, data: { kycStatus: "APPROVED" } })
+      return created
+    })
+
+    return {
+      success: true,
+      message: "PAN verified successfully",
+      kycStatus: "APPROVED" as const,
+      data: {
+        pan: submission.panNumber,
+        fullname: submission.fullName,
+        panType: submission.panType,
+        gender: submission.gender,
+        dob: submission.dateOfBirth?.toISOString().slice(0, 10) ?? null,
+        aadhaarLinked: submission.aadhaarLinked,
+        verificationSource: submission.verificationSource,
+      },
+    }
+  } catch (err) {
+    if (err instanceof KycError) throw err
+    if ((err as { code?: string })?.code === "P2002") {
+      const existing = await prisma.kycSubmission.findFirst({ where: { playerId, status: "APPROVED" }, orderBy: { createdAt: "desc" } })
+      if (existing) {
+        return {
+          success: true,
+          message: "PAN is already verified",
+          kycStatus: "APPROVED" as const,
+          data: {
+            pan: existing.panNumber,
+            fullname: existing.fullName,
+            panType: existing.panType,
+            gender: existing.gender,
+            dob: existing.dateOfBirth?.toISOString().slice(0, 10) ?? null,
+            aadhaarLinked: existing.aadhaarLinked,
+            verificationSource: existing.verificationSource,
+          },
+        }
+      }
+      throw new KycError("PAN_ALREADY_USED", "This PAN number is already verified on another account")
+    }
+    throw err
+  }
+}
+
 export async function getMyKyc(playerId: string) {
   const [player, latest] = await Promise.all([
     prisma.player.findUniqueOrThrow({ where: { id: playerId }, select: { kycStatus: true, phoneVerifiedAt: true } }),
@@ -104,6 +249,13 @@ export async function getMyKyc(playerId: string) {
           submittedAt: latest.createdAt.toISOString(),
           reviewedAt: latest.reviewedAt?.toISOString() ?? null,
           rejectionReason: latest.rejectionReason,
+          pan: latest.panNumber,
+          fullName: latest.fullName,
+          panType: latest.panType,
+          gender: latest.gender,
+          dateOfBirth: latest.dateOfBirth?.toISOString().slice(0, 10) ?? null,
+          aadhaarLinked: latest.aadhaarLinked,
+          verificationSource: latest.verificationSource,
         }
       : null,
   }
