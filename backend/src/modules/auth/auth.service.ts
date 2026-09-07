@@ -4,17 +4,23 @@ import { prisma } from "../../lib/prisma"
 import { appEvents } from "../../lib/events"
 import { hashPassword, verifyPassword } from "./password.util"
 import { generateRefreshToken, hashRefreshToken, signAccessToken } from "./token.util"
-import { verifyCaptcha } from "./captcha.service"
 import { AuthError } from "./auth.errors"
 import { recordLoginEvent, type LoginEventContext } from "./login-event.service"
 import { attributeReferral } from "../referral/referral.service"
 import { logger } from "../../lib/logger"
+import { sendOtpSms, SmsError } from "../notifications/sms/sms.service"
 import type { AuthTokens } from "./auth.types"
 
 const OTP_TTL_MINUTES = 5
 const OTP_RESEND_COOLDOWN_SECONDS = 60
 const OTP_MAX_ATTEMPTS = 5
 const RESET_TOKEN_TTL_MINUTES = 15
+// How long a phone stays "verified" for signup after its OTP is confirmed —
+// register() looks for a consumed OtpCode row for the phone inside this
+// window instead of keeping a separate flag (checkOtpCode already stamps
+// consumedAt). Long enough to finish filling the form, short enough that a
+// stale verification can't be reused much later.
+const SIGNUP_OTP_VERIFY_WINDOW_MINUTES = 20
 
 async function issueTokens(player: { id: string; externalId: string; username: string; sessionVersion: number }): Promise<AuthTokens> {
   const { token: accessToken, expiresIn } = signAccessToken({
@@ -58,15 +64,11 @@ export async function register(
     email?: string
     password: string
     gender: "MALE" | "FEMALE" | "OTHER"
-    captchaId: string
-    captchaCode: string
     /** Another player's referralCode, if this signup came from a referral link/entry — see referral.service.ts attributeReferral. */
     referralCode?: string
   },
   context?: LoginEventContext
 ): Promise<AuthTokens> {
-  await verifyCaptcha(input.captchaId, input.captchaCode)
-
   // Phone first — it's the identifier login()/requestOtp() key off, so an
   // account created here has to collect it too or it would be permanently
   // unable to sign back in via "Login with Password".
@@ -81,6 +83,22 @@ export async function register(
       await recordLoginEvent({ phone: input.phone, method: "REGISTER", result: "FAILURE", reason: "EMAIL_TAKEN", context })
       throw new AuthError("EMAIL_TAKEN", `Email ${input.email} is already registered`)
     }
+  }
+
+  // Phone ownership must be proven by OTP before an account is created —
+  // the client calls sendSignupOtp + verifySignupOtp first, which leaves a
+  // consumed OtpCode row for this number. Without one (or an expired one),
+  // registration is refused so phoneVerifiedAt below stays a real claim
+  // (submitKyc's withdrawal gate and every "verified" UI depend on it).
+  const verifiedOtp = await prisma.otpCode.findFirst({
+    where: {
+      phone: input.phone,
+      consumedAt: { gte: new Date(Date.now() - SIGNUP_OTP_VERIFY_WINDOW_MINUTES * 60_000) },
+    },
+  })
+  if (!verifiedOtp) {
+    await recordLoginEvent({ phone: input.phone, method: "REGISTER", result: "FAILURE", reason: "PHONE_NOT_VERIFIED", context })
+    throw new AuthError("PHONE_NOT_VERIFIED", "Please verify your mobile number to register")
   }
 
   const passwordHash = await hashPassword(input.password)
@@ -130,11 +148,9 @@ export async function register(
  * the other (a phone was added to it by hand for exactly this purpose).
  */
 export async function login(
-  input: { phone: string; password: string; captchaId: string; captchaCode: string },
+  input: { phone: string; password: string },
   context?: LoginEventContext
 ): Promise<AuthTokens> {
-  await verifyCaptcha(input.captchaId, input.captchaCode)
-
   const player = await prisma.player.findUnique({ where: { phone: input.phone } })
   if (!player?.passwordHash) {
     await recordLoginEvent({ phone: input.phone, method: "PASSWORD", result: "FAILURE", reason: "INVALID_CREDENTIALS", context })
@@ -203,53 +219,15 @@ function hashResetToken(token: string): string {
 }
 
 /**
- * Step 1 of Forgot Password: CAPTCHA-gated, no OTP. Deliberately returns a
- * usable resetToken in the response for *any* well-formed identifier,
- * whether or not it matches an account — the caller can't distinguish
- * "wrong number" from "no account" from the response, which avoids account
- * enumeration. A non-matching identifier's token is simply never persisted,
- * so resetPassword() below will always reject it as invalid.
- *
- * No SMS/email gateway is connected in this codebase (same gap as OTP's
- * requestOtp above) — there is no side channel to deliver this token
- * through, so it goes straight back in the response and the frontend moves
- * straight to the "New Password" step, matching the product's specified
- * flow (Mobile/Email → CAPTCHA → New Password, no separate "check your
- * phone" step).
+ * Final step of Forgot Password: set the new password, authorized by the
+ * single-use, time-limited resetToken that verifyPasswordResetOtp handed
+ * back after the phone OTP was confirmed (that OTP check is what gates this
+ * flow now — there is no separate CAPTCHA here). Also revokes every refresh
+ * token and bumps sessionVersion — same reasoning as issueTokensForNewLogin:
+ * a password reset should force every other signed-in device to
+ * re-authenticate, not leave a possibly-compromised session alive.
  */
-export async function requestPasswordReset(input: { identifier: string; captchaId: string; captchaCode: string }): Promise<{ resetToken: string }> {
-  await verifyCaptcha(input.captchaId, input.captchaCode)
-
-  const isEmail = input.identifier.includes("@")
-  const player = await prisma.player.findUnique({
-    where: isEmail ? { email: input.identifier } : { phone: input.identifier },
-  })
-
-  const resetToken = randomBytes(32).toString("base64url")
-  if (player) {
-    await prisma.passwordResetToken.create({
-      data: {
-        playerId: player.id,
-        tokenHash: hashResetToken(resetToken),
-        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60_000),
-      },
-    })
-  }
-
-  return { resetToken }
-}
-
-/**
- * Step 2 of Forgot Password: CAPTCHA-gated new password, authorized by the
- * resetToken from requestPasswordReset above (single-use, time-limited)
- * instead of an OTP. Also revokes every refresh token and bumps
- * sessionVersion — same reasoning as issueTokensForNewLogin: a password
- * reset should force every other signed-in device to re-authenticate, not
- * leave a possibly-compromised session alive.
- */
-export async function resetPassword(input: { resetToken: string; newPassword: string; captchaId: string; captchaCode: string }): Promise<void> {
-  await verifyCaptcha(input.captchaId, input.captchaCode)
-
+export async function resetPassword(input: { resetToken: string; newPassword: string }): Promise<void> {
   const tokenHash = hashResetToken(input.resetToken)
   const stored = await prisma.passwordResetToken.findUnique({ where: { tokenHash } })
   if (!stored || stored.usedAt || stored.expiresAt < new Date() || !stored.playerId) {
@@ -280,10 +258,15 @@ export async function logout(refreshToken: string): Promise<void> {
 }
 
 /**
- * No SMS gateway is connected. In any non-production env the generated
- * code is returned to the caller instead of "sent" anywhere, so the flow
- * is genuinely exercisable end to end — a real gateway integration would
- * add a send-it-by-SMS call here and drop `devCode` from the return.
+ * Generates a 6-digit code, sends it by SMS (see notifications/sms), then
+ * persists the hash. The send happens BEFORE the OtpCode row is written on
+ * purpose: if the gateway fails, no row exists, so the 60s resend cooldown
+ * isn't tripped by a code that never arrived and the caller can retry
+ * immediately.
+ *
+ * When SMS_ENABLED is false (local/dev) nothing is sent and the code comes
+ * back as `devCode` so the flow stays testable offline; in production the
+ * response body carries nothing.
  */
 export async function requestOtp(phone: string): Promise<{ devCode?: string }> {
   const recent = await prisma.otpCode.findFirst({
@@ -295,12 +278,86 @@ export async function requestOtp(phone: string): Promise<{ devCode?: string }> {
   }
 
   const code = randomInt(0, 1_000_000).toString().padStart(6, "0")
+
+  try {
+    await sendOtpSms(phone, code)
+  } catch (err) {
+    if (err instanceof SmsError) {
+      logger.error({ err, phone, smsCode: err.code }, "OTP SMS send failed")
+      throw new AuthError("OTP_SEND_FAILED", "We couldn't send the verification code right now. Please try again in a moment.")
+    }
+    throw err
+  }
+
   const codeHash = await hashPassword(code)
   await prisma.otpCode.create({
     data: { phone, codeHash, expiresAt: new Date(Date.now() + OTP_TTL_MINUTES * 60_000) },
   })
 
-  return env.NODE_ENV === "production" ? {} : { devCode: code }
+  return env.SMS_ENABLED ? {} : { devCode: code }
+}
+
+/**
+ * Sign Up step: send a phone-verification OTP. Fails fast if the number is
+ * already registered (better UX than letting the eventual register() call
+ * reject after the user has filled the whole form — signup enumeration on a
+ * betting platform is low-risk and the number is one the caller controls).
+ */
+export async function sendSignupOtp(phone: string): Promise<{ devCode?: string }> {
+  const existing = await prisma.player.findUnique({ where: { phone } })
+  if (existing) {
+    throw new AuthError("PHONE_TAKEN", `Phone ${phone} is already registered`)
+  }
+  return requestOtp(phone)
+}
+
+/**
+ * Sign Up step: confirm the OTP. On success checkOtpCode stamps the row's
+ * consumedAt, which register() then looks for (SIGNUP_OTP_VERIFY_WINDOW_MINUTES)
+ * — no separate verified flag/store is kept.
+ */
+export async function verifySignupOtp(phone: string, code: string): Promise<void> {
+  await checkOtpCode(phone, code)
+}
+
+/**
+ * Forgot Password step 1: send an OTP to the account's phone. Enumeration-
+ * safe — for a number with no account it returns the same shape and simply
+ * sends nothing, so verifyPasswordResetOtp below will just report an
+ * invalid code (there is none to match).
+ */
+export async function sendPasswordResetOtp(phone: string): Promise<{ devCode?: string }> {
+  const player = await prisma.player.findUnique({ where: { phone } })
+  if (!player) return {}
+  return requestOtp(phone)
+}
+
+/**
+ * Forgot Password step 2: confirm the OTP and hand back a single-use
+ * resetToken (same credential requestPasswordReset used to mint) that
+ * authorizes resetPassword().
+ */
+export async function verifyPasswordResetOtp(phone: string, code: string): Promise<{ resetToken: string }> {
+  await checkOtpCode(phone, code)
+
+  const player = await prisma.player.findUnique({ where: { phone } })
+  if (!player) {
+    // Unreachable in practice (sendPasswordResetOtp never sends for an
+    // unknown number, so checkOtpCode above would already have thrown) —
+    // kept as a defensive guard.
+    throw new AuthError("OTP_INVALID", "No valid code found for that number — request a new one")
+  }
+
+  const resetToken = randomBytes(32).toString("base64url")
+  await prisma.passwordResetToken.create({
+    data: {
+      playerId: player.id,
+      tokenHash: hashResetToken(resetToken),
+      expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60_000),
+    },
+  })
+
+  return { resetToken }
 }
 
 /**

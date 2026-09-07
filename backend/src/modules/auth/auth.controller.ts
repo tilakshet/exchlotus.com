@@ -1,11 +1,21 @@
 import { Router } from "express"
 import { z } from "zod"
-import { authLimiter, captchaLimiter } from "../../lib/rate-limit"
+import { authLimiter, otpRequestLimiter } from "../../lib/rate-limit"
 import { logger } from "../../lib/logger"
 import { requireAuth } from "./auth.middleware"
 import { AuthError } from "./auth.errors"
-import { generateCaptcha } from "./captcha.service"
-import { changePassword, login, logout, refresh, register, requestPasswordReset, resetPassword } from "./auth.service"
+import {
+  changePassword,
+  login,
+  logout,
+  refresh,
+  register,
+  resetPassword,
+  sendPasswordResetOtp,
+  sendSignupOtp,
+  verifyPasswordResetOtp,
+  verifySignupOtp,
+} from "./auth.service"
 import type { LoginEventContext } from "./login-event.service"
 
 export const authRouter = Router()
@@ -13,11 +23,6 @@ export const authRouter = Router()
 const phoneSchema = z.string().regex(/^\+[1-9]\d{7,14}$/, "Enter a valid phone number, e.g. +919876543210")
 
 const genderSchema = z.enum(["MALE", "FEMALE", "OTHER"])
-
-const captchaFields = {
-  captchaId: z.string().uuid(),
-  captchaCode: z.string().regex(/^\d{4}$/, "Enter the 4-digit CAPTCHA"),
-}
 
 const registerSchema = z.object({
   username: z.string().min(2).max(40),
@@ -29,29 +34,31 @@ const registerSchema = z.object({
   // referrer active, not self, not already attributed) in
   // referral.service.ts attributeReferral, never trusted as-is.
   referralCode: z.string().max(40).optional(),
-  ...captchaFields,
 })
 
 const loginSchema = z.object({
   phone: phoneSchema,
   password: z.string().min(1),
-  ...captchaFields,
 })
 
 const refreshSchema = z.object({
   refreshToken: z.string().min(1),
 })
 
-const forgotPasswordSchema = z.object({
-  // Phone or email — requestPasswordReset tells them apart by "@".
-  identifier: z.string().min(3).max(120),
-  ...captchaFields,
+// Both OTP flows (signup phone verification + forgot password) — a bare
+// phone number to send a 6-digit code to.
+const otpRequestSchema = z.object({
+  phone: phoneSchema,
+})
+
+const otpVerifySchema = z.object({
+  phone: phoneSchema,
+  code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
 })
 
 const resetPasswordSchema = z.object({
   resetToken: z.string().min(1),
   newPassword: z.string().min(8).max(72), // matches registerSchema
-  ...captchaFields,
 })
 
 function loginContext(req: import("express").Request): LoginEventContext {
@@ -65,28 +72,20 @@ function sendAuthError(res: import("express").Response, err: unknown) {
         ? 409
         : err.code === "OTP_RATE_LIMITED"
           ? 429
-          : err.code === "NO_PASSWORD_SET" || err.code === "CAPTCHA_INVALID" || err.code === "RESET_TOKEN_INVALID"
+          : err.code === "NO_PASSWORD_SET" ||
+              err.code === "RESET_TOKEN_INVALID" ||
+              err.code === "OTP_INVALID" ||
+              err.code === "PHONE_NOT_VERIFIED"
             ? 422
             : err.code === "ACCOUNT_SUSPENDED"
               ? 403
-              : err.code === "CAPTCHA_UNAVAILABLE"
+              : err.code === "OTP_SEND_FAILED"
                 ? 503
                 : 401
     return res.status(status).json({ error: err.code, message: err.message })
   }
   throw err
 }
-
-// Numeric CAPTCHA, generated and validated server-side (see
-// captcha.service.ts) — shared by login, register, forgot-password, and
-// reset-password below rather than each form growing its own copy.
-authRouter.post("/captcha", captchaLimiter, async (_req, res) => {
-  try {
-    res.json(await generateCaptcha())
-  } catch (err) {
-    sendAuthError(res, err)
-  }
-})
 
 authRouter.post("/register", authLimiter, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body)
@@ -141,14 +140,57 @@ authRouter.post("/logout", async (req, res) => {
   }
 })
 
-authRouter.post("/forgot-password", authLimiter, async (req, res) => {
-  const parsed = forgotPasswordSchema.safeParse(req.body)
+// --- Phone-verification OTP: Sign Up ---------------------------------------
+
+// otpRequestLimiter (per-IP, 6/hour) on top of authLimiter — every call
+// sends a real SMS. auth.service.ts adds a 60s per-phone cooldown.
+authRouter.post("/register/send-otp", authLimiter, otpRequestLimiter, async (req, res) => {
+  const parsed = otpRequestSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   }
   try {
-    const result = await requestPasswordReset(parsed.data)
-    res.json(result)
+    res.json(await sendSignupOtp(parsed.data.phone))
+  } catch (err) {
+    sendAuthError(res, err)
+  }
+})
+
+authRouter.post("/register/verify-otp", authLimiter, async (req, res) => {
+  const parsed = otpVerifySchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
+  }
+  try {
+    await verifySignupOtp(parsed.data.phone, parsed.data.code)
+    res.json({ verified: true })
+  } catch (err) {
+    sendAuthError(res, err)
+  }
+})
+
+// --- Phone-verification OTP: Forgot Password ------------------------------
+
+authRouter.post("/forgot-password/send-otp", authLimiter, otpRequestLimiter, async (req, res) => {
+  const parsed = otpRequestSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
+  }
+  try {
+    // Enumeration-safe: same shape whether or not the number has an account.
+    res.json(await sendPasswordResetOtp(parsed.data.phone))
+  } catch (err) {
+    sendAuthError(res, err)
+  }
+})
+
+authRouter.post("/forgot-password/verify-otp", authLimiter, async (req, res) => {
+  const parsed = otpVerifySchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
+  }
+  try {
+    res.json(await verifyPasswordResetOtp(parsed.data.phone, parsed.data.code))
   } catch (err) {
     sendAuthError(res, err)
   }

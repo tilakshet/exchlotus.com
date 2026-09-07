@@ -1,15 +1,28 @@
 import { apiRequest } from "./http"
-import type { AuthTokens, Captcha } from "@/types/auth"
+import type { AuthTokens } from "@/types/auth"
 import type { Gender } from "@/types/profile"
 
-interface CaptchaFields {
-  captchaId: string
-  captchaCode: string
+/** In non-production the backend returns the code as `devCode` (SMS_ENABLED=false); production sends it by SMS and returns `{}`. */
+type OtpRequestResult = { devCode?: string }
+
+/** Sign Up: send a phone-verification OTP. Rejects with PHONE_TAKEN if the number already has an account. */
+export function sendSignupOtp(phone: string): Promise<OtpRequestResult> {
+  return apiRequest<OtpRequestResult>("/api/auth/register/send-otp", { method: "POST", body: { phone }, anonymous: true })
 }
 
-/** Numeric CAPTCHA — server-generated and validated (see backend captcha.service.ts). Shared by register/login/forgot-password/reset-password. */
-export function getCaptcha(): Promise<Captcha> {
-  return apiRequest<Captcha>("/api/auth/captcha", { method: "POST", anonymous: true })
+/** Sign Up: confirm the OTP. On success the backend will accept a register() call for this phone for ~20 min. */
+export function verifySignupOtp(input: { phone: string; code: string }): Promise<{ verified: true }> {
+  return apiRequest<{ verified: true }>("/api/auth/register/verify-otp", { method: "POST", body: input, anonymous: true })
+}
+
+/** Forgot Password step 1: send an OTP to the account's phone. Enumeration-safe — same response for an unknown number. */
+export function sendPasswordResetOtp(phone: string): Promise<OtpRequestResult> {
+  return apiRequest<OtpRequestResult>("/api/auth/forgot-password/send-otp", { method: "POST", body: { phone }, anonymous: true })
+}
+
+/** Forgot Password step 2: confirm the OTP, receive the single-use resetToken for resetPassword(). */
+export function verifyPasswordResetOtp(input: { phone: string; code: string }): Promise<{ resetToken: string }> {
+  return apiRequest<{ resetToken: string }>("/api/auth/forgot-password/verify-otp", { method: "POST", body: input, anonymous: true })
 }
 
 export function registerAccount(input: {
@@ -20,11 +33,11 @@ export function registerAccount(input: {
   gender: Gender
   /** Another player's referralCode — validated server-side, see auth.service.ts register(). */
   referralCode?: string
-} & CaptchaFields): Promise<AuthTokens> {
+}): Promise<AuthTokens> {
   return apiRequest<AuthTokens>("/api/auth/register", { method: "POST", body: input, anonymous: true })
 }
 
-export function login(input: { phone: string; password: string } & CaptchaFields): Promise<AuthTokens> {
+export function login(input: { phone: string; password: string }): Promise<AuthTokens> {
   return apiRequest<AuthTokens>("/api/auth/login", { method: "POST", body: input, anonymous: true })
 }
 
@@ -36,12 +49,7 @@ export function changePassword(input: { currentPassword: string; newPassword: st
   return apiRequest<void>("/api/auth/change-password", { method: "POST", body: input })
 }
 
-/** Step 1 of Forgot Password — identifier is a phone or email. No OTP is sent; the returned resetToken authorizes the next step directly. */
-export function forgotPassword(input: { identifier: string } & CaptchaFields): Promise<{ resetToken: string }> {
-  return apiRequest<{ resetToken: string }>("/api/auth/forgot-password", { method: "POST", body: input, anonymous: true })
-}
-
-/** Step 2 of Forgot Password. */
-export function resetPassword(input: { resetToken: string; newPassword: string } & CaptchaFields): Promise<void> {
+/** Final step of Forgot Password — authorized by the resetToken from verifyPasswordResetOtp (the phone OTP is the gate now; no CAPTCHA here). */
+export function resetPassword(input: { resetToken: string; newPassword: string }): Promise<void> {
   return apiRequest<void>("/api/auth/reset-password", { method: "POST", body: input, anonymous: true })
 }
