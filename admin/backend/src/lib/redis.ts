@@ -10,7 +10,7 @@ import { logger } from "./logger"
 export const redis = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: 1,
   retryStrategy: (times) => Math.min(times * 500, 5000),
-  commandTimeout: 2000,
+  commandTimeout: 300,
 })
 
 redis.on("error", (err) => {

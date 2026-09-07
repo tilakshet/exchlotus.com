@@ -3,12 +3,31 @@ import { RedisStore } from "rate-limit-redis"
 import { logger } from "./logger"
 import { redis } from "./redis"
 
+const SEND_COMMAND_TIMEOUT_MS = 300
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Redis command exceeded ${ms}ms`)), ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      }
+    )
+  })
+}
+
 function redisStore(prefix: string) {
   return new RedisStore({
     prefix,
     sendCommand: async (...args: string[]) => {
       const [command, ...rest] = args
-      return redis.call(command, ...rest) as Promise<string | number | boolean | (string | number | boolean)[]>
+      const result = redis.call(command, ...rest) as Promise<string | number | boolean | (string | number | boolean)[]>
+      return withTimeout(result, SEND_COMMAND_TIMEOUT_MS)
     },
   })
 }
