@@ -38,6 +38,7 @@ describe("wallet.service requestWithdrawal", () => {
 
   afterEach(async () => {
     await prisma.withdrawalRequest.deleteMany({ where: { playerId } })
+    await prisma.ledgerEntry.deleteMany({ where: { playerId } })
     await prisma.bankAccount.deleteMany({ where: { playerId } })
     await prisma.wallet.deleteMany({ where: { playerId } })
     await prisma.player.delete({ where: { id: playerId } })
@@ -71,6 +72,43 @@ describe("wallet.service requestWithdrawal", () => {
 
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
     expect(wallet.balance.toNumber()).toBe(1000)
+  })
+
+  it("only allows withdrawing net winnings above deposited principal, even after the deposit itself was wagered and won back", async () => {
+    // Reset the fixture wallet to a clean, fully-tracked state — beforeEach
+    // gives it balance 1000 with no ledger trail, which isn't useful for
+    // this test's exact numbers.
+    await prisma.wallet.update({ where: { playerId }, data: { balance: 0 } })
+    await prisma.ledgerEntry.create({
+      data: { playerId, type: "DEPOSIT", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: 10_000, balanceAfter: 10_000 },
+    })
+
+    // Wager the entire deposit, then win it back plus ₹5,200 profit — this
+    // is the exact regression scenario: once wagered money passed through a
+    // WIN and lifetime-wagered caught up to lifetime-deposited (normal,
+    // fast-occurring gameplay), the old formula (which let BET/REFUND move
+    // the "principal" floor) collapsed depositedPrincipal to 0 and made the
+    // ENTIRE balance — deposit included — withdrawable.
+    await prisma.ledgerEntry.create({
+      data: { playerId, type: "BET", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: -10_000, balanceAfter: 0 },
+    })
+    await prisma.ledgerEntry.create({
+      data: { playerId, type: "WIN", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: 15_200, balanceAfter: 15_200 },
+    })
+    await prisma.wallet.update({ where: { playerId }, data: { balance: 15_200 } })
+
+    // Exactly the true profit (₹5,200) is withdrawable...
+    const result = await requestWithdrawal(externalId, bankAccountId, 5_200)
+    expect(result.balance).toBe(10_000)
+    expect(result.lockedBalance).toBe(5_200)
+
+    // ...but the original ₹10,000 deposit underneath it is not, even by ₹1.
+    const error = await requestWithdrawal(externalId, bankAccountId, 1).catch((e) => e)
+    expect(error).toBeInstanceOf(GamingApiError)
+
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
+    expect(wallet.balance.toNumber()).toBe(10_000)
+    expect(wallet.lockedBalance.toNumber()).toBe(5_200)
   })
 
   it("rejects a withdrawal from a player who isn't KYC-approved", async () => {

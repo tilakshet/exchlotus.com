@@ -112,8 +112,10 @@ export async function getWalletDetails(playerExternalId: string): Promise<Wallet
   if (!player || !player.wallet) {
     throw new GamingApiError("INVALID_USER", `No player/wallet found for user_id ${playerExternalId}`)
   }
+  // Same DEPOSIT+ADJUSTMENT-only principal floor as requestWithdrawal above
+  // — keep the two in sync, they must agree on what's withdrawable.
   const principal = await prisma.ledgerEntry.aggregate({
-    where: { playerId: player.id, type: { in: ["DEPOSIT", "BET", "REFUND", "ADJUSTMENT"] } },
+    where: { playerId: player.id, type: { in: ["DEPOSIT", "ADJUSTMENT"] } },
     _sum: { amount: true },
   })
   const depositedPrincipal = Math.max(0, principal._sum.amount?.toNumber() ?? 0)
@@ -229,8 +231,18 @@ export async function requestWithdrawal(
 
     const decimalAmount = new Prisma.Decimal(amount)
     const currentBalance = new Prisma.Decimal(wallet.balance)
+    // Deposited principal must only move on DEPOSIT/ADJUSTMENT — NOT on
+    // BET/WIN/REFUND. `balance` already reflects every bet/win/refund (they
+    // debit/credit it directly), so once wagered money is won back it's
+    // indistinguishable from deposit money in `balance` alone; counting BET
+    // as reducing "principal" let the deposit get reclassified as
+    // withdrawable the moment lifetime wagering caught up to lifetime
+    // deposits (normal, fast-occurring gameplay) — see wallet.service.test.ts
+    // for the exact reproduction. Holding this floor fixed at pure
+    // DEPOSIT+ADJUSTMENT and letting `balance` carry all the gameplay
+    // movement is what keeps it correct regardless of betting pattern.
     const principal = await tx.ledgerEntry.aggregate({
-      where: { playerId: player.id, type: { in: ["DEPOSIT", "BET", "REFUND", "ADJUSTMENT"] } },
+      where: { playerId: player.id, type: { in: ["DEPOSIT", "ADJUSTMENT"] } },
       _sum: { amount: true },
     })
     const depositedPrincipal = Prisma.Decimal.max(new Prisma.Decimal(0), principal._sum.amount ?? 0)
