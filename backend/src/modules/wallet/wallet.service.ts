@@ -112,10 +112,10 @@ export async function getWalletDetails(playerExternalId: string): Promise<Wallet
   if (!player || !player.wallet) {
     throw new GamingApiError("INVALID_USER", `No player/wallet found for user_id ${playerExternalId}`)
   }
-  // Same DEPOSIT+ADJUSTMENT-only principal floor as requestWithdrawal above
-  // — keep the two in sync, they must agree on what's withdrawable.
+  // Same "protected deposit" floor as requestWithdrawal above — keep the
+  // two in sync, they must agree on what's withdrawable.
   const principal = await prisma.ledgerEntry.aggregate({
-    where: { playerId: player.id, type: { in: ["DEPOSIT", "ADJUSTMENT"] } },
+    where: { playerId: player.id, type: { in: ["DEPOSIT", "BET", "REFUND", "ADJUSTMENT"] } },
     _sum: { amount: true },
   })
   const depositedPrincipal = Math.max(0, principal._sum.amount?.toNumber() ?? 0)
@@ -231,18 +231,20 @@ export async function requestWithdrawal(
 
     const decimalAmount = new Prisma.Decimal(amount)
     const currentBalance = new Prisma.Decimal(wallet.balance)
-    // Deposited principal must only move on DEPOSIT/ADJUSTMENT — NOT on
-    // BET/WIN/REFUND. `balance` already reflects every bet/win/refund (they
-    // debit/credit it directly), so once wagered money is won back it's
-    // indistinguishable from deposit money in `balance` alone; counting BET
-    // as reducing "principal" let the deposit get reclassified as
-    // withdrawable the moment lifetime wagering caught up to lifetime
-    // deposits (normal, fast-occurring gameplay) — see wallet.service.test.ts
-    // for the exact reproduction. Holding this floor fixed at pure
-    // DEPOSIT+ADJUSTMENT and letting `balance` carry all the gameplay
-    // movement is what keeps it correct regardless of betting pattern.
+    // "Protected deposit" is deposit money NOT YET wagered — the moment
+    // part of it is bet (win or lose), that portion stops being protected:
+    // a loss spends it, a win returns it as free/withdrawable cash alongside
+    // the profit. So BET reduces this floor (permanently — it doesn't come
+    // back even if that same bet wins), REFUND reverses a voided bet the
+    // same way BET would have, and ADJUSTMENT is an admin-added credit
+    // treated the same as a deposit. WIN is deliberately excluded — it only
+    // ever adds to `balance`, never back to this floor, which is what makes
+    // a winning bet's payout land in withdrawable cash. Example: deposit
+    // 500, bet 200 and win a 600 payout -> balance 900, principal
+    // 500-200=300, withdrawable 900-300=600 (the 400 profit + the 200 of
+    // deposit that was put at risk and came back — NOT the untouched 300).
     const principal = await tx.ledgerEntry.aggregate({
-      where: { playerId: player.id, type: { in: ["DEPOSIT", "ADJUSTMENT"] } },
+      where: { playerId: player.id, type: { in: ["DEPOSIT", "BET", "REFUND", "ADJUSTMENT"] } },
       _sum: { amount: true },
     })
     const depositedPrincipal = Prisma.Decimal.max(new Prisma.Decimal(0), principal._sum.amount ?? 0)
