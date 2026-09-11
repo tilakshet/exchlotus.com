@@ -74,41 +74,67 @@ describe("wallet.service requestWithdrawal", () => {
     expect(wallet.balance.toNumber()).toBe(1000)
   })
 
-  it("only allows withdrawing net winnings above deposited principal, even after the deposit itself was wagered and won back", async () => {
-    // Reset the fixture wallet to a clean, fully-tracked state — beforeEach
-    // gives it balance 1000 with no ledger trail, which isn't useful for
-    // this test's exact numbers.
+  /**
+   * Withdrawable = balance minus whatever deposit is still UNTOUCHED (never
+   * wagered). Once part of the deposit is bet — win or lose — that portion
+   * stops being "protected": a loss spends it, a win returns it as free
+   * cash alongside the profit. Deposit 500, bet 200, win a 600 payout ->
+   * balance 900. Untouched deposit = 500-200 = 300, so withdrawable =
+   * 900-300 = 600 (the ₹400 profit + the ₹200 of deposit that was put at
+   * risk and came back) — not just the ₹400 profit, and not the full ₹900.
+   */
+  it("frees a wagered portion of the deposit once it's won back, but keeps the untouched remainder locked", async () => {
     await prisma.wallet.update({ where: { playerId }, data: { balance: 0 } })
     await prisma.ledgerEntry.create({
-      data: { playerId, type: "DEPOSIT", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: 10_000, balanceAfter: 10_000 },
-    })
-
-    // Wager the entire deposit, then win it back plus ₹5,200 profit — this
-    // is the exact regression scenario: once wagered money passed through a
-    // WIN and lifetime-wagered caught up to lifetime-deposited (normal,
-    // fast-occurring gameplay), the old formula (which let BET/REFUND move
-    // the "principal" floor) collapsed depositedPrincipal to 0 and made the
-    // ENTIRE balance — deposit included — withdrawable.
-    await prisma.ledgerEntry.create({
-      data: { playerId, type: "BET", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: -10_000, balanceAfter: 0 },
+      data: { playerId, type: "DEPOSIT", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: 500, balanceAfter: 500 },
     })
     await prisma.ledgerEntry.create({
-      data: { playerId, type: "WIN", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: 15_200, balanceAfter: 15_200 },
+      data: { playerId, type: "BET", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: -200, balanceAfter: 300 },
     })
-    await prisma.wallet.update({ where: { playerId }, data: { balance: 15_200 } })
+    await prisma.ledgerEntry.create({
+      data: { playerId, type: "WIN", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: 600, balanceAfter: 900 },
+    })
+    await prisma.wallet.update({ where: { playerId }, data: { balance: 900 } })
 
-    // Exactly the true profit (₹5,200) is withdrawable...
-    const result = await requestWithdrawal(externalId, bankAccountId, 5_200)
-    expect(result.balance).toBe(10_000)
-    expect(result.lockedBalance).toBe(5_200)
+    // The 400 profit + the 200 of deposit that was wagered and returned...
+    const result = await requestWithdrawal(externalId, bankAccountId, 600)
+    expect(result.balance).toBe(300)
+    expect(result.lockedBalance).toBe(600)
 
-    // ...but the original ₹10,000 deposit underneath it is not, even by ₹1.
+    // ...but the untouched 300 of deposit is not reachable, even by ₹1.
     const error = await requestWithdrawal(externalId, bankAccountId, 1).catch((e) => e)
     expect(error).toBeInstanceOf(GamingApiError)
+  })
 
-    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
-    expect(wallet.balance.toNumber()).toBe(10_000)
-    expect(wallet.lockedBalance.toNumber()).toBe(5_200)
+  /**
+   * Once cumulative lifetime wagering reaches the full deposit — even
+   * spread across several losing bets before a win — none of the deposit
+   * is "untouched" anymore, so the entire balance becomes withdrawable.
+   * Deposit 500 -> lose 100, 100, 200 (balance 100) -> bet 100, win a 700
+   * payout (balance 700). Total ever wagered = 500 = the whole deposit, so
+   * withdrawable = the full 700, not just the 200 net profit.
+   */
+  it("frees the entire balance once lifetime wagering has used up the whole deposit", async () => {
+    await prisma.wallet.update({ where: { playerId }, data: { balance: 0 } })
+    await prisma.ledgerEntry.create({
+      data: { playerId, type: "DEPOSIT", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: 500, balanceAfter: 500 },
+    })
+    let running = 500
+    for (const stake of [100, 100, 200, 100]) {
+      running -= stake
+      await prisma.ledgerEntry.create({
+        data: { playerId, type: "BET", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: -stake, balanceAfter: running },
+      })
+    }
+    running += 700
+    await prisma.ledgerEntry.create({
+      data: { playerId, type: "WIN", transactionId: randomUUID(), roundId: "test", gameId: "wallet", amount: 700, balanceAfter: running },
+    })
+    await prisma.wallet.update({ where: { playerId }, data: { balance: running } })
+
+    const result = await requestWithdrawal(externalId, bankAccountId, 700)
+    expect(result.balance).toBe(0)
+    expect(result.lockedBalance).toBe(700)
   })
 
   it("rejects a withdrawal from a player who isn't KYC-approved", async () => {
