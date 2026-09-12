@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useMatchRoute, useNavigate, useRouterState } from "@tanstack/react-router"
-import { ArrowDownLeft, ArrowUpRight, Briefcase, Gift, History as HistoryIcon, LifeBuoy, LogOut, ShieldCheck, Star, User } from "lucide-react"
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Briefcase, Gift, History as HistoryIcon, LifeBuoy, LogOut, ShieldCheck, Star, User } from "lucide-react"
 import { store } from "@/store"
 import { useAuth } from "@/hooks/useAuth"
 import { useProfile } from "@/hooks/useProfile"
@@ -181,9 +181,23 @@ function AccountLayout() {
 
       <div className="min-w-0 flex-1 lg:h-full lg:overflow-y-auto lg:pr-2 lg:pl-6">
         <div className="mb-5 flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold leading-tight text-[color:var(--acc-text-primary)] sm:text-2xl">{heading.title}</h1>
-            <p className="mt-1 text-sm text-[color:var(--acc-text-secondary)]">{heading.subtitle}</p>
+          <div className="flex flex-col items-start gap-2">
+            {/* Mobile-only — desktop reaches /dashboard via the logo in
+                TopNavbar; below lg: that logo tap isn't an obvious "go back"
+                affordance from deep inside this section, so this gives
+                mobile an explicit one back to the main dashboard/home. */}
+            <Link
+              to="/dashboard"
+              className="flex shrink-0 items-center gap-1.5 rounded-[var(--acc-radius-md)] border px-3 py-2 text-sm font-medium outline-none transition-colors hover:bg-[color:var(--acc-bg)] focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)] lg:hidden"
+              style={{ borderColor: "var(--acc-border)", color: "var(--acc-text-secondary)" }}
+            >
+              <ArrowLeft className="size-4.5" aria-hidden="true" strokeWidth={2.1} />
+              Home
+            </Link>
+            <div>
+              <h1 className="text-xl font-semibold leading-tight text-[color:var(--acc-text-primary)] sm:text-2xl">{heading.title}</h1>
+              <p className="mt-1 text-sm text-[color:var(--acc-text-secondary)]">{heading.subtitle}</p>
+            </div>
           </div>
           {/* Mobile-only — desktop's Log Out lives in the sidebar above.
               BottomNavBar can't carry this (Link-only items), so it needs
