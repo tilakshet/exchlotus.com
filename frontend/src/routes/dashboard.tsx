@@ -1,9 +1,16 @@
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router"
+import { User } from "lucide-react"
 import { TopNavbar } from "@/components/dashboard-shell/TopNavbar"
 import { Sidebar } from "@/components/dashboard-shell/Sidebar"
 import { BottomNavBar } from "@/components/dashboard-shell/BottomNavBar"
 import { DashboardFooter } from "@/components/dashboard-shell/DashboardFooter"
 import { DASHBOARD_NAV_ITEMS } from "@/data/dashboardShell"
+
+// DASHBOARD_NAV_ITEMS is shared with the desktop Sidebar and the landing
+// page's own sidebar (see dashboardShell.ts) — Profile is added only here,
+// for this section's mobile BottomNavBar, rather than into that shared
+// constant, so desktop nav and the landing page are unaffected.
+const mainBottomNavItems = [...DASHBOARD_NAV_ITEMS, { to: "/dashboard/account/profile", label: "Profile", icon: User, exact: false }]
 
 /**
  * Layout route for the whole /dashboard/* tree: sticky navbar, a fixed
@@ -46,7 +53,7 @@ function DashboardLayout() {
                 <DashboardFooter />
             </div>
 
-            {!inAccountSection && <BottomNavBar items={DASHBOARD_NAV_ITEMS} />}
+            {!inAccountSection && <BottomNavBar items={mainBottomNavItems} />}
         </div>
     )
 }
