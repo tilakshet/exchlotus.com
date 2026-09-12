@@ -1,5 +1,10 @@
 import { Prisma } from "@prisma/client"
-import { prisma } from "../src/lib/prisma"
+// Compiled path, not "../src/lib/prisma" — the production image only ships
+// dist/ + prisma/, not src/ (see Dockerfile), so this must resolve at
+// runtime against the same build everything else in the container runs.
+// Run `npm run build` first if dist/ is stale (e.g. testing this locally
+// straight from source).
+import { prisma } from "../dist/lib/prisma.js"
 
 /**
  * One-time backfill for Wallet.protectedPrincipal (see its doc comment in
