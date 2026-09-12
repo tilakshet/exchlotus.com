@@ -230,6 +230,17 @@ model Wallet {
   /// scope until a real wagering engine exists).
   bonusCoinBalance Int      @default(0)
   lockedBalance    Decimal  @default(0) @db.Decimal(18, 2)
+  /// Deposit money not yet wagered — the withdrawal-eligibility floor
+  /// (withdrawableCash = balance - protectedPrincipal, see wallet.service.ts
+  /// requestWithdrawal/getWalletDetails). Maintained incrementally by
+  /// applyLedgerEntry, clamped at 0 on every single DEPOSIT/BET/REFUND/
+  /// ADJUSTMENT write — NOT recomputed from ledger history. A player's
+  /// lifetime wagering routinely exceeds lifetime deposits within days of
+  /// normal play (money gets rewagered), so a plain SUM-then-floor-once over
+  /// full history collapses to 0 permanently and never re-protects a later
+  /// deposit; flooring after every step is what keeps a fresh deposit
+  /// protected regardless of how deep the player's past wagering went.
+  protectedPrincipal Decimal @default(0) @db.Decimal(18, 2)
   currency         String
   updatedAt        DateTime @updatedAt
 
