@@ -77,6 +77,19 @@ class HousholdbajarCashfreeClient implements PaymentGateway {
           // named `mobile` as required. Not `contact`, despite that being
           // the field name in the originally-given request-body example.
           mobile: input.mobileNumber,
+          // NOT in the originally-given request-body example, and unconfirmed
+          // against HousholdBajar's actual controller (unlike `mobile` above,
+          // there's no validation-error evidence for this one — a live test
+          // after a change here is what actually confirms it). Added because
+          // without something telling HousholdBajar where to send the
+          // browser after payment, Cashfree's own order_meta.return_url has
+          // nothing to point at — which matches the observed symptom (the
+          // browser landing on a raw JSON dump instead of being redirected
+          // back to Exchlotus). `return_url` is Cashfree's own field name for
+          // this (see cashfree-gateway.client.ts's order_meta.return_url) —
+          // the best inference available for what HousholdBajar's relay
+          // forwards it as, absent a confirmed field name from their side.
+          return_url: input.redirectUrl,
         }),
         signal: controller.signal,
       })
