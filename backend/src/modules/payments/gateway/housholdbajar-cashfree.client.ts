@@ -72,7 +72,11 @@ class HousholdbajarCashfreeClient implements PaymentGateway {
           amount: input.amount,
           name: input.name,
           email: input.email,
-          contact: input.mobileNumber,
+          // HousholdBajar's live controller validates this field as `mobile`
+          // — confirmed against its actual 422 response (2026-09-15), which
+          // named `mobile` as required. Not `contact`, despite that being
+          // the field name in the originally-given request-body example.
+          mobile: input.mobileNumber,
         }),
         signal: controller.signal,
       })

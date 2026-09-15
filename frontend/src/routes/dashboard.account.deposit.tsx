@@ -34,11 +34,11 @@ export const Route = createFileRoute("/dashboard/account/deposit")({
   component: DepositPage,
 })
 
-// Oro/housholdbajar (the active PayIn gateway) rejects any amount under
-// ₹300 — confirmed against their live API, which returns a real 422 for
-// less and only succeeds at 300+. Must stay in sync with whatever the
-// gateway enforces, not an arbitrary UX choice.
-const MIN_DEPOSIT = 300
+// The ₹300 floor (Oro's own minimum) is temporarily removed (2026-09-15)
+// while testing deposits against the new HousholdBajar Cashfree-relay
+// endpoint — its own minimum, if any, isn't confirmed yet. Restore this once
+// it is, kept in sync with the backend's createDepositOrderSchema.
+const MIN_DEPOSIT = 1
 const MAX_DEPOSIT = 100_000
 const quickAmounts = [300, 500, 1000, 2000, 5000]
 const PROCESSING_FEE = 0

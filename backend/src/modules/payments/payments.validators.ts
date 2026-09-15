@@ -1,10 +1,11 @@
 import { z } from "zod"
 
-// Must match the active PayIn gateway's own floor (Oro/housholdbajar
-// rejects anything under ₹300 — confirmed against their live API), not an
-// arbitrary UX choice — see the frontend's matching MIN_DEPOSIT.
+// The ₹300 floor (Oro's own minimum) is temporarily removed (2026-09-15)
+// while testing deposits against the new HousholdBajar Cashfree-relay
+// endpoint — its own minimum, if any, isn't confirmed yet. Restore a floor
+// here once it is, kept in sync with the frontend's MIN_DEPOSIT.
 export const createDepositOrderSchema = z.object({
-  amount: z.number().min(300, "Minimum deposit amount is ₹300"),
+  amount: z.number().positive("Amount must be greater than 0"),
 })
 
 /** No signature field — see payments.service.ts for how that's mitigated. */
