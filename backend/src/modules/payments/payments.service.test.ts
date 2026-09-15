@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/prisma"
-import { generateGatewayOrderId, handlePayinCallback } from "./payments.service"
+import { generateGatewayOrderId, handleHousholdbajarCallback, handlePayinCallback } from "./payments.service"
 
 /**
  * Integration tests against the real local dev database — payments.service
@@ -97,5 +97,91 @@ describe("payments.service handlePayinCallback", () => {
 
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
     expect(wallet.balance.toNumber()).toBe(amount)
+  })
+})
+
+describe("payments.service handleHousholdbajarCallback", () => {
+  let playerId: string
+
+  function randomDepositAmount(): number {
+    return 300 + Math.floor(Math.random() * 9701)
+  }
+
+  beforeEach(async () => {
+    const player = await prisma.player.create({
+      data: {
+        externalId: randomUUID(),
+        username: "housholdbajar-payin-test",
+        wallet: { create: { balance: 0, currency: "INR" } },
+      },
+    })
+    playerId = player.id
+  })
+
+  afterEach(async () => {
+    await prisma.ledgerEntry.deleteMany({ where: { playerId } })
+    await prisma.paymentOrder.deleteMany({ where: { playerId } })
+    await prisma.wallet.deleteMany({ where: { playerId } })
+    await prisma.player.delete({ where: { id: playerId } })
+  })
+
+  it("credits the wallet exactly once on a SUCCESS callback, even delivered twice", async () => {
+    const amount = randomDepositAmount()
+    const order = await prisma.paymentOrder.create({ data: { playerId, amount, gatewayOrderId: generateGatewayOrderId() } })
+
+    await handleHousholdbajarCallback({ order_id: order.gatewayOrderId!, amount, payment_status: "SUCCESS" })
+    await handleHousholdbajarCallback({ order_id: order.gatewayOrderId!, amount, payment_status: "SUCCESS" })
+
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
+    expect(wallet.balance.toNumber()).toBe(amount)
+
+    const entries = await prisma.ledgerEntry.findMany({ where: { playerId, type: "DEPOSIT" } })
+    expect(entries).toHaveLength(1)
+  })
+
+  it("marks the order FAILED on a USER_DROPPED callback, without crediting", async () => {
+    const amount = randomDepositAmount()
+    const order = await prisma.paymentOrder.create({ data: { playerId, amount, gatewayOrderId: generateGatewayOrderId() } })
+
+    await handleHousholdbajarCallback({ order_id: order.gatewayOrderId!, amount, payment_status: "USER_DROPPED" })
+
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
+    expect(wallet.balance.toNumber()).toBe(0)
+
+    const updatedOrder = await prisma.paymentOrder.findUniqueOrThrow({ where: { id: order.id } })
+    expect(updatedOrder.status).toBe("FAILED")
+  })
+
+  it("never downgrades an already-SUCCESS order on a later FAILED callback", async () => {
+    const amount = randomDepositAmount()
+    const order = await prisma.paymentOrder.create({ data: { playerId, amount, gatewayOrderId: generateGatewayOrderId() } })
+
+    await handleHousholdbajarCallback({ order_id: order.gatewayOrderId!, amount, payment_status: "SUCCESS" })
+    await handleHousholdbajarCallback({ order_id: order.gatewayOrderId!, amount, payment_status: "FAILED" })
+
+    const updatedOrder = await prisma.paymentOrder.findUniqueOrThrow({ where: { id: order.id } })
+    expect(updatedOrder.status).toBe("SUCCESS")
+
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
+    expect(wallet.balance.toNumber()).toBe(amount)
+  })
+
+  it("refuses to credit when the callback amount doesn't match the order", async () => {
+    const orderAmount = randomDepositAmount()
+    const order = await prisma.paymentOrder.create({ data: { playerId, amount: orderAmount, gatewayOrderId: generateGatewayOrderId() } })
+
+    await handleHousholdbajarCallback({ order_id: order.gatewayOrderId!, amount: orderAmount + 100, payment_status: "SUCCESS" })
+
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { playerId } })
+    expect(wallet.balance.toNumber()).toBe(0)
+
+    const updatedOrder = await prisma.paymentOrder.findUniqueOrThrow({ where: { id: order.id } })
+    expect(updatedOrder.status).toBe("PENDING")
+  })
+
+  it("ignores a callback for an order id it never created, without creating one", async () => {
+    await expect(
+      handleHousholdbajarCallback({ order_id: generateGatewayOrderId(), amount: randomDepositAmount(), payment_status: "SUCCESS" })
+    ).resolves.toBeUndefined()
   })
 })

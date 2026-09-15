@@ -54,6 +54,16 @@ const envSchema = z.object({
   CASHFREE_CLIENT_SECRET: z.string().min(1),
   CASHFREE_API_VERSION: z.string().default("2023-08-01"),
 
+  // HousholdBajar Cashfree-relay (active PayIn gateway — see
+  // gateway/housholdbajar-cashfree.client.ts). HousholdBajar holds the real
+  // Cashfree credentials and talks to Cashfree server-to-server; Exchlotus
+  // never sees a Cashfree secret, only these two of its own.
+  EXCHLOTUS_PAYMENT_API_URL: z.string().url(),
+  /** Sent as X-Exchlotus-Key — authenticates this server to HousholdBajar's create-order endpoint. Must match the value configured on HousholdBajar. */
+  EXCHLOTUS_PAYMENT_API_KEY: z.string().min(1),
+  /** Verifies HousholdBajar's signed callback (X-HousholdBajar-Signature) — a separate secret from the API key above. Must match HousholdBajar's own EXCHLOTUS_CALLBACK_SECRET. */
+  EXCHLOTUS_CALLBACK_SECRET: z.string().min(16),
+
   /** This backend's own public origin — used to build absolute URLs (e.g. support ticket image attachments) that admin/frontend, a different domain, can load directly. Unlike PAYMENT_CALLBACK_BASE_URL (the frontend's origin), this is the API's own. */
   PUBLIC_BASE_URL: z.string().url(),
 
@@ -75,6 +85,9 @@ const envSchema = z.object({
   SMS_API_KEY: z.string().optional(),
   SMS_SENDER_ID: z.string().optional(),
   SMS_TIMEOUT_MS: z.coerce.number().int().positive().max(30_000).default(8_000),
+}).refine((v) => v.EXCHLOTUS_CALLBACK_SECRET !== v.EXCHLOTUS_PAYMENT_API_KEY, {
+  message: "EXCHLOTUS_CALLBACK_SECRET must not equal EXCHLOTUS_PAYMENT_API_KEY — they authenticate opposite directions (outbound request vs inbound callback) and must be independent secrets.",
+  path: ["EXCHLOTUS_CALLBACK_SECRET"],
 })
 
 const parsed = envSchema.safeParse(process.env)
