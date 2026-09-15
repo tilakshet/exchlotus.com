@@ -1,11 +1,8 @@
 import { z } from "zod"
 
-// The ₹300 floor (Oro's own minimum) is temporarily removed (2026-09-15)
-// while testing deposits against the new HousholdBajar Cashfree-relay
-// endpoint — its own minimum, if any, isn't confirmed yet. Restore a floor
-// here once it is, kept in sync with the frontend's MIN_DEPOSIT.
+// Must stay in sync with the frontend's MIN_DEPOSIT.
 export const createDepositOrderSchema = z.object({
-  amount: z.number().positive("Amount must be greater than 0"),
+  amount: z.number().min(100, "Minimum deposit amount is ₹100"),
 })
 
 /** No signature field — see payments.service.ts for how that's mitigated. */
