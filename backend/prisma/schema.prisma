@@ -690,6 +690,12 @@ model PaymentOrder {
   gatewayOrderId String?            @unique
   /// The gateway's own trx_id from its create-order response — for support/reconciliation lookups.
   gatewayTrxId   String?
+  /// Cashfree's own order id, as relayed back by the HousholdBajar PayIn
+  /// gateway (gateway/housholdbajar-cashfree.client.ts) — a third party's
+  /// identifier one hop further than gatewayTrxId (HousholdBajar's own),
+  /// kept distinct for support/reconciliation. Null for orders placed
+  /// through Oro or direct-Cashfree, which have no such intermediary.
+  cashfreeOrderId String?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 

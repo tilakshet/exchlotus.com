@@ -29,3 +29,22 @@ export const cashfreeWebhookSchema = z.object({
     payment: z.object({ payment_amount: z.number() }),
   }),
 })
+
+/**
+ * Shape of HousholdBajar's PayIn callback body — signature is checked
+ * separately (raw body), this only validates structure. `amount` is coerced
+ * (not the string|number union payinCallbackSchema uses above) so a
+ * malformed value like "abc" is rejected here with a clean 400, rather than
+ * passing validation and only failing later as an unhandled Prisma.Decimal
+ * error deep inside handlePayinCallback.
+ */
+export const housholdbajarCallbackSchema = z.object({
+  order_id: z.string().min(1),
+  payment_status: z.string(),
+  amount: z.coerce.number().finite(),
+  trx_id: z.string().optional(),
+  utr: z.string().nullable().optional(),
+  cashfree_order_id: z.string().optional(),
+  cf_payment_id: z.string().optional(),
+  timestamp: z.string().optional(),
+})
