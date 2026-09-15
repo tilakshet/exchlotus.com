@@ -34,11 +34,8 @@ export const Route = createFileRoute("/dashboard/account/deposit")({
   component: DepositPage,
 })
 
-// The ₹300 floor (Oro's own minimum) is temporarily removed (2026-09-15)
-// while testing deposits against the new HousholdBajar Cashfree-relay
-// endpoint — its own minimum, if any, isn't confirmed yet. Restore this once
-// it is, kept in sync with the backend's createDepositOrderSchema.
-const MIN_DEPOSIT = 1
+// Must stay in sync with the backend's createDepositOrderSchema.
+const MIN_DEPOSIT = 100
 const MAX_DEPOSIT = 100_000
 const quickAmounts = [300, 500, 1000, 2000, 5000]
 const PROCESSING_FEE = 0

@@ -7,16 +7,16 @@ import type { SmsProvider } from "./sms.provider"
 const smsProvider: SmsProvider = bulkSmsConnectProvider
 
 /**
- * DLT-approved OTP template (id 1777178858477106346, sender DXPAY, entity
- * DIGIXPRESS), verbatim:
- *   "Dear user, your OTP for mobile verification is {#num#}. Team DIGIXPRESS"
- * Only the {#num#} slot may vary — ANY other change (dropping "Team
- * DIGIXPRESS", punctuation, casing) makes the operator scrub the SMS even
+ * DLT-approved OTP template (template id 1777178945567804655), verbatim:
+ *   "Dear Customer, your OTP for mobile verification is {#num#}. SSPS CLDNEX"
+ * Only the {#num#} slot may vary — ANY other change (wording, casing,
+ * dropping "SSPS CLDNEX", punctuation) makes the operator scrub the SMS even
  * though the gateway returns status:"OK". Covers both Sign Up phone
- * verification and Forgot Password.
+ * verification and Forgot Password. Replaces the earlier template (id
+ * 1777178858477106346, "Dear user, ... Team DIGIXPRESS") — 2026-09-15.
  */
 function otpMessage(code: string): string {
-  return `Dear user, your OTP for mobile verification is ${code}. Team DIGIXPRESS`
+  return `Dear Customer, your OTP for mobile verification is ${code}. SSPS CLDNEX`
 }
 
 /**
