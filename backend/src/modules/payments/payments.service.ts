@@ -7,7 +7,7 @@ import { evaluateQualificationForPlayer } from "../referral/referral.service"
 // Active PayIn gateway. Switched to Cashfree (2026-09-15) — Oro is down.
 // Oro's client (./gateway/oro-gateway.client) is left fully intact — swap
 // this import back if Oro comes back up before Cashfree is fully verified.
-import { paymentGateway } from "./gateway/cashfree-gateway.client"
+import { cashfreeGateway as paymentGateway } from "./gateway/cashfree-gateway.client"
 
 class PaymentError extends Error {}
 
