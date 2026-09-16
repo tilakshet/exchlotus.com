@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { prisma } from "../../lib/prisma"
 import { WELCOME_BONUS_COINS, REFERRAL_JOIN_BONUS_COINS } from "../../lib/bonusConfig"
 import { hashPassword } from "./password.util"
-import { register, verifyOtp } from "./auth.service"
+import { register, sendPasswordResetOtp, verifyOtp } from "./auth.service"
+import { AuthError } from "./auth.errors"
 import { ensureReferralCode } from "../referral/referral.service"
 
 const TEST_OTP_CODE = "424242"
@@ -142,5 +143,78 @@ describe("auth.service — welcome bonus + referral attribution on signup", () =
 
     const rows = await prisma.bonusTransaction.findMany({ where: { playerId: player.id, type: "WELCOME_BONUS" } })
     expect(rows).toHaveLength(1)
+  })
+})
+
+describe("auth.service — sendPasswordResetOtp (Forgot Password Send OTP)", () => {
+  const createdPlayerIds: string[] = []
+  const createdPhones: string[] = []
+
+  afterEach(async () => {
+    const ids = createdPlayerIds.splice(0)
+    const phones = createdPhones.splice(0)
+    await prisma.otpCode.deleteMany({ where: { phone: { in: phones } } })
+    await prisma.wallet.deleteMany({ where: { playerId: { in: ids } } })
+    await prisma.player.deleteMany({ where: { id: { in: ids } } })
+  })
+
+  async function makeActivePlayer() {
+    const phone = randomPhone()
+    createdPhones.push(phone)
+    const player = await prisma.player.create({
+      data: { externalId: randomUUID(), username: `fp-${phone.slice(-4)}`, phone, status: "ACTIVE", wallet: { create: { balance: 0, currency: "INR" } } },
+    })
+    createdPlayerIds.push(player.id)
+    return { player, phone }
+  }
+
+  it("an existing active user's Send OTP succeeds and creates exactly one OTP record", async () => {
+    const { phone } = await makeActivePlayer()
+
+    await expect(sendPasswordResetOtp(phone)).resolves.toBeDefined()
+
+    const rows = await prisma.otpCode.findMany({ where: { phone } })
+    expect(rows).toHaveLength(1)
+  })
+
+  it("a phone number with no account (e.g. a deleted user) is rejected with ACCOUNT_NOT_FOUND, and no OTP record is created", async () => {
+    const phone = randomPhone()
+    createdPhones.push(phone)
+    // Deliberately no player created for this phone — simulates a deleted account.
+
+    const error = await sendPasswordResetOtp(phone).catch((e) => e)
+    expect(error).toBeInstanceOf(AuthError)
+    expect(error.code).toBe("ACCOUNT_NOT_FOUND")
+
+    const rows = await prisma.otpCode.findMany({ where: { phone } })
+    expect(rows).toHaveLength(0)
+  })
+
+  it("repeated Send OTP calls for a non-existent number never create an OTP record", async () => {
+    const phone = randomPhone()
+    createdPhones.push(phone)
+
+    await sendPasswordResetOtp(phone).catch(() => {})
+    await sendPasswordResetOtp(phone).catch(() => {})
+    await sendPasswordResetOtp(phone).catch(() => {})
+
+    const rows = await prisma.otpCode.findMany({ where: { phone } })
+    expect(rows).toHaveLength(0)
+  })
+
+  it("a suspended account is rejected with ACCOUNT_SUSPENDED, and no OTP record is created", async () => {
+    const phone = randomPhone()
+    createdPhones.push(phone)
+    const player = await prisma.player.create({
+      data: { externalId: randomUUID(), username: `fp-susp-${phone.slice(-4)}`, phone, status: "SUSPENDED", wallet: { create: { balance: 0, currency: "INR" } } },
+    })
+    createdPlayerIds.push(player.id)
+
+    const error = await sendPasswordResetOtp(phone).catch((e) => e)
+    expect(error).toBeInstanceOf(AuthError)
+    expect(error.code).toBe("ACCOUNT_SUSPENDED")
+
+    const rows = await prisma.otpCode.findMany({ where: { phone } })
+    expect(rows).toHaveLength(0)
   })
 })

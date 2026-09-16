@@ -1007,7 +1007,11 @@ function ForgotPasswordForm({ onIdentified }: { onIdentified: (resetToken: strin
       const { devCode } = await authApi.sendPasswordResetOtp(`+91${phoneDigits}`);
       setOtpOpen(true);
       setResendIn(60);
-      setOtpInfo(devCode ? `Dev mode — your code is ${devCode}` : "If that number has an account, a code is on its way.");
+      // The account's existence is confirmed before this point is ever
+      // reached (sendPasswordResetOtp now throws ACCOUNT_NOT_FOUND for an
+      // unknown number, caught below) — so this can say so directly instead
+      // of the old enumeration-safe "if that number has an account" hedge.
+      setOtpInfo(devCode ? `Dev mode — your code is ${devCode}` : "OTP sent successfully.");
     } catch (err) {
       setOtpError(friendlyErrorMessage(err instanceof ApiError ? err : err));
     } finally {

@@ -15,7 +15,7 @@ export function verifySignupOtp(input: { phone: string; code: string }): Promise
   return apiRequest<{ verified: true }>("/api/auth/register/verify-otp", { method: "POST", body: input, anonymous: true })
 }
 
-/** Forgot Password step 1: send an OTP to the account's phone. Enumeration-safe — same response for an unknown number. */
+/** Forgot Password step 1: send an OTP to the account's phone. Throws ACCOUNT_NOT_FOUND (404) for a number with no account, or ACCOUNT_SUSPENDED (403) — see auth.service.ts sendPasswordResetOtp. */
 export function sendPasswordResetOtp(phone: string): Promise<OtpRequestResult> {
   return apiRequest<OtpRequestResult>("/api/auth/forgot-password/send-otp", { method: "POST", body: { phone }, anonymous: true })
 }

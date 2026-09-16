@@ -329,14 +329,25 @@ export async function verifySignupOtp(phone: string, code: string): Promise<void
 }
 
 /**
- * Forgot Password step 1: send an OTP to the account's phone. Enumeration-
- * safe — for a number with no account it returns the same shape and simply
- * sends nothing, so verifyPasswordResetOtp below will just report an
- * invalid code (there is none to match).
+ * Forgot Password step 1: send an OTP to the account's phone. Previously
+ * enumeration-safe (returned the same 200 shape whether or not the number
+ * had an account, sending nothing for an unknown number) — deliberately
+ * changed: the product requirement is for the frontend to tell the user
+ * outright that no account exists and keep them on the phone-number step,
+ * which needs a real error response to key off, not a silently-empty
+ * success. Same enumeration tradeoff this file already makes for
+ * sendSignupOtp's PHONE_TAKEN above. Suspended accounts are rejected the
+ * same way login() rejects them — a suspended player can't log in with a
+ * new password anyway, so there's nothing legitimate a reset would unlock.
  */
 export async function sendPasswordResetOtp(phone: string): Promise<{ devCode?: string }> {
   const player = await prisma.player.findUnique({ where: { phone } })
-  if (!player) return {}
+  if (!player) {
+    throw new AuthError("ACCOUNT_NOT_FOUND", "No account found with this mobile number.")
+  }
+  if (player.status === "SUSPENDED") {
+    throw new AuthError("ACCOUNT_SUSPENDED", "This account has been suspended")
+  }
   return requestOtp(phone)
 }
 
