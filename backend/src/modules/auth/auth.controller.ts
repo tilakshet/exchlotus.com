@@ -81,7 +81,9 @@ function sendAuthError(res: import("express").Response, err: unknown) {
               ? 403
               : err.code === "OTP_SEND_FAILED"
                 ? 503
-                : 401
+                : err.code === "ACCOUNT_NOT_FOUND"
+                  ? 404
+                  : 401
     return res.status(status).json({ error: err.code, message: err.message })
   }
   throw err
@@ -177,7 +179,6 @@ authRouter.post("/forgot-password/send-otp", authLimiter, otpRequestLimiter, asy
     return res.status(422).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues })
   }
   try {
-    // Enumeration-safe: same shape whether or not the number has an account.
     res.json(await sendPasswordResetOtp(parsed.data.phone))
   } catch (err) {
     sendAuthError(res, err)

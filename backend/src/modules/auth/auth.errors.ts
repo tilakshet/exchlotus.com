@@ -10,6 +10,7 @@ export type AuthErrorCode =
   | "NO_PASSWORD_SET"
   | "ACCOUNT_SUSPENDED"
   | "RESET_TOKEN_INVALID"
+  | "ACCOUNT_NOT_FOUND"
 
 export class AuthError extends Error {
   constructor(

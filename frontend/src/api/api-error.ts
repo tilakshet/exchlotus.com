@@ -26,6 +26,7 @@ export function friendlyErrorMessage(err: unknown): string {
         if (err.code === "ACCOUNT_SUSPENDED") return "Your account has been suspended. Please contact support."
         return "You don't have permission to do that."
       case 404:
+        if (err.code === "ACCOUNT_NOT_FOUND") return err.message
         return "That couldn't be found."
       case 409:
         if (err.code === "EMAIL_TAKEN") return "That email is already registered."
