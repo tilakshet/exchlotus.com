@@ -5,6 +5,9 @@ import { Sidebar } from "@/components/dashboard-shell/Sidebar"
 import { BottomNavBar } from "@/components/dashboard-shell/BottomNavBar"
 import { DashboardFooter } from "@/components/dashboard-shell/DashboardFooter"
 import { DASHBOARD_NAV_ITEMS } from "@/data/dashboardShell"
+import { WelcomeBonusModal } from "@/features/bonus/WelcomeBonusModal"
+import { signupCelebrationShown } from "@/store/authSlice"
+import { useAppDispatch, useAppSelector } from "@/store"
 
 // DASHBOARD_NAV_ITEMS is shared with the desktop Sidebar and the landing
 // page's own sidebar (see dashboardShell.ts) — Profile is added only here,
@@ -33,6 +36,12 @@ function DashboardLayout() {
     // is ever mounted at a time, never both.
     const inAccountSection = useRouterState({ select: (s) => s.location.pathname.startsWith("/dashboard/account") })
 
+    // One-shot welcome-bonus celebration, set only by a fresh register()
+    // (see authSlice.ts/useAuth.ts) — this layout wraps every /dashboard/*
+    // route, so it shows up wherever signup happens to land, exactly once.
+    const showSignupCelebration = useAppSelector((s) => s.auth.signupCelebrationPending)
+    const dispatch = useAppDispatch()
+
     return (
         <div className="dashboard-shell flex min-h-screen flex-col">
             <a href="#main-content" className="skip-link">
@@ -40,6 +49,8 @@ function DashboardLayout() {
             </a>
             <TopNavbar />
             <Sidebar />
+
+            {showSignupCelebration && <WelcomeBonusModal onClose={() => dispatch(signupCelebrationShown())} />}
 
             {/* pb-24 reserves clearance for the fixed mobile BottomNavBar — belongs
                 here (after the footer, the last thing in flow) rather than on

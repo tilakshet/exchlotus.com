@@ -273,11 +273,20 @@ export async function attributeReferral(
 async function awardReferralJoinBonus(referralId: string, referrerId: string): Promise<void> {
   const referral = await prisma.referral.findUnique({ where: { id: referralId }, select: { riskStatus: true } })
   if (!referral || referral.riskStatus === "BLOCKED") return
-  await creditBonusCoins(referrerId, REFERRAL_JOIN_BONUS_COINS, `bonus:referral:${referralId}:join`, {
+  const credited = await creditBonusCoins(referrerId, REFERRAL_JOIN_BONUS_COINS, `bonus:referral:${referralId}:join`, {
     referralId,
     type: "REFERRAL_JOIN_BONUS",
     description: "Referral join bonus",
   })
+  if (!credited) return // replay/no-op — don't re-notify for a movement that already happened
+
+  const referrer = await prisma.player.findUnique({ where: { id: referrerId }, select: { externalId: true } })
+  if (referrer) {
+    await publishPlayerNotification(referrer.externalId, {
+      message: `A friend joined using your referral link — you earned ${REFERRAL_JOIN_BONUS_COINS.toLocaleString()} bonus coins!`,
+      link: "/dashboard/bonus",
+    })
+  }
 }
 
 /**
@@ -300,12 +309,21 @@ export async function checkFirstDepositReferralBonus(playerId: string): Promise<
 
   const deposit = await prisma.ledgerEntry.findFirst({ where: { playerId, type: "DEPOSIT" }, orderBy: { createdAt: "asc" } })
 
-  await creditBonusCoins(referral.referrerId, REFERRAL_FIRST_DEPOSIT_BONUS_COINS, `bonus:referral:${referral.id}:first_deposit`, {
+  const credited = await creditBonusCoins(referral.referrerId, REFERRAL_FIRST_DEPOSIT_BONUS_COINS, `bonus:referral:${referral.id}:first_deposit`, {
     referralId: referral.id,
     relatedDepositId: deposit?.transactionId,
     type: "REFERRAL_FIRST_DEPOSIT_BONUS",
     description: "Referral first-deposit bonus",
   })
+  if (!credited) return
+
+  const referrer = await prisma.player.findUnique({ where: { id: referral.referrerId }, select: { externalId: true } })
+  if (referrer) {
+    await publishPlayerNotification(referrer.externalId, {
+      message: `Your friend made their first deposit — you earned another ${REFERRAL_FIRST_DEPOSIT_BONUS_COINS.toLocaleString()} bonus coins!`,
+      link: "/dashboard/bonus",
+    })
+  }
 }
 
 /**

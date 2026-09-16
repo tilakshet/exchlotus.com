@@ -39,7 +39,7 @@ export function useAuth() {
       email?: string
     ) => {
       const tokens = await authApi.registerAccount({ username, phone, email, password, gender, referralCode })
-      dispatch(credentialsReceived({ user: { username, phone, email, currency: "INR" }, tokens }))
+      dispatch(credentialsReceived({ user: { username, phone, email, currency: "INR" }, tokens, isNewAccount: true }))
     },
     [dispatch]
   )
