@@ -21,6 +21,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResponsibleGamingRouteImport } from './routes/responsible-gaming'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardAccountRouteImport } from './routes/dashboard.account'
+import { Route as DashboardBonusRouteImport } from './routes/dashboard.bonus'
 import { Route as DashboardCasinoRouteImport } from './routes/dashboard.casino'
 import { Route as DashboardExchangeRouteImport } from './routes/dashboard.exchange'
 import { Route as DashboardLiveCasinoRouteImport } from './routes/dashboard.live-casino'
@@ -102,6 +103,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
 const DashboardAccountRoute = DashboardAccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardBonusRoute = DashboardBonusRouteImport.update({
+  id: '/bonus',
+  path: '/bonus',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardCasinoRoute = DashboardCasinoRouteImport.update({
@@ -231,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/responsible-gaming': typeof ResponsibleGamingRoute
   '/dashboard/account': typeof DashboardAccountRouteWithChildren
+  '/dashboard/bonus': typeof DashboardBonusRoute
   '/dashboard/casino': typeof DashboardCasinoRoute
   '/dashboard/exchange': typeof DashboardExchangeRoute
   '/dashboard/live-casino': typeof DashboardLiveCasinoRoute
@@ -265,6 +272,7 @@ export interface FileRoutesByTo {
   '/help-center': typeof HelpCenterRoute
   '/login': typeof LoginRoute
   '/responsible-gaming': typeof ResponsibleGamingRoute
+  '/dashboard/bonus': typeof DashboardBonusRoute
   '/dashboard/casino': typeof DashboardCasinoRoute
   '/dashboard/exchange': typeof DashboardExchangeRoute
   '/dashboard/live-casino': typeof DashboardLiveCasinoRoute
@@ -301,6 +309,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/responsible-gaming': typeof ResponsibleGamingRoute
   '/dashboard/account': typeof DashboardAccountRouteWithChildren
+  '/dashboard/bonus': typeof DashboardBonusRoute
   '/dashboard/casino': typeof DashboardCasinoRoute
   '/dashboard/exchange': typeof DashboardExchangeRoute
   '/dashboard/live-casino': typeof DashboardLiveCasinoRoute
@@ -339,6 +348,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/responsible-gaming'
     | '/dashboard/account'
+    | '/dashboard/bonus'
     | '/dashboard/casino'
     | '/dashboard/exchange'
     | '/dashboard/live-casino'
@@ -373,6 +383,7 @@ export interface FileRouteTypes {
     | '/help-center'
     | '/login'
     | '/responsible-gaming'
+    | '/dashboard/bonus'
     | '/dashboard/casino'
     | '/dashboard/exchange'
     | '/dashboard/live-casino'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/responsible-gaming'
     | '/dashboard/account'
+    | '/dashboard/bonus'
     | '/dashboard/casino'
     | '/dashboard/exchange'
     | '/dashboard/live-casino'
@@ -531,6 +543,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/dashboard/account'
       preLoaderRoute: typeof DashboardAccountRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/bonus': {
+      id: '/dashboard/bonus'
+      path: '/bonus'
+      fullPath: '/dashboard/bonus'
+      preLoaderRoute: typeof DashboardBonusRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/casino': {
@@ -735,6 +754,7 @@ const DashboardAccountRouteWithChildren =
 
 interface DashboardRouteChildren {
   DashboardAccountRoute: typeof DashboardAccountRouteWithChildren
+  DashboardBonusRoute: typeof DashboardBonusRoute
   DashboardCasinoRoute: typeof DashboardCasinoRoute
   DashboardExchangeRoute: typeof DashboardExchangeRoute
   DashboardLiveCasinoRoute: typeof DashboardLiveCasinoRoute
@@ -750,6 +770,7 @@ interface DashboardRouteChildren {
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAccountRoute: DashboardAccountRouteWithChildren,
+  DashboardBonusRoute: DashboardBonusRoute,
   DashboardCasinoRoute: DashboardCasinoRoute,
   DashboardExchangeRoute: DashboardExchangeRoute,
   DashboardLiveCasinoRoute: DashboardLiveCasinoRoute,

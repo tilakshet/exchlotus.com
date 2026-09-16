@@ -39,8 +39,8 @@ export async function applyLedgerEntry(input: ApplyLedgerEntryInput): Promise<Ap
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    const walletRows = await tx.$queryRaw<{ id: string; balance: string; protectedPrincipal: string }[]>`
-      SELECT id, balance, "protectedPrincipal" FROM wallets WHERE "playerId" = ${player.id} FOR UPDATE
+    const walletRows = await tx.$queryRaw<{ id: string; balance: string; protectedPrincipal: string; bonusPlayableBalance: string }[]>`
+      SELECT id, balance, "protectedPrincipal", "bonusPlayableBalance" FROM wallets WHERE "playerId" = ${player.id} FOR UPDATE
     `
     const wallet = walletRows[0]
     if (!wallet) {
@@ -82,6 +82,18 @@ export async function applyLedgerEntry(input: ApplyLedgerEntryInput): Promise<Ap
       ? Prisma.Decimal.max(new Prisma.Decimal(0), new Prisma.Decimal(wallet.protectedPrincipal).plus(input.amount))
       : new Prisma.Decimal(wallet.protectedPrincipal)
 
+    // bonusPlayableBalance (display-only, see its schema.prisma doc comment)
+    // is narrower than protectedPrincipal on purpose: it must NEVER grow
+    // from a DEPOSIT or a generic admin ADJUSTMENT (those aren't bonus
+    // money) — only bonus.service.ts's convertCoins credits it directly.
+    // Wagering (BET, and its REFUND) is the only thing that moves it here,
+    // same clamp-at-0 floor as protectedPrincipal, same approximation
+    // caveat (fungible balance, not a per-bet funding-source ledger).
+    const touchesBonusPlayable = input.type === "BET" || input.type === "REFUND"
+    const newBonusPlayable = touchesBonusPlayable
+      ? Prisma.Decimal.max(new Prisma.Decimal(0), new Prisma.Decimal(wallet.bonusPlayableBalance).plus(input.amount))
+      : new Prisma.Decimal(wallet.bonusPlayableBalance)
+
     await tx.ledgerEntry.create({
       data: {
         playerId: player.id,
@@ -94,7 +106,10 @@ export async function applyLedgerEntry(input: ApplyLedgerEntryInput): Promise<Ap
         balanceAfter: newBalance,
       },
     })
-    await tx.wallet.update({ where: { id: wallet.id }, data: { balance: newBalance, protectedPrincipal: newPrincipal } })
+    await tx.wallet.update({
+      where: { id: wallet.id },
+      data: { balance: newBalance, protectedPrincipal: newPrincipal, bonusPlayableBalance: newBonusPlayable },
+    })
 
     return { balance: newBalance.toNumber(), replayed: false }
   })

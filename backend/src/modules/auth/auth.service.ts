@@ -7,6 +7,7 @@ import { generateRefreshToken, hashRefreshToken, signAccessToken } from "./token
 import { AuthError } from "./auth.errors"
 import { recordLoginEvent, type LoginEventContext } from "./login-event.service"
 import { attributeReferral } from "../referral/referral.service"
+import { awardWelcomeBonus } from "../bonus/bonus.service"
 import { logger } from "../../lib/logger"
 import { sendOtpSms, SmsError } from "../notifications/sms/sms.service"
 import type { AuthTokens } from "./auth.types"
@@ -134,6 +135,13 @@ export async function register(
   // unexpected failure (e.g. a transient DB error).
   attributeReferral(player.id, input.referralCode, { ip: context?.ip, userAgent: context?.userAgent }).catch((err) => {
     logger.error({ err, playerId: player.id }, "Referral attribution failed")
+  })
+
+  // Welcome Bonus: awarded once per new account, idempotent on
+  // bonus:welcome:{playerId} — same best-effort philosophy as attribution
+  // above, a bonus bug must never block signup.
+  awardWelcomeBonus(player.id).catch((err) => {
+    logger.error({ err, playerId: player.id }, "Welcome bonus award failed")
   })
 
   return issueTokens(player)
@@ -420,6 +428,20 @@ export async function verifyOtp(
         wallet: { create: { balance: 0, currency: "INR" } },
       },
     }))
+
+  if (!existingPlayer) {
+    // Brand-new account via OTP signup — same referral attribution +
+    // Welcome Bonus that register() (password signup) triggers, both
+    // best-effort. Previously only register() called attributeReferral(),
+    // so a referral entered on the OTP signup path silently never
+    // attached — fixed here rather than left as a gap.
+    attributeReferral(player.id, referralCode, { ip: context?.ip, userAgent: context?.userAgent }).catch((err) => {
+      logger.error({ err, playerId: player.id }, "Referral attribution failed")
+    })
+    awardWelcomeBonus(player.id).catch((err) => {
+      logger.error({ err, playerId: player.id }, "Welcome bonus award failed")
+    })
+  }
 
   if (player.status === "SUSPENDED") {
     await recordLoginEvent({ playerId: player.id, phone, method: "OTP", result: "FAILURE", reason: "ACCOUNT_SUSPENDED", context })

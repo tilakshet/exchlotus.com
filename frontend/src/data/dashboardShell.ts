@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { ArrowLeftRight, Building2, Crown, Dices, Gift, Home, LifeBuoy, Video, Volleyball } from "lucide-react"
+import { ArrowLeftRight, Building2, Coins, Crown, Dices, Gift, Home, LifeBuoy, Video, Volleyball } from "lucide-react"
 
 export interface DashboardNavItem {
   id: string
@@ -34,8 +34,9 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
  * page's sidebar stays unchanged. Support routes into the real ticket
  * feature (dashboard.account.support.tsx). Refer & Earn routes to its own
  * page (dashboard.refer-earn.tsx) — a real referral code/link a player can
- * share today (recorded on the friend's account at sign-up), honestly
- * flagged there as not yet tied to a reward payout.
+ * share, earning bonus coins when a friend joins and again on that friend's
+ * first deposit. Bonus routes to the bonus wallet page (dashboard.bonus.tsx)
+ * — coin balance, conversion to playable balance, and transaction history.
  */
 export const SIDEBAR_EXTRA_NAV_ITEMS: DashboardNavItem[] = [
   { id: "sportsbook", label: "Sportsbook", to: "/dashboard/sportsbook", icon: Volleyball, color: "var(--sb-accent-purple)" },
@@ -43,4 +44,5 @@ export const SIDEBAR_EXTRA_NAV_ITEMS: DashboardNavItem[] = [
   { id: "loyalty", label: "Loyalty", to: "/dashboard/account/loyalty", icon: Crown, color: "var(--sb-accent-purple)" },
   { id: "support", label: "Support", to: "/dashboard/account/support", icon: LifeBuoy, color: "var(--sb-accent-gold)" },
   { id: "refer-earn", label: "Refer & Earn", to: "/dashboard/refer-earn", icon: Gift, color: "var(--brand-green)" },
+  { id: "bonus", label: "Bonus", to: "/dashboard/bonus", icon: Coins, color: "var(--sb-accent-gold)" },
 ]

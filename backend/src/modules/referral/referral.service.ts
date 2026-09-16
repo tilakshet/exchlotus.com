@@ -1,9 +1,11 @@
 import { randomBytes } from "node:crypto"
-import { Prisma, type ReferralQualificationRule, type ReferralRewardTxType, type ReferralSettings } from "@prisma/client"
+import { Prisma, type ReferralQualificationRule, type ReferralSettings } from "@prisma/client"
 import { prisma } from "../../lib/prisma"
 import { env } from "../../lib/env"
 import { logger } from "../../lib/logger"
 import { publishPlayerNotification } from "../../lib/redis"
+import { REFERRAL_FIRST_DEPOSIT_BONUS_COINS, REFERRAL_JOIN_BONUS_COINS } from "../../lib/bonusConfig"
+import { creditBonusCoins } from "../bonus/bonus.service"
 import { ReferralError } from "./referral.errors"
 
 // Excludes 0/O/1/I — a code meant to be read aloud/typed by hand, same
@@ -104,12 +106,16 @@ export async function getMyReferralSummary(playerId: string) {
 export async function getMyReferralStats(playerId: string) {
   const [statusCounts, cashSum, coinSum] = await Promise.all([
     prisma.referral.groupBy({ by: ["status"], where: { referrerId: playerId }, _count: { _all: true } }),
-    prisma.referralRewardTransaction.aggregate({
+    prisma.bonusTransaction.aggregate({
       where: { playerId, type: "REFERRAL_CASH_REWARD", status: "COMPLETED" },
       _sum: { amount: true },
     }),
-    prisma.referralRewardTransaction.aggregate({
-      where: { playerId, type: "REFERRAL_COIN_REWARD", status: "COMPLETED" },
+    prisma.bonusTransaction.aggregate({
+      where: {
+        playerId,
+        type: { in: ["REFERRAL_COIN_REWARD", "REFERRAL_JOIN_BONUS", "REFERRAL_FIRST_DEPOSIT_BONUS"] },
+        status: "COMPLETED",
+      },
       _sum: { amount: true },
     }),
   ])
@@ -149,6 +155,7 @@ export async function getMyReferralHistory(playerId: string, options: { cursor?:
   const hasMore = rows.length > limit
   const page = hasMore ? rows.slice(0, limit) : rows
 
+  const coinRewardTypes = new Set(["REFERRAL_COIN_REWARD", "REFERRAL_JOIN_BONUS", "REFERRAL_FIRST_DEPOSIT_BONUS"])
   return {
     items: page.map((row) => ({
       id: row.id,
@@ -159,7 +166,7 @@ export async function getMyReferralHistory(playerId: string, options: { cursor?:
       qualifiedAt: row.qualifiedAt?.toISOString() ?? null,
       rewardedAt: row.rewardedAt?.toISOString() ?? null,
       cashReward: row.rewards.filter((r) => r.type === "REFERRAL_CASH_REWARD").reduce((sum, r) => sum + r.amount.toNumber(), 0),
-      coinReward: row.rewards.filter((r) => r.type === "REFERRAL_COIN_REWARD").reduce((sum, r) => sum + r.amount.toNumber(), 0),
+      coinReward: row.rewards.filter((r) => coinRewardTypes.has(r.type)).reduce((sum, r) => sum + r.amount.toNumber(), 0),
     })),
     nextCursor: hasMore ? page[page.length - 1].id : null,
   }
@@ -246,7 +253,59 @@ export async function attributeReferral(
   }
 
   await runFraudChecks(referralId, referrer.id, context)
+  await awardReferralJoinBonus(referralId, referrer.id)
   await evaluateQualification(referralId)
+}
+
+/**
+ * The referrer's immediate "join" reward (spec: 5,000 coins the moment the
+ * referred player registers) — a fixed amount from bonusConfig.ts, not
+ * routed through the qualificationRule/campaign engine below (which now
+ * only governs the optional cash reward). Deliberately called AFTER
+ * runFraudChecks so a signup that just got flagged REVIEW/BLOCKED is
+ * accounted for before any coins move; riskStatus can never actually be
+ * BLOCKED yet at this point (runFraudChecks only ever sets REVIEW — see its
+ * doc comment — BLOCKED is admin-only), but the guard is kept for when an
+ * admin blocks a referrer between requests. The referred user never
+ * receives referral coins — they get the separate Welcome Bonus instead
+ * (awarded at signup by bonus.service.awardWelcomeBonus, not here).
+ */
+async function awardReferralJoinBonus(referralId: string, referrerId: string): Promise<void> {
+  const referral = await prisma.referral.findUnique({ where: { id: referralId }, select: { riskStatus: true } })
+  if (!referral || referral.riskStatus === "BLOCKED") return
+  await creditBonusCoins(referrerId, REFERRAL_JOIN_BONUS_COINS, `bonus:referral:${referralId}:join`, {
+    referralId,
+    type: "REFERRAL_JOIN_BONUS",
+    description: "Referral join bonus",
+  })
+}
+
+/**
+ * The referrer's "first deposit" reward (spec: another 5,000 coins the
+ * first time the referred player's deposit succeeds) — called from
+ * payments.service.ts's handlePayinCallback right after the deposit is
+ * atomically credited. `depositCount === 1` is a cheap pre-filter, not the
+ * safety guarantee: the real guarantee against duplicate/concurrent
+ * webhook retries is creditBonusCoins's unique `reference` constraint,
+ * exactly like every other idempotent credit in this codebase.
+ */
+export async function checkFirstDepositReferralBonus(playerId: string): Promise<void> {
+  const referral = await prisma.referral.findUnique({ where: { referredId: playerId } })
+  if (!referral) return
+  if (referral.status === "REJECTED" || referral.status === "CANCELLED") return
+  if (referral.riskStatus === "BLOCKED") return
+
+  const depositCount = await prisma.ledgerEntry.count({ where: { playerId, type: "DEPOSIT" } })
+  if (depositCount !== 1) return
+
+  const deposit = await prisma.ledgerEntry.findFirst({ where: { playerId, type: "DEPOSIT" }, orderBy: { createdAt: "asc" } })
+
+  await creditBonusCoins(referral.referrerId, REFERRAL_FIRST_DEPOSIT_BONUS_COINS, `bonus:referral:${referral.id}:first_deposit`, {
+    referralId: referral.id,
+    relatedDepositId: deposit?.transactionId,
+    type: "REFERRAL_FIRST_DEPOSIT_BONUS",
+    description: "Referral first-deposit bonus",
+  })
 }
 
 /**
@@ -388,70 +447,42 @@ export async function evaluateQualificationForExternalId(externalId: string): Pr
 }
 
 /**
- * The one place a referral reward ever credits a wallet. Idempotent per
- * `reference` (spec §7/§30): the DB-level unique constraint on
- * ReferralRewardTransaction.reference is the real guarantee — the
- * findUnique check below is just a fast-path that avoids taking the wallet
- * lock at all for the common case, not the guarantee itself. Same
- * FOR UPDATE row-lock pattern as wallet.service.ts's applyLedgerEntry.
+ * The one place the referrer's optional CASH reward is credited. Idempotent
+ * per `reference` (spec §7/§30): the DB-level unique constraint on
+ * BonusTransaction.reference is the real guarantee — the findUnique check
+ * below is just a fast-path that avoids taking the wallet lock at all for
+ * the common case, not the guarantee itself. Same FOR UPDATE row-lock
+ * pattern as wallet.service.ts's applyLedgerEntry. Coin rewards (join,
+ * first-deposit) go through bonus.service.creditBonusCoins instead — this
+ * function is cash-only now that the referred side is never credited.
  */
-async function creditBonus(
-  playerId: string,
-  field: "bonusBalance" | "bonusCoinBalance",
-  amount: number,
-  reference: string,
-  meta: { referralId: string; type: ReferralRewardTxType; description: string }
-): Promise<boolean> {
+async function creditCashReward(playerId: string, amount: number, reference: string, meta: { referralId: string; description: string }): Promise<boolean> {
   try {
     return await prisma.$transaction(async (tx) => {
-      const existing = await tx.referralRewardTransaction.findUnique({ where: { reference } })
+      const existing = await tx.bonusTransaction.findUnique({ where: { reference } })
       if (existing) return false
 
-      if (field === "bonusBalance") {
-        const walletRows = await tx.$queryRaw<{ id: string; bonusBalance: string }[]>`
-          SELECT id, "bonusBalance" FROM wallets WHERE "playerId" = ${playerId} FOR UPDATE
-        `
-        const wallet = walletRows[0]
-        if (!wallet) throw new ReferralError("WALLET_NOT_FOUND", `No wallet provisioned for player ${playerId}`)
-        const before = new Prisma.Decimal(wallet.bonusBalance)
-        const after = before.plus(amount)
-        await tx.wallet.update({ where: { id: wallet.id }, data: { bonusBalance: after } })
-        await tx.referralRewardTransaction.create({
-          data: {
-            playerId,
-            referralId: meta.referralId,
-            type: meta.type,
-            amount: new Prisma.Decimal(amount),
-            currency: "INR",
-            balanceBefore: before,
-            balanceAfter: after,
-            reference,
-            description: meta.description,
-          },
-        })
-      } else {
-        const walletRows = await tx.$queryRaw<{ id: string; bonusCoinBalance: number }[]>`
-          SELECT id, "bonusCoinBalance" FROM wallets WHERE "playerId" = ${playerId} FOR UPDATE
-        `
-        const wallet = walletRows[0]
-        if (!wallet) throw new ReferralError("WALLET_NOT_FOUND", `No wallet provisioned for player ${playerId}`)
-        const before = wallet.bonusCoinBalance
-        const after = before + amount
-        await tx.wallet.update({ where: { id: wallet.id }, data: { bonusCoinBalance: after } })
-        await tx.referralRewardTransaction.create({
-          data: {
-            playerId,
-            referralId: meta.referralId,
-            type: meta.type,
-            amount: new Prisma.Decimal(amount),
-            currency: "COIN",
-            balanceBefore: new Prisma.Decimal(before),
-            balanceAfter: new Prisma.Decimal(after),
-            reference,
-            description: meta.description,
-          },
-        })
-      }
+      const walletRows = await tx.$queryRaw<{ id: string; bonusBalance: string }[]>`
+        SELECT id, "bonusBalance" FROM wallets WHERE "playerId" = ${playerId} FOR UPDATE
+      `
+      const wallet = walletRows[0]
+      if (!wallet) throw new ReferralError("WALLET_NOT_FOUND", `No wallet provisioned for player ${playerId}`)
+      const before = new Prisma.Decimal(wallet.bonusBalance)
+      const after = before.plus(amount)
+      await tx.wallet.update({ where: { id: wallet.id }, data: { bonusBalance: after } })
+      await tx.bonusTransaction.create({
+        data: {
+          playerId,
+          referralId: meta.referralId,
+          type: "REFERRAL_CASH_REWARD",
+          amount: new Prisma.Decimal(amount),
+          currency: "INR",
+          balanceBefore: before,
+          balanceAfter: after,
+          reference,
+          description: meta.description,
+        },
+      })
       return true
     })
   } catch (err) {
@@ -464,13 +495,14 @@ async function creditBonus(
 }
 
 /**
- * Issues up to 4 independent, individually idempotent credits (referrer
- * cash/coin, referred cash/coin) — deliberately 4 separate transactions
- * rather than one spanning both players' wallets: avoids lock-ordering
- * deadlock risk between two different wallets, and means a crash partway
- * through leaves the remaining credits safely retryable (every caller of
- * evaluateQualification re-runs this and each already-completed movement
- * is a no-op via creditBonus's own idempotency).
+ * Issues the referrer's optional CASH reward once a referral qualifies
+ * under the configurable qualificationRule/campaign engine. The referred
+ * user is NEVER credited here (they only ever get the separate Welcome
+ * Bonus, awarded at signup) — and the referrer's COIN rewards are no
+ * longer decided by this function at all: join/first-deposit coins are
+ * fixed amounts from bonusConfig.ts, awarded immediately at their own
+ * trigger points (awardReferralJoinBonus, checkFirstDepositReferralBonus),
+ * not gated on qualificationRule.
  */
 export async function issueReward(referralId: string): Promise<void> {
   const referral = await prisma.referral.findUnique({ where: { id: referralId }, include: { campaign: true } })
@@ -480,48 +512,20 @@ export async function issueReward(referralId: string): Promise<void> {
 
   const settings = await getSettings()
   const referrerCash = (referral.campaign?.referrerCashReward ?? settings.referrerCashReward).toNumber()
-  const referrerCoin = referral.campaign?.referrerCoinReward ?? settings.referrerCoinReward
-  const referredCash = (referral.campaign?.referredCashReward ?? settings.referredCashReward).toNumber()
-  const referredCoin = referral.campaign?.referredCoinReward ?? settings.referredCoinReward
   const expiryDays = referral.campaign?.expiryDays ?? settings.rewardExpiryDays
   const expiresAt = expiryDays ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000) : null
 
   let anyCredited = false
   if (referrerCash > 0) {
     anyCredited =
-      (await creditBonus(referral.referrerId, "bonusBalance", referrerCash, `referral:${referral.id}:referrer:cash`, {
+      (await creditCashReward(referral.referrerId, referrerCash, `referral:${referral.id}:referrer:cash`, {
         referralId: referral.id,
-        type: "REFERRAL_CASH_REWARD",
         description: "Referral cash reward",
-      })) || anyCredited
-  }
-  if (referrerCoin > 0) {
-    anyCredited =
-      (await creditBonus(referral.referrerId, "bonusCoinBalance", referrerCoin, `referral:${referral.id}:referrer:coin`, {
-        referralId: referral.id,
-        type: "REFERRAL_COIN_REWARD",
-        description: "Referral coin reward",
-      })) || anyCredited
-  }
-  if (referredCash > 0) {
-    anyCredited =
-      (await creditBonus(referral.referredId, "bonusBalance", referredCash, `referral:${referral.id}:referred:cash`, {
-        referralId: referral.id,
-        type: "REFERRAL_CASH_REWARD",
-        description: "Welcome bonus (referred)",
-      })) || anyCredited
-  }
-  if (referredCoin > 0) {
-    anyCredited =
-      (await creditBonus(referral.referredId, "bonusCoinBalance", referredCoin, `referral:${referral.id}:referred:coin`, {
-        referralId: referral.id,
-        type: "REFERRAL_COIN_REWARD",
-        description: "Welcome bonus (referred)",
       })) || anyCredited
   }
 
   if (expiresAt) {
-    await prisma.referralRewardTransaction.updateMany({
+    await prisma.bonusTransaction.updateMany({
       where: { referralId: referral.id, expiresAt: null, status: "COMPLETED" },
       data: { expiresAt },
     })
@@ -533,19 +537,10 @@ export async function issueReward(referralId: string): Promise<void> {
 
   if (!anyCredited) return
 
-  const [referrer, referred] = await Promise.all([
-    prisma.player.findUnique({ where: { id: referral.referrerId }, select: { externalId: true } }),
-    prisma.player.findUnique({ where: { id: referral.referredId }, select: { externalId: true } }),
-  ])
+  const referrer = await prisma.player.findUnique({ where: { id: referral.referrerId }, select: { externalId: true } })
   if (referrer) {
     await publishPlayerNotification(referrer.externalId, {
-      message: `You earned a referral reward: ₹${referrerCash} + ${referrerCoin} coins.`,
-      link: "/dashboard/refer-earn",
-    })
-  }
-  if (referred) {
-    await publishPlayerNotification(referred.externalId, {
-      message: `Welcome bonus unlocked: ₹${referredCash} + ${referredCoin} coins.`,
+      message: `You earned a referral reward: ₹${referrerCash}.`,
       link: "/dashboard/refer-earn",
     })
   }

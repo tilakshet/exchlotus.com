@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useMatchRoute, useNavigate, useRouterState } from "@tanstack/react-router"
-import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Briefcase, Gift, History as HistoryIcon, LifeBuoy, LogOut, ShieldCheck, Star, User } from "lucide-react"
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Briefcase, Coins, Gift, History as HistoryIcon, LifeBuoy, LogOut, ShieldCheck, Star, User } from "lucide-react"
 import { store } from "@/store"
 import { useAuth } from "@/hooks/useAuth"
 import { useProfile } from "@/hooks/useProfile"
@@ -67,12 +67,13 @@ const topTabs = [
 ] as const
 
 // Mobile bottom bar for this section — topTabs plus Support, Profile, and
-// Refer & Earn, which are otherwise only reachable via the sidebar (hidden
-// on mobile below, see AccountLayout).
+// the reward-adjacent Refer & Earn / Bonus pages, which are otherwise only
+// reachable via the sidebar (hidden on mobile below, see AccountLayout).
 const accountBottomNavItems = [
   ...topTabs,
   { to: "/dashboard/account/support", label: "Support", icon: LifeBuoy, exact: false },
   { to: "/dashboard/refer-earn", label: "Refer", icon: Gift, exact: false },
+  { to: "/dashboard/bonus", label: "Bonus", icon: Coins, exact: false },
   { to: "/dashboard/account/profile", label: "Profile", icon: User, exact: false },
 ]
 

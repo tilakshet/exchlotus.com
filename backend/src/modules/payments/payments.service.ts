@@ -3,7 +3,7 @@ import { env } from "../../lib/env"
 import { prisma } from "../../lib/prisma"
 import { logger } from "../../lib/logger"
 import { applyLedgerEntry } from "../wallet/wallet.service"
-import { evaluateQualificationForPlayer } from "../referral/referral.service"
+import { checkFirstDepositReferralBonus, evaluateQualificationForPlayer } from "../referral/referral.service"
 // Active PayIn gateway. Switched to the HousholdBajar Cashfree-relay
 // (2026-09-15) — HousholdBajar holds the real Cashfree credentials
 // server-side, so Exchlotus never sees them (see
@@ -159,6 +159,15 @@ export async function handlePayinCallback(payload: { order_id: string; amount: n
   // for a player with no pending referral (see evaluateQualificationForPlayer).
   evaluateQualificationForPlayer(player.id).catch((err) => {
     logger.error({ err, playerId: player.id }, "Referral qualification check failed after deposit")
+  })
+
+  // Referral first-deposit bonus (spec: +5,000 coins to the referrer on the
+  // referred player's FIRST successful qualifying deposit only) — same
+  // best-effort, after-commit placement as the qualification check above.
+  // See referral.service.ts checkFirstDepositReferralBonus for the
+  // idempotency guarantee.
+  checkFirstDepositReferralBonus(player.id).catch((err) => {
+    logger.error({ err, playerId: player.id }, "Referral first-deposit bonus check failed")
   })
 }
 

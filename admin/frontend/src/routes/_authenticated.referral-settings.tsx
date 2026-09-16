@@ -105,17 +105,8 @@ function ReferralSettingsPage() {
           <Input type="number" min={0} value={form.minActivityAmount} onChange={(e) => setForm({ ...form, minActivityAmount: Number(e.target.value) })} />
         </Field>
 
-        <Field label="Referrer cash reward (₹)">
+        <Field label="Referrer cash reward (₹)" hint="Coin rewards (join + first deposit) are fixed by the bonus system, not configurable here">
           <Input type="number" min={0} value={form.referrerCashReward} onChange={(e) => setForm({ ...form, referrerCashReward: Number(e.target.value) })} />
-        </Field>
-        <Field label="Referrer coin reward">
-          <Input type="number" min={0} value={form.referrerCoinReward} onChange={(e) => setForm({ ...form, referrerCoinReward: Number(e.target.value) })} />
-        </Field>
-        <Field label="Referred-user cash reward (₹)">
-          <Input type="number" min={0} value={form.referredCashReward} onChange={(e) => setForm({ ...form, referredCashReward: Number(e.target.value) })} />
-        </Field>
-        <Field label="Referred-user coin reward">
-          <Input type="number" min={0} value={form.referredCoinReward} onChange={(e) => setForm({ ...form, referredCoinReward: Number(e.target.value) })} />
         </Field>
 
         <NullableNumberField label="Reward expiry (days)" hint="Blank = never expires" value={form.rewardExpiryDays} onChange={(v) => setForm({ ...form, rewardExpiryDays: v })} />
