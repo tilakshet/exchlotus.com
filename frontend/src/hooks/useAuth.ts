@@ -5,6 +5,14 @@ import { store, useAppDispatch, useAppSelector } from "@/store"
 import { credentialsReceived, loggedOut } from "@/store/authSlice"
 import type { Gender } from "@/types/profile"
 
+// Meta Pixel base snippet (index.html) defines this synchronously — calls
+// made before fbevents.js finishes loading are queued, not lost.
+declare global {
+  interface Window {
+    fbq?: (...args: unknown[]) => void
+  }
+}
+
 /**
  * Facade over the Redux auth slice — same shape/call sites as the old
  * Context-based mock (`useAuth().isAuthenticated`, `.user`, `.logout()`),
@@ -39,6 +47,9 @@ export function useAuth() {
       email?: string
     ) => {
       const tokens = await authApi.registerAccount({ username, phone, email, password, gender, referralCode })
+      // Fired here (only on a real successful registration), not as a
+      // static tag in index.html — that fired on every page load.
+      window.fbq?.("track", "CompleteRegistration")
       dispatch(credentialsReceived({ user: { username, phone, email, currency: "INR" }, tokens, isNewAccount: true }))
     },
     [dispatch]
