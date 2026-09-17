@@ -97,8 +97,8 @@ export async function register(
       // KYC's own mobile-OTP confirmation step was removed (see
       // kyc.service.ts) — phone ownership is now treated as established at
       // the point a player supplies and validates it during signup instead
-      // of through a separate OTP proof, so submitKyc's phoneVerifiedAt gate
-      // stays meaningful without OTP.
+      // of through a separate OTP proof, so verifyPan's phoneVerifiedAt gate
+      // (kyc.service.ts) stays meaningful without OTP.
       phoneVerifiedAt: new Date(),
       // Denormalized snapshot only — see schema.prisma doc comment. The
       // Referral row attributeReferral() creates below is the real,

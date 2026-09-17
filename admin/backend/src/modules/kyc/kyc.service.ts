@@ -1,28 +1,6 @@
-import type { Request } from "express"
 import { prisma } from "../../lib/prisma"
-import { writeAuditLog } from "../../lib/audit"
 import { AdminApiError } from "../../lib/api-error"
-import { env } from "../../lib/env"
-import { logger } from "../../lib/logger"
 import type { KycStatus, Prisma } from "../../generated/prisma"
-
-/**
- * Best-effort, fire-and-forget notification to backend/ (a separate
- * process, same DB) that this player's KYC status just changed — the only
- * thing referral.service.ts's VERIFICATION/MULTIPLE qualification rules
- * need to re-check. Authenticated with a static shared secret (same
- * pattern as GAMING_WEBHOOK_SHARED_SECRET), never blocks or fails the KYC
- * decision itself if backend/ is unreachable.
- */
-function notifyReferralEngine(playerId: string): void {
-  fetch(`${env.PLAYER_BACKEND_INTERNAL_URL}/api/referral/internal/evaluate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.REFERRAL_INTERNAL_SECRET}` },
-    body: JSON.stringify({ playerId }),
-  }).catch((err) => {
-    logger.warn({ err, playerId }, "Failed to notify referral engine of KYC approval — will only re-check on the player's next deposit/bet")
-  })
-}
 
 export interface ListKycOptions {
   status?: KycStatus
@@ -125,59 +103,4 @@ export async function getKycSubmission(id: string) {
     providerRequestId: submission.providerRequestId,
     verifiedAt: submission.verifiedAt?.toISOString() ?? null,
   }
-}
-
-/**
- * Updates the submission AND Player.kycStatus together — same "one write,
- * never out of sync" reasoning as the player backend's submitKyc. The
- * withdrawal gate (backend's wallet.service.ts requestWithdrawal) reads only
- * Player.kycStatus, so this is the one place that column is ever changed
- * post-submission.
- */
-export async function reviewKycSubmission(
-  req: Request,
-  actorAdminId: string,
-  id: string,
-  decision: "APPROVED" | "REJECTED",
-  reason?: string
-) {
-  const submission = await prisma.kycSubmission.findUnique({ where: { id } })
-  if (!submission) throw new AdminApiError("NOT_FOUND", "KYC submission not found")
-  if (submission.status !== "PENDING") {
-    throw new AdminApiError("KYC_NOT_PENDING", `This submission is already ${submission.status}`)
-  }
-  if (decision === "REJECTED" && !reason?.trim()) {
-    throw new AdminApiError("REASON_REQUIRED", "A reason is required when rejecting a KYC submission")
-  }
-
-  const result = await prisma.$transaction(async (tx) => {
-    const updated = await tx.kycSubmission.update({
-      where: { id },
-      data: {
-        status: decision,
-        rejectionReason: decision === "REJECTED" ? reason : null,
-        reviewedByAdminId: actorAdminId,
-        reviewedAt: new Date(),
-      },
-    })
-    await tx.player.update({ where: { id: submission.playerId }, data: { kycStatus: decision } })
-
-    await writeAuditLog(tx, req, {
-      adminId: actorAdminId,
-      action: decision === "APPROVED" ? "kyc.approve" : "kyc.reject",
-      entityType: "KycSubmission",
-      entityId: id,
-      before: { status: "PENDING" },
-      after: { status: decision },
-      reason,
-    })
-
-    return { id: updated.id, status: updated.status }
-  })
-
-  if (decision === "APPROVED") {
-    notifyReferralEngine(submission.playerId)
-  }
-
-  return result
 }

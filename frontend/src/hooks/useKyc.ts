@@ -8,20 +8,6 @@ export function useMyKyc() {
   return useQuery({ queryKey: kycQueryKey, queryFn: kycApi.getMyKyc })
 }
 
-export function useSubmitKyc() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: kycApi.submitKyc,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: kycQueryKey })
-      // profile.kycStatus is the field the withdraw page's gate actually
-      // reads — without this it'd keep showing NOT_SUBMITTED until
-      // something else happens to refetch profile.
-      queryClient.invalidateQueries({ queryKey: profileQueryKey })
-    },
-  })
-}
-
 export function useVerifyPan() {
   const queryClient = useQueryClient()
   return useMutation({

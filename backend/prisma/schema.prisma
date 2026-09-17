@@ -85,19 +85,17 @@ model Player {
   /// device also has a live socket connection — see socket.server.ts's
   /// session:revoked push), enforcing one active session per account.
   sessionVersion  Int          @default(0)
-  /// Set the first time this phone number is proven via a correct OTP —
-  /// either at OTP login/signup (auth.service.ts verifyOtp) or via the
-  /// dedicated confirm-phone step KYC requires (kyc.controller.ts), which
-  /// exists because a password-signup account (register()) never goes
-  /// through OTP at all otherwise. submitKyc refuses to accept documents
-  /// until this is set — a PAN card is not proof of *this* phone number.
+  /// Set at registration for every account now (auth.service.ts register())
+  /// and backfilled for pre-existing accounts — phone ownership is treated
+  /// as established at signup rather than through a separate OTP proof.
+  /// verifyPan (kyc.service.ts) refuses to verify a PAN until this is set —
+  /// a PAN card is not proof of *this* phone number.
   phoneVerifiedAt DateTime?
   /// Denormalized "current" status — the one thing requestWithdrawal
   /// (wallet.service.ts) actually checks. KycSubmission below is the
   /// history/audit trail of every attempt; this column is always kept in
-  /// sync with that history's latest reviewed outcome (see kyc.service.ts
-  /// submitKyc/admin's reviewKyc, both of which update both together in one
-  /// transaction) so the withdrawal gate never has to join/query history.
+  /// sync with it (see kyc.service.ts verifyPan, which updates both together
+  /// in one transaction) so the withdrawal gate never has to join/query history.
   kycStatus       KycStatus    @default(NOT_SUBMITTED)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -140,11 +138,10 @@ model KycSubmission {
   playerId          String
   player            Player    @relation(fields: [playerId], references: [id])
   panNumber         String
-  /// Filenames only (see backend/src/lib/uploads.ts KYC_UPLOAD_DIR) — never
-  /// served publicly, unlike support-ticket attachments. Only readable
-  /// through admin/backend's authenticated document-streaming route, which
-  /// reads them off the same shared uploads volume the player backend wrote
-  /// them to (see docker-compose.prod.yml).
+  /// Legacy — a manual document-upload/admin-review path used to populate
+  /// these (see git history), but PAN verification is QRX-only now
+  /// (kyc.service.ts verifyPan never sets them). Left nullable rather than
+  /// dropped so any pre-existing rows aren't lost.
   panCardFile       String?
   photoFile         String?
   panType           String?
@@ -170,8 +167,10 @@ model KycSubmission {
   providerRequestId String?
   verifiedAt        DateTime?
   status            KycStatus @default(PENDING)
-  /// Set only on REJECTED — shown back to the player so they know what to
-  /// fix before resubmitting.
+  /// Legacy, along with reviewedByAdminId/reviewedAt below — was set on
+  /// admin rejection of a manually-submitted document, a path that no
+  /// longer exists (QRX verification is instant-approve or throws, it never
+  /// creates a PENDING/REJECTED row). Kept for any pre-existing rows.
   rejectionReason   String?
   /// AdminUser.id from admin/backend's schema — no FK, same reasoning as
   /// LedgerEntry.actorAdminId: this table must stay readable even if that
