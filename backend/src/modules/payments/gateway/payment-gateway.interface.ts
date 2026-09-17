@@ -4,6 +4,10 @@ export interface CreatePayinOrderInput {
   amount: number
   name: string
   mobileNumber: string
+  /** Only required by gateways that relay to Cashfree themselves (see
+   * housholdbajar-cashfree.client.ts) — undefined for Oro/direct-Cashfree,
+   * which never asked for it. */
+  email?: string
   /** Where the player's browser returns to after paying — not where the payment result is reported (that's the callback). */
   redirectUrl: string
 }
@@ -25,6 +29,9 @@ export interface CreatePayinOrderResult {
    * credentials belong to. */
   cashfreeMode?: "sandbox" | "production"
   gatewayTrxId: string
+  /** Cashfree's own order id, one hop further than gatewayTrxId — only set
+   * by a gateway that itself relays to Cashfree (housholdbajar-cashfree.client.ts). */
+  cashfreeOrderId?: string
   expiresAt: Date
 }
 

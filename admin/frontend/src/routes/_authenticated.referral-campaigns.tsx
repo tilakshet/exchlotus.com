@@ -139,18 +139,6 @@ function CampaignFormDialog({
               <Input type="number" min={0} value={form.referrerCashReward} onChange={(e) => setForm({ ...form, referrerCashReward: Number(e.target.value) })} />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Referrer coins</label>
-              <Input type="number" min={0} value={form.referrerCoinReward} onChange={(e) => setForm({ ...form, referrerCoinReward: Number(e.target.value) })} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Referred cash (₹)</label>
-              <Input type="number" min={0} value={form.referredCashReward} onChange={(e) => setForm({ ...form, referredCashReward: Number(e.target.value) })} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Referred coins</label>
-              <Input type="number" min={0} value={form.referredCoinReward} onChange={(e) => setForm({ ...form, referredCoinReward: Number(e.target.value) })} />
-            </div>
-            <div className="flex flex-col gap-1">
               <label className="text-xs text-muted-foreground">Min deposit (₹)</label>
               <Input type="number" min={0} value={form.minDepositAmount} onChange={(e) => setForm({ ...form, minDepositAmount: Number(e.target.value) })} />
             </div>
@@ -249,7 +237,6 @@ function ReferralCampaignsPage() {
               <TableHead>Window</TableHead>
               <TableHead>Rule</TableHead>
               <TableHead>Referrer reward</TableHead>
-              <TableHead>Referred reward</TableHead>
               <TableHead>Status</TableHead>
               {canManage && <TableHead>Actions</TableHead>}
             </TableRow>
@@ -270,12 +257,7 @@ function ReferralCampaignsPage() {
                   {formatDateTime(campaign.startAt)} → {formatDateTime(campaign.endAt)}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{campaign.qualificationRule}</TableCell>
-                <TableCell className="tabular-nums">
-                  {formatCurrency(campaign.referrerCashReward, "INR")} + {campaign.referrerCoinReward} coins
-                </TableCell>
-                <TableCell className="tabular-nums">
-                  {formatCurrency(campaign.referredCashReward, "INR")} + {campaign.referredCoinReward} coins
-                </TableCell>
+                <TableCell className="tabular-nums">{formatCurrency(campaign.referrerCashReward, "INR")}</TableCell>
                 <TableCell>
                   <StatusBadge config={REFERRAL_CAMPAIGN_STATUS_CONFIG} status={campaign.status} />
                 </TableCell>

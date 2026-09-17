@@ -69,6 +69,11 @@ Edit all three:
   these are used only by the backend for `POST /api/kyc/verify-pan` and must
   never be added to frontend build variables.
 
+  Set `SMS_ENABLED=true` and fill `SMS_API_KEY` / `SMS_SENDER_ID` with the
+  BulkSMSConnect working key and the DLT-registered 6-char sender ID — these
+  deliver the signup / forgot-password phone OTP and are backend-only (never
+  a frontend build var). With `SMS_ENABLED=false` no code is sent and signup
+  cannot complete.
 - `admin/backend/.env.production` — set `DATABASE_URL`'s password the same
   way, set `CORS_ORIGIN` to `https://admin.` + your domain, generate a
   `JWT_ACCESS_SECRET` **different from** backend's (never reuse it — see

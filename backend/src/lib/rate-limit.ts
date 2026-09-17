@@ -91,20 +91,18 @@ export const authLimiter = rateLimit({
 })
 
 /**
- * Looser than authLimiter: generating a CAPTCHA isn't itself something an
- * attacker gains from (authLimiter still gates the login/register/reset
- * attempt it protects), but it's shared across four separate forms
- * (login, register, forgot-password, reset-password) plus its own refresh
- * button, so it needs more headroom than the 10/15min budget meant for
- * actual credential attempts — while still bounding pre-fetching valid
- * CAPTCHAs for later automated use.
+ * Guards the OTP-send endpoints (register / forgot-password phone
+ * verification). Every call costs a real SMS, so this is the credit-drain
+ * / abuse ceiling — sized above a genuine user's retries (mistyped number,
+ * a couple of resends) but well under automated hammering. auth.service.ts
+ * keeps a separate 60s per-phone cooldown as the second layer.
  */
-export const captchaLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 30,
+export const otpRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 6,
   standardHeaders: true,
   legacyHeaders: false,
-  store: redisStore("rl:captcha:"),
+  store: redisStore("rl:otp-request:"),
   passOnStoreError,
   logger,
 })

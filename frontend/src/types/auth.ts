@@ -11,9 +11,3 @@ export interface AuthTokens {
   refreshToken: string
   expiresIn: number
 }
-
-/** A numeric CAPTCHA challenge — `code` is meant to be displayed on screen, not kept secret (see backend captcha.service.ts). */
-export interface Captcha {
-  captchaId: string
-  code: string
-}

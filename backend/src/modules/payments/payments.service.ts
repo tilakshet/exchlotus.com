@@ -3,14 +3,13 @@ import { env } from "../../lib/env"
 import { prisma } from "../../lib/prisma"
 import { logger } from "../../lib/logger"
 import { applyLedgerEntry } from "../wallet/wallet.service"
-import { evaluateQualificationForPlayer } from "../referral/referral.service"
-// Active PayIn gateway. Temporarily reverted to Oro (2026-08-29) — Cashfree
-// needs domain whitelisting approved (merchant.cashfree.com > Developers >
-// Whitelisting) before its hosted checkout will accept exchlotus.com;
-// that's a Cashfree-side approval wait, not a code issue. Cashfree's client
-// (./gateway/cashfree-gateway.client) is left fully intact — swap this
-// import back once whitelisting is approved.
-import { paymentGateway } from "./gateway/oro-gateway.client"
+import { checkFirstDepositReferralBonus, evaluateQualificationForPlayer } from "../referral/referral.service"
+// Active PayIn gateway. Switched to the HousholdBajar Cashfree-relay
+// (2026-09-15) — HousholdBajar holds the real Cashfree credentials
+// server-side, so Exchlotus never sees them (see
+// gateway/housholdbajar-cashfree.client.ts). Oro's and direct-Cashfree's
+// clients are left fully intact — swap this import back if needed.
+import { housholdbajarGateway as paymentGateway } from "./gateway/housholdbajar-cashfree.client"
 
 class PaymentError extends Error {}
 
@@ -63,6 +62,14 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
       orderId: order.gatewayOrderId!,
       amount,
       name: player.username,
+      // HousholdBajar's create-order contract requires an email, but
+      // Player.email is nullable — a phone/OTP signup may never have set
+      // one. Synthesize a non-deliverable placeholder rather than block
+      // deposits on a field this account never needed before — keyed on the
+      // order id (already sent in this same request as order_id) rather
+      // than the player's internal DB id, so nothing new is exposed to
+      // HousholdBajar/Cashfree beyond what they already receive.
+      email: player.email ?? `noreply+${order.gatewayOrderId}@exchlotus.com`,
       mobileNumber: player.phone,
       redirectUrl: `${env.PAYMENT_CALLBACK_BASE_URL}/dashboard/account/deposit?status=pending`,
     })
@@ -73,7 +80,7 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
 
   await prisma.paymentOrder.update({
     where: { id: order.id },
-    data: { gatewayTrxId: result.gatewayTrxId },
+    data: { gatewayTrxId: result.gatewayTrxId, cashfreeOrderId: result.cashfreeOrderId },
   })
 
   return {
@@ -152,6 +159,37 @@ export async function handlePayinCallback(payload: { order_id: string; amount: n
   // for a player with no pending referral (see evaluateQualificationForPlayer).
   evaluateQualificationForPlayer(player.id).catch((err) => {
     logger.error({ err, playerId: player.id }, "Referral qualification check failed after deposit")
+  })
+
+  // Referral first-deposit bonus (spec: +5,000 coins to the referrer on the
+  // referred player's FIRST successful qualifying deposit only) — same
+  // best-effort, after-commit placement as the qualification check above.
+  // See referral.service.ts checkFirstDepositReferralBonus for the
+  // idempotency guarantee.
+  checkFirstDepositReferralBonus(player.id).catch((err) => {
+    logger.error({ err, playerId: player.id }, "Referral first-deposit bonus check failed")
+  })
+}
+
+/**
+ * HousholdBajar's callback carries the same order_id/amount correlation as
+ * Oro/Cashfree's, so this reuses handlePayinCallback's order resolution,
+ * amount check, terminal-SUCCESS, and idempotent crediting wholesale rather
+ * than duplicating that logic. payment_status is HousholdBajar's own
+ * vocabulary (SUCCESS/FAILED/USER_DROPPED) — only "SUCCESS" credits;
+ * everything else (including USER_DROPPED) lands on the same FAILED path,
+ * matching the existing Cashfree webhook route's handling of its own
+ * USER_DROPPED event — this schema has no separate CANCELLED status.
+ *
+ * Unlike Oro/direct-Cashfree's callbacks, this one IS signature-verified
+ * (see payments-callback.controller.ts), so a request reaching this
+ * function has already been authenticated as genuinely from HousholdBajar.
+ */
+export async function handleHousholdbajarCallback(payload: { order_id: string; amount: number; payment_status: string }): Promise<void> {
+  await handlePayinCallback({
+    order_id: payload.order_id,
+    amount: payload.amount,
+    status: payload.payment_status === "SUCCESS" ? "success" : "failed",
   })
 }
 

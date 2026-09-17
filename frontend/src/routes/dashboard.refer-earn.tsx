@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { Check, Copy, Gift, Info, Share2, UserPlus, Users, Wallet as WalletIcon } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { useMyReferral, useMyReferralHistory, useMyReferralStats } from "@/hooks/useReferral"
+import { useBonusRules } from "@/hooks/useBonus"
 import type { ReferralHistoryItem } from "@/api/referral.api"
 
 export const Route = createFileRoute("/dashboard/refer-earn")({
@@ -128,6 +129,7 @@ function ReferralHistoryTable() {
 function ReferralPanel() {
   const { data: referral, isLoading: referralLoading } = useMyReferral()
   const { data: stats, isLoading: statsLoading } = useMyReferralStats()
+  const { data: bonusRules } = useBonusRules()
 
   async function handleShare(link: string) {
     if (navigator.share) {
@@ -184,13 +186,13 @@ function ReferralPanel() {
         </div>
       </div>
 
-      {(referral.campaign.referrerCashReward > 0 || referral.campaign.referrerCoinReward > 0) && (
+      {bonusRules && (
         <div className="rounded-(--sb-radius-lg) border border-(--sb-border) bg-(--sb-content-alt) p-5 text-sm text-(--sb-text-secondary)">
           {referral.campaign.name && <p className="mb-1 font-bold text-(--sb-text-primary)">{referral.campaign.name}</p>}
-          You earn ₹{referral.campaign.referrerCashReward}
-          {referral.campaign.referrerCoinReward > 0 ? ` + ${referral.campaign.referrerCoinReward} coins` : ""} per friend. They get ₹
-          {referral.campaign.referredCashReward}
-          {referral.campaign.referredCoinReward > 0 ? ` + ${referral.campaign.referredCoinReward} coins` : ""} too.
+          You earn {bonusRules.referralJoinBonusCoins.toLocaleString("en-IN")} bonus coins the moment a friend joins with your link, plus another{" "}
+          {bonusRules.referralFirstDepositBonusCoins.toLocaleString("en-IN")} coins on their first deposit
+          {referral.campaign.referrerCashReward > 0 ? ` — and ₹${referral.campaign.referrerCashReward} cash per friend` : ""}. Your friend gets their own{" "}
+          {bonusRules.welcomeBonusCoins.toLocaleString("en-IN")}-coin Welcome Bonus, separately.
         </div>
       )}
 

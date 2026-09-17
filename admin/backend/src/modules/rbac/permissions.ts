@@ -44,6 +44,8 @@ export const PERMISSION_CODES = [
   "referrals.export",
   "referral-settings.manage",
   "referral-campaigns.manage",
+  "bonus.view",
+  "bonus.adjust",
 ] as const
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number]

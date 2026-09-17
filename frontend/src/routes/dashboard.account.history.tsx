@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
-import { ArrowDownLeft, ArrowUpRight, Gift, History as HistoryIcon, ReceiptText, Trophy, Wallet as WalletIcon } from "lucide-react"
+import { Gift, History as HistoryIcon, ReceiptText, Wallet as WalletIcon } from "lucide-react"
 import { useTransactionPage } from "@/hooks/useTransactionPage"
 import { TransactionTable } from "@/features/account/TransactionTable"
-import { StatCard } from "@/features/account/StatCard"
 import type { LedgerEntryType } from "@/types/wallet"
 
 export const Route = createFileRoute("/dashboard/account/history")({
@@ -26,10 +25,7 @@ const tabs: { id: Tab; label: string; icon: typeof HistoryIcon; types: LedgerEnt
  * may show fewer than N rows on a filtered tab (e.g. a page with 2 deposits
  * shows 2 rows on "Payment", not a full page) — the pager still moves
  * through the real underlying ledger, just at 50/page to keep filtered
- * tabs reasonably populated. The summary cards below total the same
- * currently-loaded page for the same reason — there's no backend
- * aggregates endpoint, so they're labeled "in the loaded history" rather
- * than presented as an all-time total they aren't.
+ * tabs reasonably populated.
  */
 function HistoryPage() {
   const [tab, setTab] = useState<Tab>("transaction")
@@ -38,30 +34,8 @@ function HistoryPage() {
   const activeTypes = tabs.find((t) => t.id === tab)!.types
   const filteredItems = useMemo(() => (activeTypes ? items.filter((entry) => activeTypes.includes(entry.type)) : items), [items, activeTypes])
 
-  const summary = useMemo(() => {
-    let deposits = 0
-    let withdrawals = 0
-    let winnings = 0
-    for (const entry of items) {
-      if (entry.type === "DEPOSIT") deposits += entry.amount
-      if (entry.type === "WITHDRAWAL") withdrawals += Math.abs(entry.amount)
-      if (entry.type === "WIN") winnings += entry.amount
-    }
-    return { count: items.length, deposits, withdrawals, winnings }
-  }, [items])
-
   return (
     <div className="flex flex-col gap-7">
-      <div>
-        <h2 className="mb-4 text-xl font-semibold text-[color:var(--acc-text-primary)]">Summary</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatCard icon={HistoryIcon} label="Total Transactions" value={summary.count} format="count" description="In the loaded history below" loading={isLoading} />
-          <StatCard icon={ArrowDownLeft} label="Total Deposits" value={summary.deposits} description="In the loaded history below" loading={isLoading} />
-          <StatCard icon={ArrowUpRight} label="Total Withdrawals" value={summary.withdrawals} description="In the loaded history below" loading={isLoading} />
-          <StatCard icon={Trophy} label="Total Winnings" value={summary.winnings} description="In the loaded history below" tone="success" loading={isLoading} />
-        </div>
-      </div>
-
       <div role="tablist" aria-label="History filter" className="flex flex-wrap gap-2.5">
         {tabs.map(({ id, label, icon: Icon }) => {
           const active = tab === id

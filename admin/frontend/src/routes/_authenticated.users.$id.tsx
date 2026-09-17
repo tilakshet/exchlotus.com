@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowDownToLine, ArrowUpFromLine, KeyRound, ScrollText, Sliders, Wallet as WalletIcon } from "lucide-react"
+import { ArrowDownToLine, ArrowUpFromLine, Coins, KeyRound, ScrollText, Sliders, Wallet as WalletIcon } from "lucide-react"
 import { getUser } from "@/api/users.api"
 import { adjustWallet, getLedger, type LedgerItem } from "@/api/wallets.api"
+import { adjustBonusCoins, getBonusTransactions, getBonusWallet } from "@/api/bonus.api"
 import { listLoginEvents } from "@/api/login-events.api"
 import { useAdminAuth } from "@/hooks/useAdminAuth"
 import { toast } from "@/lib/toast"
@@ -169,6 +170,124 @@ function AdjustBalanceForm({ id, currency, onAdjusted }: { id: string; currency:
   )
 }
 
+function AdjustBonusCoinsForm({ id, onAdjusted }: { id: string; onAdjusted: () => void }) {
+  const { hasPermission } = useAdminAuth()
+  const queryClient = useQueryClient()
+  const [coins, setCoins] = useState("")
+  const [reason, setReason] = useState("")
+  // Same one-key-per-submit-intent pattern as AdjustBalanceForm above.
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+
+  const mutation = useMutation({
+    mutationFn: () => adjustBonusCoins(id, { coins: Number(coins), reason, idempotencyKey }),
+    onSuccess: (result) => {
+      setCoins("")
+      setReason("")
+      setIdempotencyKey(crypto.randomUUID())
+      queryClient.invalidateQueries({ queryKey: ["bonus-wallet", id] })
+      onAdjusted()
+      toast({ title: "Bonus coins adjusted", description: `New balance: ${result.coinBalance.toLocaleString()} coins`, variant: "success" })
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.code === "DUPLICATE_ADJUSTMENT") {
+        setCoins("")
+        setReason("")
+        setIdempotencyKey(crypto.randomUUID())
+        queryClient.invalidateQueries({ queryKey: ["bonus-wallet", id] })
+        onAdjusted()
+        toast({ title: "Already applied", description: "This adjustment was already submitted — no changes were duplicated.", variant: "success" })
+        return
+      }
+      toast({ title: "Adjustment failed", description: err instanceof ApiError ? err.message : undefined, variant: "destructive" })
+    },
+  })
+
+  if (!hasPermission("bonus.adjust")) return null
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+        <Sliders className="size-4 text-muted-foreground" aria-hidden="true" />
+        Manual bonus coin adjustment
+      </p>
+      <form
+        className="flex flex-wrap items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          mutation.mutate()
+        }}
+      >
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Coins (negative to claw back)</label>
+          <Input type="number" step="1" required value={coins} onChange={(e) => setCoins(e.target.value)} className="w-40" />
+        </div>
+        <div className="flex flex-1 min-w-48 flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Reason</label>
+          <Input required value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Required — recorded in the audit log" />
+        </div>
+        <Button type="submit" disabled={mutation.isPending || reason.trim().length < 3 || Number(coins) === 0}>
+          {mutation.isPending ? "Applying…" : "Apply"}
+        </Button>
+      </form>
+    </div>
+  )
+}
+
+function BonusPanel({ id }: { id: string }) {
+  const { data: bonusWallet, isLoading, refetch } = useQuery({ queryKey: ["bonus-wallet", id], queryFn: () => getBonusWallet(id) })
+  const { data: bonusTransactions } = useQuery({ queryKey: ["bonus-transactions", id], queryFn: () => getBonusTransactions(id, { limit: 10 }) })
+
+  return (
+    <section className="flex flex-col gap-3">
+      <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <Coins className="size-4 text-muted-foreground" aria-hidden="true" />
+        Bonus wallet
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Bonus coins" value={isLoading || !bonusWallet ? "—" : bonusWallet.coinBalance.toLocaleString()} />
+        <StatCard
+          label="Playable bonus balance"
+          value={isLoading || !bonusWallet ? "—" : formatCurrency(bonusWallet.playableBonusBalance, "INR")}
+        />
+      </div>
+      <AdjustBonusCoinsForm id={id} onAdjusted={refetch} />
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Type</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Admin-initiated</TableHead>
+            <TableHead>When</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {!bonusTransactions && <TableSkeletonRows columns={5} />}
+          {bonusTransactions?.items.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={5} className="p-0">
+                <EmptyState icon={Coins} title="No bonus transactions yet" />
+              </TableCell>
+            </TableRow>
+          )}
+          {bonusTransactions?.items.map((entry) => (
+            <TableRow key={entry.id}>
+              <TableCell>{entry.type}</TableCell>
+              <TableCell className={entry.amount < 0 ? "text-destructive tabular-nums" : "text-success tabular-nums"}>
+                {entry.currency === "COIN" ? `${entry.amount > 0 ? "+" : ""}${entry.amount.toLocaleString()} coins` : formatCurrency(entry.amount, entry.currency)}
+              </TableCell>
+              <TableCell className="text-muted-foreground">{entry.description ?? "—"}</TableCell>
+              <TableCell className="text-muted-foreground">{entry.actorAdminId ? "Yes" : "—"}</TableCell>
+              <TableCell className="text-muted-foreground">{formatDateTime(entry.createdAt)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </section>
+  )
+}
+
 function UserDetailPage() {
   const { id } = Route.useParams()
   const { data: user, isLoading, isError, refetch } = useQuery({ queryKey: ["user", id], queryFn: () => getUser(id) })
@@ -224,6 +343,8 @@ function UserDetailPage() {
       )}
 
       {user.wallet && <AdjustBalanceForm id={user.id} currency={user.wallet.currency} onAdjusted={ledger.retry} />}
+
+      <BonusPanel id={user.id} />
 
       <section>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">

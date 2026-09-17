@@ -112,7 +112,7 @@ model Player {
   passwordResetTokens PasswordResetToken[]
   referralsMade       Referral[]                  @relation("Referrer")
   referralReceived    Referral?                   @relation("Referred")
-  referralRewards     ReferralRewardTransaction[]
+  referralRewards     BonusTransaction[]
   gameLaunchFailures  GameLaunchFailure[]
 
   @@map("players")
@@ -257,6 +257,28 @@ model Wallet {
   /// scope until a real wagering engine exists).
   bonusCoinBalance Int      @default(0)
   lockedBalance    Decimal  @default(0) @db.Decimal(18, 2)
+  /// Deposit money not yet wagered — the withdrawal-eligibility floor
+  /// (withdrawableCash = balance - protectedPrincipal, see wallet.service.ts
+  /// requestWithdrawal/getWalletDetails). Maintained incrementally by
+  /// applyLedgerEntry, clamped at 0 on every single DEPOSIT/BET/REFUND/
+  /// ADJUSTMENT write — NOT recomputed from ledger history. A player's
+  /// lifetime wagering routinely exceeds lifetime deposits within days of
+  /// normal play (money gets rewagered), so a plain SUM-then-floor-once over
+  /// full history collapses to 0 permanently and never re-protects a later
+  /// deposit; flooring after every step is what keeps a fresh deposit
+  /// protected regardless of how deep the player's past wagering went.
+  protectedPrincipal Decimal @default(0) @db.Decimal(18, 2)
+  /// Display-only sibling of protectedPrincipal, scoped to bonus-coin
+  /// conversions specifically (bonus system, 2026-09) — protectedPrincipal
+  /// itself stays the one enforcement mechanism for withdrawal eligibility
+  /// (shared with deposits, unchanged), but it can't answer "how much of my
+  /// current balance is still unplayed bonus money" once deposit and bonus
+  /// principal mix. This field mirrors protectedPrincipal's exact
+  /// increment/clamp-at-0-on-BET/never-touched-by-WIN bookkeeping (see
+  /// wallet.service.ts applyLedgerEntry) but starting only from bonus
+  /// conversions, purely so the Bonus page can show a real "Playable Bonus
+  /// Balance" figure. Never read for any eligibility/withdrawal decision.
+  bonusPlayableBalance Decimal @default(0) @db.Decimal(18, 2)
   currency         String
   updatedAt        DateTime @updatedAt
 
@@ -380,15 +402,22 @@ enum ReferralCampaignStatus {
   ENDED
 }
 
-enum ReferralRewardTxType {
+enum BonusTransactionType {
   REFERRAL_CASH_REWARD
   REFERRAL_COIN_REWARD
   REFERRAL_REVERSAL
   REFERRAL_EXPIRY
   ADMIN_ADJUSTMENT
+  /// New bonus-system event types (bonus system, 2026-09).
+  WELCOME_BONUS
+  REFERRAL_JOIN_BONUS
+  REFERRAL_FIRST_DEPOSIT_BONUS
+  BONUS_CONVERSION
+  BONUS_ADJUSTMENT
+  BONUS_REVERSAL
 }
 
-enum ReferralRewardTxStatus {
+enum BonusTransactionStatus {
   COMPLETED
   REVERSED
   EXPIRED
@@ -500,7 +529,7 @@ model Referral {
   updatedAt             DateTime           @updatedAt
 
   riskFlags ReferralRiskFlag[]
-  rewards   ReferralRewardTransaction[]
+  rewards   BonusTransaction[]
 
   @@index([referrerId])
   @@index([status])
@@ -521,45 +550,54 @@ model ReferralRiskFlag {
   @@map("referral_risk_flags")
 }
 
-/// The referral reward ledger (spec §6) — separate from LedgerEntry (which
+/// The general bonus ledger (spec §6) — separate from LedgerEntry (which
 /// represents the real, withdrawable balance and has no BONUS/REFERRAL
-/// type) since referral rewards credit the promotional bonusBalance/
+/// type) since bonus events credit the promotional bonusBalance/
 /// bonusCoinBalance columns on Wallet instead. Same idempotency principle
 /// as LedgerEntry: `reference` is a unique, deterministic key (e.g.
-/// "referral:{referralId}:referrer:cash") so issuing a reward twice is a
-/// no-op, not a double credit. One row per distinct movement (cash and
-/// coin rewards are two separate rows, not packed into one).
-model ReferralRewardTransaction {
-  id            String                 @id @default(uuid())
+/// "referral:{referralId}:referrer:cash" or "bonus:welcome:{playerId}") so
+/// issuing a reward twice is a no-op, not a double credit. One row per
+/// distinct movement (cash and coin rewards are two separate rows, not
+/// packed into one). Originally referral-only (`referral_reward_transactions`,
+/// `ReferralRewardTransaction`) — broadened in the 2026-09 bonus-system work
+/// to cover welcome bonus, referral join/first-deposit bonus, and coin
+/// conversion too; `referralId` is now optional since not every bonus event
+/// is referral-linked.
+model BonusTransaction {
+  id            String                  @id @default(uuid())
   playerId      String
-  player        Player                 @relation(fields: [playerId], references: [id])
-  referralId    String
-  referral      Referral               @relation(fields: [referralId], references: [id])
-  type          ReferralRewardTxType
+  player        Player                  @relation(fields: [playerId], references: [id])
+  referralId    String?
+  referral      Referral?               @relation(fields: [referralId], references: [id])
+  type          BonusTransactionType
   /// Cash amount for CASH/REVERSAL-of-cash/EXPIRY-of-cash rows, coin count
   /// for COIN rows — semantics follow `type`, same convention as
-  /// LedgerEntry.amount (signed: negative for a reversal/expiry).
-  amount        Decimal                @default(0) @db.Decimal(18, 2)
-  currency      String                 @default("INR")
-  balanceBefore Decimal?               @db.Decimal(18, 2)
-  balanceAfter  Decimal?               @db.Decimal(18, 2)
-  status        ReferralRewardTxStatus @default(COMPLETED)
-  reference     String                 @unique
+  /// LedgerEntry.amount (signed: negative for a reversal/expiry/debit).
+  amount        Decimal                 @default(0) @db.Decimal(18, 2)
+  currency      String                  @default("INR")
+  balanceBefore Decimal?                @db.Decimal(18, 2)
+  balanceAfter  Decimal?                @db.Decimal(18, 2)
+  status        BonusTransactionStatus  @default(COMPLETED)
+  reference     String                  @unique
   description   String?
-  /// Set on a REFERRAL_REVERSAL/REFERRAL_EXPIRY row, pointing back at the
-  /// original reward it reverses — the original row is never deleted or
-  /// mutated, financial history stays immutable.
+  /// Set on a REFERRAL_REVERSAL/REFERRAL_EXPIRY/BONUS_REVERSAL row, pointing
+  /// back at the original reward it reverses — the original row is never
+  /// deleted or mutated, financial history stays immutable.
   reversalOfId  String?
+  /// Set on a REFERRAL_FIRST_DEPOSIT_BONUS row — which of the *referred*
+  /// player's PaymentOrder rows triggered this reward for the referrer.
+  /// No FK — same "stays readable" convention as actorAdminId below.
+  relatedDepositId String?
   /// No FK — same convention as elsewhere.
   actorAdminId  String?
   expiresAt     DateTime?
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
 
   @@index([playerId])
   @@index([referralId])
   @@index([status])
-  @@map("referral_reward_transactions")
+  @@map("bonus_transactions")
 }
 
 /// A best-effort record of a FAILED game-session launch (game-session.controller.ts)
@@ -706,6 +744,12 @@ model PaymentOrder {
   gatewayOrderId String?            @unique
   /// The gateway's own trx_id from its create-order response — for support/reconciliation lookups.
   gatewayTrxId   String?
+  /// Cashfree's own order id, as relayed back by the HousholdBajar PayIn
+  /// gateway (gateway/housholdbajar-cashfree.client.ts) — a third party's
+  /// identifier one hop further than gatewayTrxId (HousholdBajar's own),
+  /// kept distinct for support/reconciliation. Null for orders placed
+  /// through Oro or direct-Cashfree, which have no such intermediary.
+  cashfreeOrderId String?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
