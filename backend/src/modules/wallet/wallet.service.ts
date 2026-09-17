@@ -39,8 +39,8 @@ export async function applyLedgerEntry(input: ApplyLedgerEntryInput): Promise<Ap
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    const walletRows = await tx.$queryRaw<{ id: string; balance: string }[]>`
-      SELECT id, balance FROM wallets WHERE "playerId" = ${player.id} FOR UPDATE
+    const walletRows = await tx.$queryRaw<{ id: string; balance: string; protectedPrincipal: string; bonusPlayableBalance: string }[]>`
+      SELECT id, balance, "protectedPrincipal", "bonusPlayableBalance" FROM wallets WHERE "playerId" = ${player.id} FOR UPDATE
     `
     const wallet = walletRows[0]
     if (!wallet) {
@@ -69,6 +69,31 @@ export async function applyLedgerEntry(input: ApplyLedgerEntryInput): Promise<Ap
       throw new GamingApiError("NO_BALANCE", `Insufficient balance for player ${input.playerExternalId}`)
     }
 
+    // "Protected principal" is deposit money not yet wagered — see the
+    // Wallet.protectedPrincipal doc comment (schema.prisma) for why this is
+    // a running value clamped at 0 on every single write here, rather than
+    // recomputed from full ledger history: a lifetime SUM-then-floor-once
+    // permanently collapses to 0 once cumulative wagering ever exceeds
+    // cumulative deposits (routine within days of normal play), and never
+    // re-protects a later deposit. WIN never touches it — a payout only
+    // ever adds to `balance`, which is what lets it land as withdrawable.
+    const isPrincipalType = input.type === "DEPOSIT" || input.type === "BET" || input.type === "REFUND" || input.type === "ADJUSTMENT"
+    const newPrincipal = isPrincipalType
+      ? Prisma.Decimal.max(new Prisma.Decimal(0), new Prisma.Decimal(wallet.protectedPrincipal).plus(input.amount))
+      : new Prisma.Decimal(wallet.protectedPrincipal)
+
+    // bonusPlayableBalance (display-only, see its schema.prisma doc comment)
+    // is narrower than protectedPrincipal on purpose: it must NEVER grow
+    // from a DEPOSIT or a generic admin ADJUSTMENT (those aren't bonus
+    // money) — only bonus.service.ts's convertCoins credits it directly.
+    // Wagering (BET, and its REFUND) is the only thing that moves it here,
+    // same clamp-at-0 floor as protectedPrincipal, same approximation
+    // caveat (fungible balance, not a per-bet funding-source ledger).
+    const touchesBonusPlayable = input.type === "BET" || input.type === "REFUND"
+    const newBonusPlayable = touchesBonusPlayable
+      ? Prisma.Decimal.max(new Prisma.Decimal(0), new Prisma.Decimal(wallet.bonusPlayableBalance).plus(input.amount))
+      : new Prisma.Decimal(wallet.bonusPlayableBalance)
+
     await tx.ledgerEntry.create({
       data: {
         playerId: player.id,
@@ -81,7 +106,10 @@ export async function applyLedgerEntry(input: ApplyLedgerEntryInput): Promise<Ap
         balanceAfter: newBalance,
       },
     })
-    await tx.wallet.update({ where: { id: wallet.id }, data: { balance: newBalance } })
+    await tx.wallet.update({
+      where: { id: wallet.id },
+      data: { balance: newBalance, protectedPrincipal: newPrincipal, bonusPlayableBalance: newBonusPlayable },
+    })
 
     return { balance: newBalance.toNumber(), replayed: false }
   })
@@ -112,11 +140,9 @@ export async function getWalletDetails(playerExternalId: string): Promise<Wallet
   if (!player || !player.wallet) {
     throw new GamingApiError("INVALID_USER", `No player/wallet found for user_id ${playerExternalId}`)
   }
-  const principal = await prisma.ledgerEntry.aggregate({
-    where: { playerId: player.id, type: { in: ["DEPOSIT", "BET", "REFUND", "ADJUSTMENT"] } },
-    _sum: { amount: true },
-  })
-  const depositedPrincipal = Math.max(0, principal._sum.amount?.toNumber() ?? 0)
+  // wallet.protectedPrincipal is maintained incrementally by
+  // applyLedgerEntry (see its doc comment) — read directly, no aggregate.
+  const depositedPrincipal = player.wallet.protectedPrincipal.toNumber()
   return {
     balance: player.wallet.balance.toNumber(),
     withdrawableCash: Math.max(0, player.wallet.balance.toNumber() - depositedPrincipal),
@@ -219,8 +245,8 @@ export async function requestWithdrawal(
   }
 
   return prisma.$transaction(async (tx) => {
-    const walletRows = await tx.$queryRaw<{ id: string; balance: string; lockedBalance: string }[]>`
-      SELECT id, balance, "lockedBalance" FROM wallets WHERE "playerId" = ${player.id} FOR UPDATE
+    const walletRows = await tx.$queryRaw<{ id: string; balance: string; lockedBalance: string; protectedPrincipal: string }[]>`
+      SELECT id, balance, "lockedBalance", "protectedPrincipal" FROM wallets WHERE "playerId" = ${player.id} FOR UPDATE
     `
     const wallet = walletRows[0]
     if (!wallet) {
@@ -229,11 +255,10 @@ export async function requestWithdrawal(
 
     const decimalAmount = new Prisma.Decimal(amount)
     const currentBalance = new Prisma.Decimal(wallet.balance)
-    const principal = await tx.ledgerEntry.aggregate({
-      where: { playerId: player.id, type: { in: ["DEPOSIT", "BET", "REFUND", "ADJUSTMENT"] } },
-      _sum: { amount: true },
-    })
-    const depositedPrincipal = Prisma.Decimal.max(new Prisma.Decimal(0), principal._sum.amount ?? 0)
+    // wallet.protectedPrincipal is maintained incrementally by
+    // applyLedgerEntry (see its doc comment / schema.prisma) — read
+    // directly, no aggregate over ledger history.
+    const depositedPrincipal = new Prisma.Decimal(wallet.protectedPrincipal)
     const withdrawableCash = Prisma.Decimal.max(new Prisma.Decimal(0), currentBalance.minus(depositedPrincipal))
     if (withdrawableCash.lessThan(decimalAmount)) {
       throw new GamingApiError("NO_BALANCE", "Insufficient withdrawable balance")

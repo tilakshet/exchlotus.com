@@ -2,8 +2,8 @@ import { Router, json, type Request } from "express"
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { env } from "../../lib/env"
 import { logger } from "../../lib/logger"
-import { payinCallbackSchema, payoutCallbackSchema, cashfreeWebhookSchema } from "./payments.validators"
-import { handlePayinCallback, handlePayoutCallback } from "./payments.service"
+import { payinCallbackSchema, payoutCallbackSchema, cashfreeWebhookSchema, housholdbajarCallbackSchema } from "./payments.validators"
+import { handlePayinCallback, handlePayoutCallback, handleHousholdbajarCallback } from "./payments.service"
 
 /**
  * Inbound gateway traffic, not user-facing — mounted before apiLimiter (same
@@ -124,6 +124,56 @@ paymentsCallbackRouter.post("/payin/callback/cashfree", async (req, res) => {
     return res.status(500).json({ received: false })
   }
   res.status(200).json({ received: true })
+})
+
+/**
+ * HousholdBajar signs its callback: base64(HMAC-SHA256(rawBody,
+ * EXCHLOTUS_CALLBACK_SECRET)) — no timestamp mixed in, unlike Cashfree's
+ * scheme above. Rejected with 401 (not Cashfree's always-200 pattern):
+ * this route's only legitimate caller is a single known server, so there's
+ * no "arbitrary internet traffic probing for valid order ids" concern that
+ * would call for hiding a bad-signature response behind 200.
+ */
+function isValidHousholdbajarSignature(rawBody: Buffer | undefined, signature: string | undefined): boolean {
+  if (!rawBody || !signature) return false
+  const expected = createHmac("sha256", env.EXCHLOTUS_CALLBACK_SECRET).update(rawBody).digest("base64")
+  const expectedBuf = Buffer.from(expected)
+  const providedBuf = Buffer.from(signature)
+  if (expectedBuf.length !== providedBuf.length) return false
+  return timingSafeEqual(expectedBuf, providedBuf)
+}
+
+paymentsCallbackRouter.post("/payin/callback/housholdbajar", async (req, res) => {
+  const signature = req.header("x-housholdbajar-signature")
+  if (!isValidHousholdbajarSignature((req as RequestWithRawBody).rawBody, signature)) {
+    logger.warn({ hasSignature: !!signature }, "Rejected HousholdBajar callback with invalid/missing signature")
+    return res.status(401).json({ status: false, message: "Invalid signature" })
+  }
+
+  const parsed = housholdbajarCallbackSchema.safeParse(req.body)
+  if (!parsed.success) {
+    // A real 400 here, not a lying 200 — unlike Cashfree's route above, this
+    // endpoint's only legitimate caller is a single known, already-signature-
+    // verified server, so there's nothing to gain by hiding a malformed
+    // payload behind a fake success (and HousholdBajar's own retry/alerting
+    // benefits from an honest signal that something's wrong).
+    logger.warn({ issues: parsed.error.issues }, "Malformed HousholdBajar callback")
+    return res.status(400).json({ status: false, message: "Invalid callback payload" })
+  }
+
+  try {
+    await handleHousholdbajarCallback({
+      order_id: parsed.data.order_id,
+      amount: parsed.data.amount,
+      payment_status: parsed.data.payment_status,
+    })
+  } catch (err) {
+    // Signature already verified above — a 5xx here can't be used to probe
+    // for valid order ids, it only ever reaches an authenticated retry.
+    logger.error({ err, orderId: parsed.data.order_id }, "HousholdBajar callback handling failed")
+    return res.status(500).json({ status: false })
+  }
+  res.status(200).json({ status: true, message: "Payment callback processed" })
 })
 
 paymentsCallbackRouter.post("/payout/callback", async (req, res) => {
