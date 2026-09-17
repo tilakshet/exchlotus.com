@@ -22,3 +22,14 @@ export function useSubmitKyc() {
   })
 }
 
+export function useVerifyPan() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: kycApi.verifyPan,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: kycQueryKey })
+      queryClient.invalidateQueries({ queryKey: profileQueryKey })
+    },
+  })
+}
+

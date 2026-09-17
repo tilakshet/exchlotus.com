@@ -1,13 +1,12 @@
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { AlertCircle, CheckCircle2, Clock, CreditCard, ShieldCheck, User as UserIcon, X } from "lucide-react"
-import { useMyKyc, useSubmitKyc } from "@/hooks/useKyc"
+import { AlertCircle, CheckCircle2, Clock, ShieldCheck } from "lucide-react"
+import { useMyKyc, useVerifyPan } from "@/hooks/useKyc"
 import { ApiError, friendlyErrorMessage } from "@/api/api-error"
 import { StepHeading } from "@/features/account/StepHeading"
-import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/upload-limits"
 
 export const Route = createFileRoute("/dashboard/account/kyc")({
   component: KycPage,
@@ -27,76 +26,6 @@ type KycValues = z.infer<typeof kycSchema>
 const inputClass = "w-full rounded-[var(--acc-radius-md)] border px-4 py-3.5 text-base font-medium uppercase outline-none focus:border-[color:var(--acc-accent)] disabled:opacity-60"
 const inputStyle = { background: "var(--acc-input-bg)", color: "var(--acc-input-fg)", borderColor: "var(--acc-input-border)" } as const
 
-function ImageDropSlot({
-  label,
-  icon: Icon,
-  file,
-  previewUrl,
-  onSelect,
-  onRemove,
-  error,
-  onError,
-}: {
-  label: string
-  icon: typeof CreditCard
-  file: File | null
-  previewUrl: string | null
-  onSelect: (file: File) => void
-  onRemove: () => void
-  error?: string
-  onError: (message: string) => void
-}) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const inputId = `kyc-${label.replace(/\s+/g, "-").toLowerCase()}`
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const selected = e.target.files?.[0]
-    e.target.value = ""
-    if (!selected) return
-    if (!ALLOWED_IMAGE_TYPES.includes(selected.type)) return onError("Only JPEG, PNG, WEBP, or GIF images are allowed.")
-    if (selected.size > MAX_IMAGE_BYTES) return onError(`Image must be under ${MAX_IMAGE_BYTES / 1024 / 1024}MB.`)
-    onSelect(selected)
-  }
-
-  return (
-    <div>
-      <label htmlFor={inputId} className="mb-2 block text-base font-semibold text-[color:var(--acc-text-primary)]">
-        {label}
-      </label>
-      <input ref={inputRef} id={inputId} type="file" accept={ALLOWED_IMAGE_TYPES.join(",")} onChange={handleChange} className="sr-only" />
-      {previewUrl ? (
-        <div className="relative inline-block">
-          <img src={previewUrl} alt={`${label} preview`} className="h-32 w-auto rounded-[var(--acc-radius-md)] border object-cover" style={{ borderColor: "var(--acc-border)" }} />
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label={`Remove ${label}`}
-            className="absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full outline-none"
-            style={{ background: "var(--acc-danger)", color: "white" }}
-          >
-            <X className="size-3.5" aria-hidden="true" />
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="flex items-center gap-2 rounded-[var(--acc-radius-md)] border border-dashed px-4 py-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--acc-accent)]"
-          style={{ borderColor: "var(--acc-border)", color: "var(--acc-text-secondary)" }}
-        >
-          <Icon className="size-5" aria-hidden="true" />
-          Choose an image
-        </button>
-      )}
-      {!file && error && (
-        <p role="alert" className="mt-1 text-sm" style={{ color: "var(--acc-danger)" }}>
-          {error}
-        </p>
-      )}
-    </div>
-  )
-}
-
 function StatusBanner({ icon: Icon, bg, fg, title, description }: { icon: typeof CheckCircle2; bg: string; fg: string; title: string; description: string }) {
   return (
     <div className="flex items-start gap-3 rounded-[var(--acc-radius-lg)] px-6 py-5" style={{ background: bg, color: fg }}>
@@ -111,13 +40,7 @@ function StatusBanner({ icon: Icon, bg, fg, title, description }: { icon: typeof
 
 
 function KycForm({ onDone }: { onDone: () => void }) {
-  const submit = useSubmitKyc()
-  const [panCard, setPanCard] = useState<File | null>(null)
-  const [photo, setPhoto] = useState<File | null>(null)
-  const [panCardPreview, setPanCardPreview] = useState<string | null>(null)
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [panCardError, setPanCardError] = useState<string | null>(null)
-  const [photoError, setPhotoError] = useState<string | null>(null)
+  const verify = useVerifyPan()
   const [formError, setFormError] = useState<string | null>(null)
 
   const {
@@ -126,33 +49,10 @@ function KycForm({ onDone }: { onDone: () => void }) {
     formState: { errors },
   } = useForm<KycValues>({ resolver: zodResolver(kycSchema) })
 
-  function selectPanCard(file: File) {
-    setPanCardError(null)
-    setPanCard(file)
-    setPanCardPreview(URL.createObjectURL(file))
-  }
-  function selectPhoto(file: File) {
-    setPhotoError(null)
-    setPhoto(file)
-    setPhotoPreview(URL.createObjectURL(file))
-  }
-
   async function onSubmit(values: KycValues) {
     setFormError(null)
-    if (!panCard || !photo) {
-      setFormError("Both a PAN card image and a profile photo are required.")
-      return
-    }
-    // Cheap client-side heuristic only (name/size/modified-time match) —
-    // instant feedback for the obvious case of picking the same file twice.
-    // The backend compares actual file contents byte-for-byte and is the
-    // real gate; this can't replace that check, only shortcut the round trip.
-    if (panCard.name === photo.name && panCard.size === photo.size && panCard.lastModified === photo.lastModified) {
-      setFormError("Your PAN card and profile photo can't be the same image — please upload two different photos.")
-      return
-    }
     try {
-      await submit.mutateAsync({ panNumber: values.panNumber, panCard, photo })
+      await verify.mutateAsync(values.panNumber)
       onDone()
     } catch (err) {
       setFormError(friendlyErrorMessage(err instanceof ApiError ? err : err))
@@ -161,7 +61,7 @@ function KycForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6 rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-6">
-      <StepHeading step={2} title="Identity Details" />
+      <StepHeading step={1} title="Verify PAN" />
 
       <div>
         <label htmlFor="kyc-pan" className="mb-2 block text-base font-semibold text-[color:var(--acc-text-primary)]">
@@ -175,11 +75,6 @@ function KycForm({ onDone }: { onDone: () => void }) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <ImageDropSlot label="PAN Card Photo" icon={CreditCard} file={panCard} previewUrl={panCardPreview} onSelect={selectPanCard} onRemove={() => { setPanCard(null); setPanCardPreview(null) }} error={panCardError ?? undefined} onError={setPanCardError} />
-        <ImageDropSlot label="Your Profile Photo" icon={UserIcon} file={photo} previewUrl={photoPreview} onSelect={selectPhoto} onRemove={() => { setPhoto(null); setPhotoPreview(null) }} error={photoError ?? undefined} onError={setPhotoError} />
-      </div>
-
       {formError && (
         <p role="alert" className="text-sm" style={{ color: "var(--acc-danger)" }}>
           {formError}
@@ -188,12 +83,12 @@ function KycForm({ onDone }: { onDone: () => void }) {
 
       <button
         type="submit"
-        disabled={submit.isPending}
+        disabled={verify.isPending}
         className="flex h-14 w-full items-center justify-center gap-2.5 rounded-[var(--acc-radius-md)] text-lg font-bold outline-none transition-opacity disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-10"
         style={{ background: "var(--acc-accent)", color: "var(--acc-accent-fg)" }}
       >
         <ShieldCheck className="size-5.5" aria-hidden="true" strokeWidth={2.2} />
-        {submit.isPending ? "Submitting…" : "Submit for Verification"}
+        {verify.isPending ? "Verifying PAN…" : "Verify PAN"}
       </button>
     </form>
   )
@@ -237,13 +132,16 @@ function KycPage() {
       {data && (
         <>
           {data.status === "APPROVED" && (
-            <StatusBanner
-              icon={CheckCircle2}
-              bg="var(--acc-success-bg)"
-              fg="var(--acc-success-fg)"
-              title="You're verified"
-              description="Your identity has been verified — withdrawals are unlocked."
-            />
+            <div className="flex flex-col gap-3">
+              <StatusBanner icon={CheckCircle2} bg="var(--acc-success-bg)" fg="var(--acc-success-fg)" title="PAN Verified Successfully" description="Your identity has been verified — withdrawals are unlocked." />
+              {data.latestSubmission && (
+                <div className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-5 text-sm text-[color:var(--acc-text-secondary)]">
+                  <p><strong>Name:</strong> {data.latestSubmission.fullName ?? "Not provided"}</p>
+                  <p><strong>PAN:</strong> {data.latestSubmission.pan.slice(0, 5)}****{data.latestSubmission.pan.slice(-1)}</p>
+                  <p><strong>Status:</strong> KYC Verified</p>
+                </div>
+              )}
+            </div>
           )}
 
           {data.status === "PENDING" && (
@@ -272,7 +170,7 @@ function KycPage() {
           {data.status === "NOT_SUBMITTED" && (
             <>
               <div className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-5 text-base text-[color:var(--acc-text-secondary)]">
-                Verify your identity with your mobile number, a PAN card, and a profile photo. This is required once, before your first withdrawal — deposits and gameplay aren't affected.
+                Verify your identity with your mobile number and PAN. This is required once, before your first withdrawal — deposits and gameplay aren't affected.
               </div>
               {data.phoneVerified ? <KycForm onDone={() => refetch()} /> : <PhoneNotVerifiedNotice />}
             </>

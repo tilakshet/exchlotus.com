@@ -69,10 +69,33 @@ kycRouter.get("/:id", requirePermission("kyc.view"), async (req, res) => {
         phoneVerified: submission.player.phoneVerified,
       },
       panNumber: submission.panNumber,
+      hasDocuments: Boolean(submission.panCardFile && submission.photoFile),
+      panType: submission.panType,
+      fullName: submission.fullName,
+      firstName: submission.firstName,
+      middleName: submission.middleName,
+      lastName: submission.lastName,
+      gender: submission.gender,
+      aadhaarNumber: submission.aadhaarNumber,
+      aadhaarLinked: submission.aadhaarLinked,
+      dateOfBirth: submission.dateOfBirth,
+      buildingName: submission.buildingName,
+      locality: submission.locality,
+      streetName: submission.streetName,
+      pincode: submission.pincode,
+      city: submission.city,
+      state: submission.state,
+      country: submission.country,
+      mobile: submission.mobile,
+      email: submission.email,
+      verificationSource: submission.verificationSource,
+      provider: submission.provider,
+      providerRequestId: submission.providerRequestId,
       status: submission.status,
       rejectionReason: submission.rejectionReason,
       submittedAt: submission.createdAt.toISOString(),
       reviewedAt: submission.reviewedAt?.toISOString() ?? null,
+      verifiedAt: submission.verifiedAt,
     })
   } catch (err) {
     sendError(res, err)
@@ -91,6 +114,7 @@ kycRouter.get("/:id/document/:type", requirePermission("kyc.view"), async (req, 
   try {
     const submission = await getKycSubmission(param(req, "id"))
     const filename = type === "pan" ? submission.panCardFile : submission.photoFile
+    if (!filename) return res.status(404).json({ error: "DOCUMENT_NOT_FOUND" })
     const filePath = path.join(KYC_UPLOAD_DIR, filename)
 
     if (!fs.existsSync(filePath)) {

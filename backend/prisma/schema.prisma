@@ -127,6 +127,11 @@ enum KycStatus {
   REJECTED
 }
 
+enum KycVerificationSource {
+  MANUAL
+  QRX_PAN_API
+}
+
 /// One row per submission attempt (a rejected player can resubmit) — the
 /// durable history/audit trail. Player.kycStatus above is the fast-path
 /// "current status" read, kept in sync with whichever row here is latest.
@@ -140,8 +145,30 @@ model KycSubmission {
   /// through admin/backend's authenticated document-streaming route, which
   /// reads them off the same shared uploads volume the player backend wrote
   /// them to (see docker-compose.prod.yml).
-  panCardFile       String
-  photoFile         String
+  panCardFile       String?
+  photoFile         String?
+  panType           String?
+  fullName          String?
+  firstName         String?
+  middleName        String?
+  lastName          String?
+  gender            String?
+  aadhaarNumber     String?
+  aadhaarLinked     Boolean?
+  dateOfBirth       DateTime?
+  buildingName      String?
+  locality          String?
+  streetName        String?
+  pincode           String?
+  city              String?
+  state             String?
+  country           String?
+  mobile            String?
+  email             String?
+  verificationSource KycVerificationSource @default(MANUAL)
+  provider          String?
+  providerRequestId String?
+  verifiedAt        DateTime?
   status            KycStatus @default(PENDING)
   /// Set only on REJECTED — shown back to the player so they know what to
   /// fix before resubmitting.
@@ -156,6 +183,7 @@ model KycSubmission {
 
   @@index([playerId, createdAt])
   @@index([status])
+  @@index([providerRequestId])
   @@map("kyc_submissions")
 }
 

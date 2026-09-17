@@ -7,6 +7,7 @@ export interface UserListItem {
   email: string | null
   phone: string | null
   status: "ACTIVE" | "SUSPENDED"
+  kycStatus: "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED"
   balance: number | null
   currency: string
   createdAt: string
@@ -25,6 +26,15 @@ export interface UserDetail {
   createdAt: string
   wallet: { balance: number; bonusBalance: number; lockedBalance: number; currency: string } | null
   recentLedger: { id: string; type: string; amount: number; balanceAfter: number; createdAt: string }[]
+  kyc: {
+    status: "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED"
+    verificationSource: "MANUAL" | "QRX_PAN_API"
+    panNumber: string
+    fullName: string | null
+    provider: string | null
+    providerRequestId: string | null
+    verifiedAt: string | null
+  } | null
 }
 
 export function listUsers(params: { search?: string; status?: string; cursor?: string; limit?: number }) {

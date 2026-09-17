@@ -14,3 +14,7 @@ export const submitKycSchema = z.object({
     .toUpperCase()
     .regex(PAN_REGEX, "Enter a valid PAN number (format: ABCDE1234F)"),
 })
+
+export const verifyPanSchema = z.object({
+  pan: z.string().trim().toUpperCase().regex(PAN_REGEX, "Please enter a valid PAN number."),
+})

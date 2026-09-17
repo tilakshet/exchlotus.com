@@ -102,9 +102,28 @@ function KycDetailPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <DocumentCard submissionId={submission.id} type="pan" label="PAN Card" icon={CreditCard} />
-        <DocumentCard submissionId={submission.id} type="photo" label="Profile Photo" icon={UserIcon} />
+        {submission.hasDocuments && <DocumentCard submissionId={submission.id} type="pan" label="PAN Card" icon={CreditCard} />}
+        {submission.hasDocuments && <DocumentCard submissionId={submission.id} type="photo" label="Profile Photo" icon={UserIcon} />}
       </div>
+
+      <section className="grid grid-cols-1 gap-4 rounded-lg border border-border bg-card p-4 text-sm sm:grid-cols-2">
+        <p><span className="text-muted-foreground">Verification source:</span> {submission.verificationSource === "QRX_PAN_API" ? "QRX PAN API" : "Manual"}</p>
+        <p><span className="text-muted-foreground">PAN type:</span> {submission.panType ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">Full name:</span> {submission.fullName ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">First name:</span> {submission.firstName ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">Middle name:</span> {submission.middleName ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">Last name:</span> {submission.lastName ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">Gender:</span> {submission.gender ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">Date of birth:</span> {submission.dateOfBirth ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">Aadhaar linked:</span> {submission.aadhaarLinked === null ? "Not provided" : submission.aadhaarLinked ? "Yes" : "No"}</p>
+        <p><span className="text-muted-foreground">Aadhaar:</span> {submission.aadhaarNumber ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">Mobile:</span> {submission.mobile ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">Email:</span> {submission.email ?? "Not provided"}</p>
+        <p className="sm:col-span-2"><span className="text-muted-foreground">Address:</span> {[submission.buildingName, submission.locality, submission.streetName, submission.city, submission.state, submission.pincode, submission.country].filter(Boolean).join(", ") || "Not provided"}</p>
+        <p><span className="text-muted-foreground">Provider:</span> {submission.provider ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">Request ID:</span> {submission.providerRequestId ?? "Not provided"}</p>
+        <p><span className="text-muted-foreground">Verified at:</span> {submission.verifiedAt ? formatDateTime(submission.verifiedAt) : "Not verified"}</p>
+      </section>
 
       {submission.status === "REJECTED" && submission.rejectionReason && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">

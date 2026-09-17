@@ -65,6 +65,10 @@ Edit all three:
   with your real domain, and generate real secrets for
   `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `GAMING_WEBHOOK_SHARED_SECRET`,
   and `GAMING_PROVIDER_API_KEY` (e.g. `openssl rand -hex 32` each).
+  Set `QRX_CLIENT_ID` and `QRX_SECRET_ID` to the credentials issued by QRX Fintech;
+  these are used only by the backend for `POST /api/kyc/verify-pan` and must
+  never be added to frontend build variables.
+
   Set `SMS_ENABLED=true` and fill `SMS_API_KEY` / `SMS_SENDER_ID` with the
   BulkSMSConnect working key and the DLT-registered 6-char sender ID — these
   deliver the signup / forgot-password phone OTP and are backend-only (never
