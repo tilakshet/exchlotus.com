@@ -1,4 +1,5 @@
 import { env } from "../../lib/env"
+import { logger } from "../../lib/logger"
 
 const addressSchema = {
   building_name: "building_name",
@@ -94,7 +95,8 @@ export async function verifyPanWithQrx(pan: string): Promise<QrxPanVerificationR
       },
       body: JSON.stringify({ pan }),
     })
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, "QRX PAN verification request failed (network/timeout)")
     throw new QrxPanError("UNAVAILABLE", "PAN verification service is temporarily unavailable")
   }
 
@@ -102,13 +104,19 @@ export async function verifyPanWithQrx(pan: string): Promise<QrxPanVerificationR
   try {
     body = await response.json()
   } catch {
+    logger.warn({ status: response.status }, "QRX PAN verification returned a non-JSON response")
     throw new QrxPanError("INVALID_RESPONSE", "PAN verification service returned an invalid response")
   }
 
   if (!response.ok) {
+    // Surface QRX's own status/message (e.g. 401 "IP not whitelisted", 403
+    // "API not attached to your a/c") — otherwise it's all flattened to an
+    // opaque 503 and there's nothing to act on.
+    logger.warn({ status: response.status, body }, "QRX PAN verification returned a non-OK HTTP status")
     throw new QrxPanError("UNAVAILABLE", "PAN verification service is temporarily unavailable")
   }
   if (!isRecord(body) || body.status !== true || body.status_key !== "SUCCESS") {
+    logger.warn({ status: response.status, body }, "QRX PAN verification did not return SUCCESS")
     throw new QrxPanError("NOT_VERIFIED", "PAN verification failed")
   }
 

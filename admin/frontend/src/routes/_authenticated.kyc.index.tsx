@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/kyc/")({
 type StatusFilter = KycStatus | "ALL"
 
 function KycListPage() {
-  const [status, setStatus] = useState<StatusFilter>("PENDING")
+  const [status, setStatus] = useState<StatusFilter>("ALL")
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebouncedValue(search, 300)
 
@@ -37,7 +37,7 @@ function KycListPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="KYC Verification" description="Player-submitted PAN and identity documents awaiting review." />
+      <PageHeader title="KYC Verification" description="PAN verification records, instantly verified against QRX." />
 
       <FilterBar
         activeFilters={activeFilters}

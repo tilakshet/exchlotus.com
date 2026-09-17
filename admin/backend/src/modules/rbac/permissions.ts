@@ -39,7 +39,6 @@ export const PERMISSION_CODES = [
   "support.view",
   "support.manage",
   "kyc.view",
-  "kyc.manage",
   "referrals.view",
   "referrals.manage",
   "referrals.export",

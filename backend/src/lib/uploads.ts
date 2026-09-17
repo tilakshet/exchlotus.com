@@ -15,17 +15,10 @@ import { env } from "./env"
  */
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads")
 export const SUPPORT_UPLOAD_DIR = path.join(UPLOAD_ROOT, "support")
-/// PAN card scans + KYC selfies — unlike SUPPORT_UPLOAD_DIR, never exposed
-/// through a public static route (see app.ts). admin-backend reads these
-/// off the same exchlotus_uploads volume through its own authenticated
-/// document-streaming route (admin/backend's kyc.controller.ts), not by
-/// asking this process for them.
-export const KYC_UPLOAD_DIR = path.join(UPLOAD_ROOT, "kyc")
 // multer's diskStorage doesn't create its destination — without this, the
 // first upload after a fresh volume/checkout (see docker-compose.prod.yml's
 // exchlotus_uploads volume) fails with ENOENT.
 fs.mkdirSync(SUPPORT_UPLOAD_DIR, { recursive: true })
-fs.mkdirSync(KYC_UPLOAD_DIR, { recursive: true })
 
 /**
  * Single source of truth for every upload feature in the app (support
@@ -130,44 +123,4 @@ export function parseSupportImageUpload(req: import("express").Request, res: imp
 /** Builds the absolute, publicly-fetchable URL for an uploaded support image — see SupportMessage.attachmentUrl in schema.prisma for why this must be absolute (admin/frontend is a different domain). */
 export function supportImageUrl(filename: string): string {
   return `${env.PUBLIC_BASE_URL}/api/uploads/support/${filename}`
-}
-
-const kycUpload = buildUpload(2).fields([
-  { name: "panCard", maxCount: 1 },
-  { name: "photo", maxCount: 1 },
-])
-
-/** Same wrapping approach as parseSupportImageUpload — see its doc comment. */
-export function parseKycUpload(
-  req: import("express").Request,
-  res: import("express").Response
-): Promise<{ error?: string; files?: { panCard: string; photo: string } }> {
-  return new Promise((resolve) => {
-    kycUpload(req, res, (err: unknown) => {
-      if (err instanceof UnsupportedImageTypeError) return resolve({ error: "Only JPEG, PNG, WEBP, or GIF images are allowed." })
-      if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") return resolve({ error: `Each image must be under ${MAX_IMAGE_BYTES / 1024 / 1024}MB.` })
-      if (err) return resolve({ error: "Could not process the uploaded images." })
-
-      const files = req.files as { panCard?: Express.Multer.File[]; photo?: Express.Multer.File[] } | undefined
-      const panCard = files?.panCard?.[0]
-      const photo = files?.photo?.[0]
-      if (!panCard || !photo) return resolve({ error: "Both a PAN card image and a profile photo are required." })
-
-      // The two fields serving the same bytes back (re-uploading the PAN
-      // card image as the "profile photo," accidentally or otherwise) means
-      // one of the two required documents was never actually provided.
-      if (panCard.buffer.equals(photo.buffer)) {
-        return resolve({ error: "Your PAN card and profile photo can't be the same image — please upload two different photos." })
-      }
-
-      try {
-        const panCardFilename = persistValidatedImage(panCard, KYC_UPLOAD_DIR)
-        const photoFilename = persistValidatedImage(photo, KYC_UPLOAD_DIR)
-        resolve({ files: { panCard: panCardFilename, photo: photoFilename } })
-      } catch (e) {
-        if (e instanceof ImageTooSmallError) return resolve({ error: "One of those images looks empty or corrupted — please try again." })
-        resolve({ error: "Both files must be valid JPEG, PNG, WEBP, or GIF images." })
-      }
-    })
-  })
 }
