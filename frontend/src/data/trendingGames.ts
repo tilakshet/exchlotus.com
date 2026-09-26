@@ -25,14 +25,24 @@
  * "first available game," picked the specific titles.
  */
 export const TRENDING_GAME_IDS = [
-  // Pinned first (2026-09-26) — most-played per operator request. Verified
-  // live via the same POST /v1/sessions/launch, mode:"real" method:
-  // both returned session.mode:"real". Rendering order for this list is
-  // enforced client-side in TrendingGamesRow.tsx (the backend's ids-lookup
-  // query itself always returns alphabetical-by-name, ignoring this array's
-  // order) — that's what actually makes these render first.
+  // Pinned first (2026-09-26) — most-played per operator request. Every ID
+  // here was individually verified (or re-verified) via the same
+  // POST /v1/sessions/launch, mode:"real" method, each confirmed returning
+  // session.mode:"real". Rendering order for this list is enforced
+  // client-side in TrendingGamesRow.tsx (the backend's ids-lookup query
+  // itself always returns alphabetical-by-name, ignoring this array's
+  // order) — that's what actually makes these render first. The four
+  // crashgame entries below (AviaBET/Chicky Run/Archer/GrandMa Road) were
+  // moved up from Batch 4 rather than duplicated — same IDs, new position.
   "cmsgdrusi031wuz1d1l8ju4rw", // Aviator, crashgame (aviator)
   "cmsge9kcs0j6guz1duvextsht", // Chicken Road, instantgame (in-out)
+  "cmsgeba1n0kreuz1dr4on349q", // AviaBET, crashgame (pascalgaming)
+  "cmsgdzqir0aw8uz1d8l8c5fh1", // Chicky Run, crashgame (pgsoft)
+  "cmsge8on30iccuz1dqgqm2pur", // Archer, crashgame (onetouch)
+  "cmsge9w9e0jhouz1dmt2wkqeb", // GrandMa Road, crashgame (abracadabra)
+  "e5248044-3238-4a3e-9142-b89b88f28d1f", // Chicken Hot Run, instantgame (expanse-studios)
+  "cmsgedkod0mt2uz1dnixqgzij", // Space Chicken, instantgame (livegames)
+  "b354a602-db13-45cb-8030-046e963c9c47", // Chicken Revenge, instantgame (pascalgaming)
 
   "cmsge6sev0hqkuz1dtkua3d2x", // Andar Bahar (7mojos)
   "cmsgdv6qm06geuz1d2dxos1z4", // Andar Bahar, second listing (7mojos)
@@ -130,13 +140,10 @@ export const TRENDING_GAME_IDS = [
   // from a realMoneyVerified provider, not already listed above. Same
   // verification method (POST /v1/sessions/launch, mode:"real", confirmed
   // session.mode:"real") — 58/58 succeeded.
-  "cmsge8on30iccuz1dqgqm2pur", // Archer, crashgame (onetouch)
-  "cmsgeba1n0kreuz1dr4on349q", // AviaBET, crashgame (pascalgaming)
   "cmsgeatzm0kdauz1djfehzng4", // Blast, crashgame (pascalgaming)
   "cmsge5jro0ggyuz1dggn33kmz", // Cash Stack, crashgame (tada)
   "cmsgeauoh0kduuz1dawl7tsmo", // Catch Me, crashgame (pascalgaming)
   "cmsgeb8j70kpyuz1dc0lkgwov", // ChartX, crashgame (pascalgaming)
-  "cmsgdzqir0aw8uz1d8l8c5fh1", // Chicky Run, crashgame (pgsoft)
   "cmsgebpjc0l5auz1dxik7vvsm", // Comet, crashgame (splitthepot-a)
   "cmsgeb9ct0kqouz1d6z9skohw", // Crash, crashgame (pascalgaming)
   "cmsgeatvq0kd6uz1d3nw6rzhm", // Crash, crashgame (pascalgaming)
@@ -161,7 +168,6 @@ export const TRENDING_GAME_IDS = [
   "cmsge6aj50h7yuz1de095h0bz", // Frog Dash, crashgame (tada)
   "cmsgecq4w0m1cuz1dzbjmj9c7", // Frog Dash 10000, crashgame (tada)
   "cmsgdwuyk0838uz1d3ig4b54w", // Golden Escape, crashgame (altente)
-  "cmsge9w9e0jhouz1dmt2wkqeb", // GrandMa Road, crashgame (abracadabra)
   "cmsgeb92p0kqeuz1d1yn0kfrw", // Gravity, crashgame (pascalgaming)
   "cmsgdug5o05qeuz1d02ad66ty", // Hippodrome, crashgame (livegames)
   "cmsgeb90v0kqcuz1dkf4ql33b", // Hot Cricket, crashgame (pascalgaming)
