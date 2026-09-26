@@ -25,6 +25,15 @@
  * "first available game," picked the specific titles.
  */
 export const TRENDING_GAME_IDS = [
+  // Pinned first (2026-09-26) — most-played per operator request. Verified
+  // live via the same POST /v1/sessions/launch, mode:"real" method:
+  // both returned session.mode:"real". Rendering order for this list is
+  // enforced client-side in TrendingGamesRow.tsx (the backend's ids-lookup
+  // query itself always returns alphabetical-by-name, ignoring this array's
+  // order) — that's what actually makes these render first.
+  "cmsgdrusi031wuz1d1l8ju4rw", // Aviator, crashgame (aviator)
+  "cmsge9kcs0j6guz1duvextsht", // Chicken Road, instantgame (in-out)
+
   "cmsge6sev0hqkuz1dtkua3d2x", // Andar Bahar (7mojos)
   "cmsgdv6qm06geuz1d2dxos1z4", // Andar Bahar, second listing (7mojos)
   "cmsge6sm40hqsuz1duppig9ad", // Dragon Tiger (7mojos)
