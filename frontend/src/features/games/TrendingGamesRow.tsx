@@ -29,7 +29,10 @@ function TrendingGridSkeleton() {
 export function TrendingGamesRow() {
   const [launchingGame, setLaunchingGame] = useState<Game | null>(null)
   const { data, isLoading } = useGames({ ids: [...TRENDING_GAME_IDS] })
-  const games = data?.data
+  // The backend's ids-lookup always returns alphabetical-by-name (see
+  // catalog.service.ts), not this array's order, so pinning a game first
+  // here (e.g. Aviator/Chicken Road) requires re-sorting client-side.
+  const games = data?.data && [...data.data].sort((a, b) => (TRENDING_GAME_IDS as readonly string[]).indexOf(a.gameId) - (TRENDING_GAME_IDS as readonly string[]).indexOf(b.gameId))
 
   if (isLoading) {
     return (
