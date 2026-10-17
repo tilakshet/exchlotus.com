@@ -689,6 +689,8 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 function RegisterForm({ onSuccess, initialReferralCode }: { onSuccess: () => void; initialReferralCode?: string }) {
   const { register: createAccount } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -907,13 +909,25 @@ function RegisterForm({ onSuccess, initialReferralCode }: { onSuccess: () => voi
           />
           <input
             id="signup-password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             placeholder="••••••••"
             aria-invalid={!!errors.password}
             className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
             style={{ color: "var(--landing-text-primary)" }}
             {...register("password")}
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="login-icon-btn flex size-9 shrink-0 items-center justify-center rounded-(--landing-radius-sm) outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
+          >
+            {showPassword ? (
+              <EyeOff className="size-4.5" style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
+            ) : (
+              <Eye className="size-4.5" style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
+            )}
+          </button>
         </div>
         <FieldError message={errors.password?.message} />
       </div>
@@ -937,13 +951,25 @@ function RegisterForm({ onSuccess, initialReferralCode }: { onSuccess: () => voi
           />
           <input
             id="signup-confirm"
-            type="password"
+            type={showConfirmPassword ? "text" : "password"}
             placeholder="••••••••"
             aria-invalid={!!errors.confirmPassword}
             className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-(--landing-text-muted)"
             style={{ color: "var(--landing-text-primary)" }}
             {...register("confirmPassword")}
           />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword((visible) => !visible)}
+            aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+            className="login-icon-btn flex size-9 shrink-0 items-center justify-center rounded-(--landing-radius-sm) outline-none focus-visible:ring-2 focus-visible:ring-(--landing-gold)"
+          >
+            {showConfirmPassword ? (
+              <EyeOff className="size-4.5" style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
+            ) : (
+              <Eye className="size-4.5" style={{ color: "var(--landing-text-secondary)" }} aria-hidden="true" />
+            )}
+          </button>
         </div>
         <FieldError message={errors.confirmPassword?.message} />
       </div>
