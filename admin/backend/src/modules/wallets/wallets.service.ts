@@ -55,6 +55,8 @@ export async function listLedger(playerId: string, options: { type?: LedgerEntry
  * kind of parallel financial logic CLAUDE.md prohibits. The audit row is
  * written in the same transaction, so "balance changed but unattributed"
  * is not a reachable state.
+ * Admin DEPOSIT and ADJUSTMENT credits also increase protectedPrincipal,
+ * keeping those funds unavailable for withdrawal until wagering releases them.
  *
  * `idempotencyKey` is caller-supplied (the frontend generates one per
  * confirm-dialog open and reuses it across submit/retry) and used verbatim
@@ -79,8 +81,8 @@ export async function adjustBalance(
   const signedAmount = type === "WITHDRAWAL" ? -Math.abs(amount) : Math.abs(amount)
 
   return prisma.$transaction(async (tx) => {
-    const walletRows = await tx.$queryRaw<{ id: string; balance: string }[]>`
-      SELECT id, balance FROM wallets WHERE "playerId" = ${player.id} FOR UPDATE
+    const walletRows = await tx.$queryRaw<{ id: string; balance: string; protectedPrincipal: string }[]>`
+      SELECT id, balance, "protectedPrincipal" FROM wallets WHERE "playerId" = ${player.id} FOR UPDATE
     `
     const wallet = walletRows[0]
     if (!wallet) throw new AdminApiError("NOT_FOUND", "Wallet not provisioned for this player")
@@ -95,6 +97,9 @@ export async function adjustBalance(
     if (newBalance.isNegative()) {
       throw new AdminApiError("INSUFFICIENT_BALANCE", "Adjustment would take the wallet negative")
     }
+    const currentProtectedPrincipal = new Prisma.Decimal(wallet.protectedPrincipal)
+    const newProtectedPrincipal =
+      type === "DEPOSIT" || type === "ADJUSTMENT" ? currentProtectedPrincipal.plus(signedAmount) : currentProtectedPrincipal
 
     const entry = await tx.ledgerEntry.create({
       data: {
@@ -108,15 +113,23 @@ export async function adjustBalance(
         actorAdminId,
       },
     })
-    await tx.wallet.update({ where: { id: wallet.id }, data: { balance: newBalance } })
+    await tx.wallet.update({
+      where: { id: wallet.id },
+      data: { balance: newBalance, protectedPrincipal: newProtectedPrincipal },
+    })
 
     await writeAuditLog(tx, req, {
       adminId: actorAdminId,
       action: "wallet.adjust",
       entityType: "Player",
       entityId: player.id,
-      before: { balance: currentBalance.toNumber() },
-      after: { balance: newBalance.toNumber(), type, ledgerEntryId: entry.id },
+      before: { balance: currentBalance.toNumber(), protectedPrincipal: currentProtectedPrincipal.toNumber() },
+      after: {
+        balance: newBalance.toNumber(),
+        protectedPrincipal: newProtectedPrincipal.toNumber(),
+        type,
+        ledgerEntryId: entry.id,
+      },
       reason,
     })
 
