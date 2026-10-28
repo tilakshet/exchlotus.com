@@ -7,13 +7,11 @@ import { GameLaunchModalConnected } from "./GameLaunchModalConnected"
 import type { Game } from "@/types/catalog"
 
 /** Fixed 3-per-row on mobile, auto-fill `w-48`-ish sizing at `sm:` and up — same grid as the category/search pages (dashboard.category.$categoryCode.tsx, dashboard.search.tsx, GameCatalogSection.tsx). */
-const TRENDING_GRID_COLS = "grid-cols-3 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] sm:gap-4"
-
-function TrendingGridSkeleton() {
+function TrendingCarouselSkeleton() {
   return (
-    <div className={`grid ${TRENDING_GRID_COLS}`}>
-      {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="overflow-hidden rounded-[var(--sb-radius-lg)] border border-[color:var(--sb-border)]">
+    <div className="scrollbar-none flex gap-3 overflow-hidden">
+      {Array.from({ length: 5 }, (_, i) => (
+        <div key={i} className="w-36 shrink-0 overflow-hidden rounded-[var(--sb-radius-lg)] border border-[color:var(--sb-border)] sm:w-48">
           <div className="aspect-[4/3] animate-pulse bg-[color:var(--sb-content-alt)]" />
         </div>
       ))}
@@ -38,7 +36,7 @@ export function TrendingGamesRow() {
     return (
       <div>
         <TrendingGamesRowTitle />
-        <TrendingGridSkeleton />
+        <TrendingCarouselSkeleton />
       </div>
     )
   }
@@ -48,9 +46,9 @@ export function TrendingGamesRow() {
   return (
     <div>
       <TrendingGamesRowTitle />
-      <ul className={`grid ${TRENDING_GRID_COLS}`}>
+      <ul aria-label="Trending games" className="scrollbar-none flex gap-3 overflow-x-auto pb-2">
         {games.map((game) => (
-          <li key={game.id}>
+          <li key={game.id} className="w-36 shrink-0 sm:w-48">
             <GameCard game={game} onPlay={setLaunchingGame} />
           </li>
         ))}
