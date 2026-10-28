@@ -1,40 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react"
-import {
-  AlertCircle,
-  ArrowUpDown,
-  Cherry,
-  ChevronLeft,
-  ChevronRight,
-  Club,
-  Cpu,
-  CircleDot,
-  Crosshair,
-  Dice5,
-  Dices,
-  Fish,
-  Gamepad2,
-  Gift,
-  Grid3x3,
-  Hash,
-  LayoutGrid,
-  Layers,
-  Loader2,
-  MoreHorizontal,
-  MousePointerClick,
-  Puzzle,
-  Rocket,
-  Search,
-  SlidersHorizontal,
-  Smile,
-  Spade,
-  Swords,
-  Table2,
-  Target,
-  Ticket,
-  Tv,
-  Zap,
-  type LucideIcon,
-} from "lucide-react"
+import { AlertCircle, Cherry, ChevronLeft, ChevronRight, CircleDot, Club, Crosshair, Dice5, Gamepad2, Grid3X3, Layers, Loader2, Rocket, Search, SlidersHorizontal, Table2, Ticket, Tv, Zap, type LucideIcon } from "lucide-react"
 import { useCategories } from "@/hooks/useCategories"
 import { useProviders } from "@/hooks/useProviders"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
@@ -45,52 +10,99 @@ import { GameCard } from "./GameCard"
 import { GameLaunchModalConnected } from "./GameLaunchModalConnected"
 import type { Game } from "@/types/catalog"
 
-/** Best-effort icon per real category code — purely decorative, falls back to Gamepad2 for anything unmapped. */
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  andarbahar: Layers,
-  arcade: Gamepad2,
-  baccarat: Club,
-  bingo: Grid3x3,
-  blackjack: Spade,
-  cards: Layers,
-  casual: Smile,
-  crashgame: Rocket,
-  dice: Dices,
-  dragontiger: Swords,
-  fish: Fish,
-  gameshow: Tv,
-  "hi-lo": ArrowUpDown,
-  instantgame: Zap,
-  interactivegame: MousePointerClick,
-  keno: Hash,
-  lobby: LayoutGrid,
-  lottery: Ticket,
-  lotto: Ticket,
-  minigame: Puzzle,
-  other: MoreHorizontal,
-  plinko: CircleDot,
+/** Provider category codes grouped into player-friendly browse headings. */
+const GAME_CATEGORY_GROUPS: { label: string; codes: Set<string> }[] = [
+  { label: "Slots", codes: new Set(["slot", "slots"]) },
+  { label: "Live Casino & Table Games", codes: new Set(["andarbahar", "baccarat", "blackjack", "cards", "dragontiger", "gameshow", "poker", "roulette", "sicbo", "tablegames", "teenpatti"]) },
+  { label: "Quick Games", codes: new Set(["crashgame", "dice", "hi-lo", "instantgame", "interactivegame", "keno", "lottery", "lotto", "plinko", "scratchcards"]) },
+  { label: "Arcade & Casual", codes: new Set(["arcade", "casual", "fish", "minigame", "shooting"]) },
+]
+const GAME_CATEGORY_LABELS: Record<string, string> = {
+  andarbahar: "Andar Bahar",
+  crashgame: "Crash Games",
+  dragontiger: "Dragon Tiger",
+  gameshow: "Game Shows",
+  "hi-lo": "Hi-Lo",
+  instantgame: "Instant Games",
+  interactivegame: "Interactive Games",
+  keno: "Keno",
+  lottery: "Lotteries",
+  minigame: "Mini Games",
+  scratchcards: "Scratch Cards",
+  slots: "Slots",
+  slot: "Slots",
+  tablegames: "Table Games",
+  teenpatti: "Teen Patti",
+}
+const GAME_CATEGORY_ICONS: Record<string, LucideIcon> = {
+  "all-games": Grid3X3,
+  "crash-games": Rocket,
+  "table-games": Table2,
   poker: Club,
-  promo: Gift,
-  roulette: Target,
-  scratchcards: Ticket,
-  shooting: Crosshair,
-  sicbo: Dice5,
+  lotteries: Ticket,
+  "live-casino": Tv,
+  "quick-games": Zap,
+  arcade: Gamepad2,
+  crashgame: Rocket,
+  dice: Dice5,
+  roulette: CircleDot,
   slot: Cherry,
   slots: Cherry,
-  tablegames: Table2,
-  teenpatti: Spade,
-  topcard: Layers,
-  virtual: Cpu,
+  shooting: Crosshair,
+  cards: Layers,
+  andarbahar: Club,
 }
 
-/** Fixed 3-per-row on mobile (cards grow to fill the row, same as the category-detail/search grids) so the count stays exactly 3 across the whole mobile width range instead of auto-fill sneaking in a 4th column on wider phones; back to the auto-fill `w-48`-ish sizing (matching CategoryRow.tsx's shelf cards) at `sm:` and up. */
+function categoryGroup(code: string) {
+  return GAME_CATEGORY_GROUPS.find((group) => group.codes.has(code))?.label ?? "Other Games"
+}
+
 const GAME_GRID_COLS = "grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]"
+const BROWSE_GROUP_LABELS: Record<string, string> = {
+  "live-casino": "Live Casino",
+  "quick-games": "Quick Games",
+  "crash-games": "Crash Games",
+  "table-games": "Table Games",
+  lotteries: "Lotteries",
+  ...GAME_CATEGORY_LABELS,
+}
+const ORDERED_CASINO_TABS = [
+  { code: "", label: "All Games" },
+  { code: "crash-games", label: "Crash Games" },
+  { code: "table-games", label: "Table Games" },
+  { code: "poker", label: "Poker" },
+  { code: "dice", label: "Dice" },
+  { code: "lotteries", label: "Lotteries" },
+  { code: "roulette", label: "Roulette" },
+  { code: "slots", label: "Slots" },
+  { code: "shooting", label: "Shooting" },
+  { code: "cards", label: "Cards" },
+  { code: "andarbahar", label: "Andar Bahar" },
+  { code: "live-casino", label: "Live Casino" },
+  { code: "quick-games", label: "Quick Games" },
+]
+const ORDERED_CASINO_CATEGORY_CODES = new Set([
+  "crashgame", "tablegames", "poker", "dice", "lottery", "lotto", "roulette",
+  "slot", "slots", "shooting", "cards", "andarbahar",
+])
+
+function GameCarouselSkeleton() {
+  return (
+    <div className="scrollbar-none flex gap-3 overflow-hidden">
+      {Array.from({ length: 5 }, (_, i) => (
+        <div key={i} className="w-36 shrink-0 overflow-hidden rounded-[var(--sb-radius-lg)] border border-[color:var(--sb-border)] bg-[color:var(--sb-content-alt)] sm:w-48">
+          <div className="aspect-[4/3] animate-pulse" />
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function GameGridSkeleton() {
   return (
-    <div className={`grid ${GAME_GRID_COLS} gap-3`}>
-      {Array.from({ length: 10 }, (_, i) => (
-        <div key={i} className="aspect-[4/3] animate-pulse overflow-hidden rounded-[var(--sb-radius-lg)] border border-[color:var(--sb-border)] bg-[color:var(--sb-content-alt)]" />
+    <div className="grid grid-cols-3 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
+      {Array.from({ length: 15 }, (_, i) => (
+        <div key={i} className="aspect-[4/3] animate-pulse rounded-[var(--sb-radius-lg)] border border-[color:var(--sb-border)] bg-[color:var(--sb-content-alt)]" />
       ))}
     </div>
   )
@@ -110,21 +122,30 @@ function GameGrid({ games, onPlay, emptyMessage }: { games: Game[]; onPlay: (gam
 }
 
 /**
- * The real game lobby: live category tabs + provider filter + search wired
+ * The real game lobby: category filter + provider filter + search wired
  * to the backend catalog (useCategories/useProviders/useGames),
  * plus favorites (local-only, see useFavorites.ts) and recently-played
  * (derived from transaction history, see useRecentlyPlayed.ts) sections
- * above the full grid.
+ * above the catalog. Casino mode uses category tabs and a 25-game grid page;
+ * the landing catalog uses a 50-game horizontal carousel page.
  *
  * The catalog has ~15k games, so "All Games" shows exactly one 50-game
  * page at a time (not an accumulating infinite scroll) — "Load more games"
- * advances to the next page, replacing the grid rather than appending to
+ * advances to the next carousel page rather than appending to
  * it, and a Previous control steps back. Switching category/provider/
  * search resets back to page 1 so a stale page number never gets applied
  * to a different filter.
  */
-export function GameCatalogSection() {
-  const [activeCategory, setActiveCategory] = useState<string | undefined>(undefined)
+export function GameCatalogSection({
+  casinoMode = false,
+  showCategoryTabs = false,
+  initialCategory,
+}: {
+  casinoMode?: boolean
+  showCategoryTabs?: boolean
+  initialCategory?: string
+}) {
+  const [activeCategory, setActiveCategory] = useState<string | undefined>(initialCategory)
   const [activeProvider, setActiveProvider] = useState<string | undefined>(undefined)
   const [providerInput, setProviderInput] = useState("")
   const [search, setSearch] = useState("")
@@ -143,7 +164,8 @@ export function GameCatalogSection() {
     setPage(1)
   }, [activeCategory, activeProvider, debouncedSearch])
 
-  const gamesQuery = useGames({ category: activeCategory, provider: activeProvider, search: debouncedSearch || undefined, page, pageSize: 50 })
+  const pageSize = casinoMode ? 24 : 50
+  const gamesQuery = useGames({ category: activeCategory, provider: activeProvider, search: debouncedSearch || undefined, page, pageSize })
   const searchPending = search.trim() !== debouncedSearch
 
   // Text + <datalist> combobox instead of a <select> — with 189 providers, a
@@ -171,51 +193,63 @@ export function GameCatalogSection() {
     const byId = new Map((recentQuery.data?.data ?? []).map((g) => [g.gameId, g]))
     return recentIds.map((id) => byId.get(id)).filter((g): g is Game => !!g)
   }, [recentQuery.data, recentIds])
+  const casinoTabs = [
+    ...ORDERED_CASINO_TABS,
+    ...(categoriesQuery.data ?? [])
+      .filter((category) => !ORDERED_CASINO_CATEGORY_CODES.has(category.code))
+      .map((category) => ({ code: category.code, label: GAME_CATEGORY_LABELS[category.code] ?? category.name })),
+  ].filter((tab, index, tabs) => tabs.findIndex((item) => item.code === tab.code) === index)
+  if (!casinoMode) casinoTabs[0].label = "All Games"
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-3">
-        <div role="tablist" aria-label="Game category" className="scrollbar-none flex gap-2.5 overflow-x-auto pb-1">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeCategory === undefined}
-            onClick={() => setActiveCategory(undefined)}
-            className={`flex shrink-0 items-center gap-2 rounded-[var(--sb-radius-md)] border px-4 py-2.5 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)] ${
-              activeCategory === undefined
-                ? "border-[color:var(--sb-accent-gold)] text-[color:var(--sb-accent-gold-fg)]"
-                : "border-[color:var(--sb-border)] bg-[color:var(--sb-content-bg)] text-[color:var(--sb-text-primary)] hover:border-[color:var(--sb-accent-gold)]"
-            }`}
-            style={activeCategory === undefined ? { background: "var(--sb-accent-gold)" } : undefined}
-          >
-            <LayoutGrid className="size-5.5 shrink-0" aria-hidden="true" />
-            All Games
-          </button>
-          {categoriesQuery.data?.map((category) => {
-            const Icon = CATEGORY_ICONS[category.code] ?? Gamepad2
-            const active = activeCategory === category.code
-            return (
-              <button
-                key={category.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setActiveCategory(category.code)}
-                className={`flex shrink-0 items-center gap-2 rounded-[var(--sb-radius-md)] border px-4 py-2.5 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)] ${
-                  active
-                    ? "border-[color:var(--sb-accent-gold)] text-[color:var(--sb-accent-gold-fg)]"
-                    : "border-[color:var(--sb-border)] bg-[color:var(--sb-content-bg)] text-[color:var(--sb-text-primary)] hover:border-[color:var(--sb-accent-gold)]"
-                }`}
-                style={active ? { background: "var(--sb-accent-gold)" } : undefined}
-              >
-                <Icon className="size-5.5 shrink-0" aria-hidden="true" />
-                {category.name}
-              </button>
-            )
-          })}
-        </div>
+        {casinoMode || showCategoryTabs ? (
+          <div role="tablist" aria-label="Casino game categories" className="scrollbar-none flex gap-2 overflow-x-auto pb-2">
+            {casinoTabs.map((tab) => {
+              const active = (activeCategory ?? "") === tab.code
+              const Icon = GAME_CATEGORY_ICONS[tab.code || "all-games"] ?? Gamepad2
+              return (
+                <button
+                  key={tab.code || "all-casino-games"}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveCategory(tab.code || undefined)}
+                  className={`flex min-h-14 shrink-0 items-center gap-2.5 rounded-[14px] border border-transparent px-5 text-base font-semibold text-white transition-colors duration-150 hover:bg-[#00c853] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00c853] ${active ? "!bg-[#00c853] shadow-md" : "bg-[#292929]"}`}
+                >
+                  <Icon className={`size-5.5 shrink-0 ${active ? "text-white" : "text-white/65"}`} aria-hidden="true" />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <>
+            <label htmlFor="game-category-filter" className="sr-only">Browse game category</label>
+            <select
+              id="game-category-filter"
+              value={activeCategory ?? ""}
+              onChange={(event) => setActiveCategory(event.target.value || undefined)}
+              className="min-h-11 w-full rounded-[var(--sb-radius-md)] border border-[color:var(--sb-border)] bg-[color:var(--sb-content-bg)] px-3 text-sm font-semibold text-[color:var(--sb-text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)] sm:w-auto sm:min-w-64"
+            >
+              <option value="">All Games</option>
+              {GAME_CATEGORY_GROUPS.map((group) => {
+                const categories = categoriesQuery.data?.filter((category) => categoryGroup(category.code) === group.label) ?? []
+                return categories.length ? (
+                  <optgroup key={group.label} label={group.label}>
+                    {categories.map((category) => <option key={category.id} value={category.code}>{category.name}</option>)}
+                  </optgroup>
+                ) : null
+              })}
+              {categoriesQuery.data?.filter((category) => categoryGroup(category.code) === "Other Games").map((category) => (
+                <option key={category.id} value={category.code}>{category.name}</option>
+              ))}
+            </select>
+          </>
+        )}
 
-        <div className="flex flex-col gap-3 sm:flex-row">
+        {!casinoMode && <div className="flex flex-col gap-3 sm:flex-row">
           <label htmlFor="game-search" className="sr-only">
             Search games
           </label>
@@ -252,10 +286,10 @@ export function GameCatalogSection() {
               ))}
             </datalist>
           </div>
-        </div>
+        </div>}
       </div>
 
-      {recentGames.length > 0 && (
+      {!casinoMode && recentGames.length > 0 && (
         <section aria-labelledby="recently-played-heading">
           <h2 id="recently-played-heading" className="mb-3 text-sm font-semibold text-[color:var(--sb-text-primary)]">
             Recently Played
@@ -264,7 +298,7 @@ export function GameCatalogSection() {
         </section>
       )}
 
-      {favoriteGames.length > 0 && (
+      {!casinoMode && favoriteGames.length > 0 && (
         <section aria-labelledby="favorites-heading">
           <h2 id="favorites-heading" className="mb-3 text-sm font-semibold text-[color:var(--sb-text-primary)]">
             Favorites
@@ -275,13 +309,15 @@ export function GameCatalogSection() {
 
       <section aria-labelledby="all-games-heading">
         <h2 id="all-games-heading" className="mb-3 text-sm font-semibold text-[color:var(--sb-text-primary)]">
-          {activeCategory ? categoriesQuery.data?.find((c) => c.code === activeCategory)?.name : "All Games"}
+          {activeCategory
+            ? (BROWSE_GROUP_LABELS[activeCategory] ?? categoriesQuery.data?.find((c) => c.code === activeCategory)?.name)
+            : casinoMode ? "All Casino Games" : "All Games"}
           {!gamesQuery.isLoading && !gamesQuery.isError && totalGames > 0 && (
             <span className="ml-2 font-normal text-[color:var(--sb-text-secondary)]">({totalGames.toLocaleString()})</span>
           )}
         </h2>
 
-        {gamesQuery.isLoading && <GameGridSkeleton />}
+        {gamesQuery.isLoading && (casinoMode ? <GameGridSkeleton /> : <GameCarouselSkeleton />)}
 
         {gamesQuery.isError && (
           <div role="alert" className="flex items-center justify-between gap-2 rounded-[var(--sb-radius-sm)] bg-red-500/10 px-3 py-2.5 text-sm text-red-300">
@@ -297,7 +333,19 @@ export function GameCatalogSection() {
 
         {!gamesQuery.isLoading && !gamesQuery.isError && (
           <>
-            <GameGrid games={allGames} onPlay={setLaunchingGame} emptyMessage="No games available." />
+            {casinoMode ? (
+              <GameGrid games={allGames} onPlay={setLaunchingGame} emptyMessage="No games available." />
+            ) : allGames.length === 0 ? (
+              <p className="py-6 text-center text-sm text-[color:var(--sb-text-secondary)]">No games available.</p>
+            ) : (
+              <ul aria-label="Catalog games" className="scrollbar-none flex gap-3 overflow-x-auto pb-2">
+                {allGames.map((game) => (
+                  <li key={game.id} className="w-36 shrink-0 sm:w-48">
+                    <GameCard game={game} onPlay={setLaunchingGame} />
+                  </li>
+                ))}
+              </ul>
+            )}
 
             {allGames.length > 0 && pagination && (
               <div className="flex flex-col items-center gap-3 py-8">
@@ -306,11 +354,11 @@ export function GameCatalogSection() {
                     type="button"
                     onClick={() => setPage((p) => p - 1)}
                     disabled={page <= 1}
-                    aria-label="Previous 50 games"
+                    aria-label={`Previous ${pageSize} games`}
                     className="flex min-h-13 items-center justify-center gap-2 rounded-[var(--sb-radius-full)] border-2 border-[color:var(--sb-border)] px-6 py-3 text-sm font-bold text-[color:var(--sb-text-primary)] outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-[color:var(--sb-accent-gold)] hover:bg-[color:var(--sb-accent-gold)]/10 hover:text-[color:var(--sb-accent-gold)] hover:shadow-lg focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)] disabled:pointer-events-none disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                   >
                     <ChevronLeft className="size-5.5 shrink-0" aria-hidden="true" />
-                    Previous
+                    {casinoMode ? "Previous page" : "Previous"}
                   </button>
 
                   {page < pagination.totalPages ? (
@@ -321,7 +369,7 @@ export function GameCatalogSection() {
                       className="flex min-h-13 items-center justify-center gap-2 rounded-[var(--sb-radius-full)] px-7 py-3 text-sm font-bold text-[color:var(--sb-accent-gold-fg)] outline-none transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.03] hover:brightness-110 hover:shadow-[0_10px_30px_-10px_var(--sb-accent-gold)] focus-visible:ring-2 focus-visible:ring-[color:var(--sb-accent-gold)] disabled:pointer-events-none disabled:opacity-60"
                       style={{ background: "var(--sb-accent-gold)" }}
                     >
-                      {gamesQuery.isFetching ? "Loading…" : "Load more games"}
+                      {gamesQuery.isFetching ? "Loading…" : casinoMode ? "Next page" : "Load more games"}
                       {!gamesQuery.isFetching && <ChevronRight className="size-5.5 shrink-0" aria-hidden="true" />}
                     </button>
                   ) : (

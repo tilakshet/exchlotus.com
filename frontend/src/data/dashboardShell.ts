@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { ArrowLeftRight, Building2, Coins, Crown, Dices, Gift, Home, LifeBuoy, Video, Volleyball } from "lucide-react"
+import { ArrowLeftRight, Building2, Coins, Crown, Dices, Gift, Home, LifeBuoy, Volleyball } from "lucide-react"
 
 export interface DashboardNavItem {
   id: string
@@ -15,7 +15,7 @@ export interface DashboardNavItem {
  * the mobile BottomNavBar (dashboard.tsx, and the landing page's
  * routes/index.tsx), and the public landing page's own desktop sidebar
  * (LandingSidebar.tsx) — deliberately static, not derived from
- * Category rows, because "Casino"/"Live Casino" are navigation groupings,
+ * Category rows, because "Casino" is a navigation grouping,
  * not categories themselves (see src/lib/categoryGroups.ts for how real
  * categories map into each). "Providers" links to the real, backend-synced
  * provider list (see useProviders()/CatalogProvidersPage).
@@ -23,7 +23,6 @@ export interface DashboardNavItem {
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { id: "home", label: "Home", to: "/dashboard", icon: Home, color: "var(--sb-accent-gold)" },
   { id: "casino", label: "Casino", to: "/dashboard/casino", icon: Dices, color: "var(--sb-accent-purple)" },
-  { id: "live-casino", label: "Live Casino", to: "/dashboard/live-casino", icon: Video, color: "var(--sb-accent-purple)" },
   { id: "providers", label: "Providers", to: "/dashboard/providers", icon: Building2, color: "var(--sb-accent-gold)" },
 ]
 

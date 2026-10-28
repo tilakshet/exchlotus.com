@@ -1,6 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { CategoryHubPage } from "@/features/games/CategoryHubPage"
+import { GameCatalogSection } from "@/features/games/GameCatalogSection"
 
 export const Route = createFileRoute("/dashboard/live-casino")({
-  component: () => <CategoryHubPage group="live-casino" title="Live Casino" />,
+  component: () => (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-bold text-[color:var(--sb-text-primary)]">Casino</h1>
+        <p className="mt-1 text-sm text-[color:var(--sb-text-secondary)]">Browse casino games by game type or provider.</p>
+      </div>
+      <GameCatalogSection casinoMode initialCategory="live-casino" />
+    </div>
+  ),
 })

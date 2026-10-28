@@ -7,10 +7,8 @@ import { HeroCarousel } from "@/components/HeroCarousel/HeroCarousel"
 import { ProviderLogoCarousel } from "@/components/shared/ProviderLogoCarousel"
 import { RecentBigWinsRow } from "@/components/landing/RecentBigWinsRow"
 import { TrendingGamesRow } from "@/components/landing/TrendingGamesRow"
-import { FavoritesRow } from "@/components/landing/FavoritesRow"
 import { CategoryGameRows } from "@/components/landing/CategoryGameRows"
 import { SectionContainer } from "@/components/landing/shared/SectionContainer"
-import { SectionHeading } from "@/components/landing/shared/SectionHeading"
 import { WhyExchlotusSection } from "@/components/landing/WhyExchlotusSection"
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection"
 import { RewardsPreviewSection } from "@/components/landing/RewardsPreviewSection"
@@ -56,20 +54,14 @@ function LandingPage() {
           <SectionContainer ariaLabel="Recent big wins" className="py-8!">
             <RecentBigWinsRow />
           </SectionContainer>
-          <SectionContainer ariaLabel="Trending and favorite games" className="py-8!">
-            <div className="flex flex-col gap-8">
-              <TrendingGamesRow />
-              <FavoritesRow />
-            </div>
+          <SectionContainer ariaLabel="Trending games" className="py-8!">
+            <TrendingGamesRow />
           </SectionContainer>
-          <SectionContainer ariaLabel="Browse by category">
+          <SectionContainer ariaLabel="Browse games by type">
             <CategoryGameRows />
           </SectionContainer>
-          <SectionContainer id="trending" ariaLabel="Game catalog">
-            <SectionHeading eyebrow="Play now" title="The full catalog" description="Live from our providers — search, filter, and jump straight in." />
-            <div className="mt-8">
-              <GameCatalogSection />
-            </div>
+          <SectionContainer id="trending" ariaLabel="Game catalog" className="py-8!">
+            <GameCatalogSection showCategoryTabs />
           </SectionContainer>
           <WhyExchlotusSection />
           <HowItWorksSection />

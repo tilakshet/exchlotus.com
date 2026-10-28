@@ -138,6 +138,23 @@ const CATEGORY_MERGE_GROUPS: { code: string; name: string; sourceCodes: string[]
   { code: "arcade", name: "Arcade", sourceCodes: ["arcade", "fish", "hi-lo"] },
 ]
 
+/** Player-facing Casino filters. These aliases map broad browse tabs to real provider category codes. */
+const CATEGORY_FILTER_GROUPS: Record<string, string[]> = {
+  "crash-games": ["crashgame"],
+  "table-games": ["tablegames"],
+  lotteries: ["lottery", "lotto"],
+  "card-games": ["cards", "poker", "blackjack", "baccarat", "teenpatti", "andarbahar", "dragontiger"],
+  "live-casino": ["baccarat", "blackjack", "roulette", "dragontiger", "andarbahar", "sicbo", "teenpatti", "poker", "gameshow", "hi-lo", "tablegames"],
+  "quick-games": ["crashgame", "dice", "instantgame", "interactivegame", "keno", "lottery", "lotto", "plinko", "scratchcards", "bingo"],
+  slots: ["slot", "slots"],
+}
+
+function categoryCodesForFilter(categoryCode: string): string[] {
+  const browseGroup = CATEGORY_FILTER_GROUPS[categoryCode]
+  if (browseGroup) return browseGroup
+  return findMergeGroup(categoryCode)?.sourceCodes ?? [categoryCode]
+}
+
 function findMergeGroup(categoryCode: string) {
   return CATEGORY_MERGE_GROUPS.find((g) => g.code === categoryCode)
 }
@@ -215,12 +232,7 @@ export async function listGames(filters: ListGamesFilters = {}): Promise<GamesPa
     const where = {
       enabled: true,
       availableFromProvider: true,
-      ...(filters.categoryCode
-        ? (() => {
-            const group = findMergeGroup(filters.categoryCode)
-            return group ? { category: { code: { in: group.sourceCodes } } } : { category: { code: filters.categoryCode } }
-          })()
-        : {}),
+      ...(filters.categoryCode ? { category: { code: { in: categoryCodesForFilter(filters.categoryCode) } } } : {}),
       ...(filters.providerCode ? { provider: { code: filters.providerCode } } : {}),
       ...(filters.search
         ? {
