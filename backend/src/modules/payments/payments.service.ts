@@ -4,12 +4,9 @@ import { prisma } from "../../lib/prisma"
 import { logger } from "../../lib/logger"
 import { applyLedgerEntry } from "../wallet/wallet.service"
 import { checkFirstDepositReferralBonus, evaluateQualificationForPlayer } from "../referral/referral.service"
-// Active PayIn gateway. Switched to the HousholdBajar Cashfree-relay
-// (2026-09-15) — HousholdBajar holds the real Cashfree credentials
-// server-side, so Exchlotus never sees them (see
-// gateway/housholdbajar-cashfree.client.ts). Oro's and direct-Cashfree's
-// clients are left fully intact — swap this import back if needed.
-import { housholdbajarGateway as paymentGateway } from "./gateway/housholdbajar-cashfree.client"
+// Verapay is called only from the backend; its client secret and bearer token
+// are never returned to the browser. Other gateway clients remain available.
+import { createVerapayPayin } from "./gateway/verapay.client"
 
 class PaymentError extends Error {}
 
@@ -58,20 +55,11 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
   // Payment Attempts page, whose whole purpose is spotting exactly this).
   let result
   try {
-    result = await paymentGateway.createPayinOrder({
-      orderId: order.gatewayOrderId!,
-      amount,
-      name: player.username,
-      // HousholdBajar's create-order contract requires an email, but
-      // Player.email is nullable — a phone/OTP signup may never have set
-      // one. Synthesize a non-deliverable placeholder rather than block
-      // deposits on a field this account never needed before — keyed on the
-      // order id (already sent in this same request as order_id) rather
-      // than the player's internal DB id, so nothing new is exposed to
-      // HousholdBajar/Cashfree beyond what they already receive.
-      email: player.email ?? `noreply+${order.gatewayOrderId}@exchlotus.com`,
-      mobileNumber: player.phone,
-      redirectUrl: `${env.PAYMENT_CALLBACK_BASE_URL}/dashboard/account/deposit?status=pending`,
+    result = await createVerapayPayin({
+      orderId: order.gatewayOrderId!, amount, name: player.username,
+      email: player.email ?? undefined,
+      phone: player.phone,
+      returnUrl: `${env.PAYMENT_CALLBACK_BASE_URL}/dashboard/account/deposit?status=pending`,
     })
   } catch (err) {
     await prisma.paymentOrder.update({ where: { id: order.id }, data: { status: "FAILED" } })
@@ -80,15 +68,11 @@ export async function createDepositOrder(playerExternalId: string, amount: numbe
 
   await prisma.paymentOrder.update({
     where: { id: order.id },
-    data: { gatewayTrxId: result.gatewayTrxId, cashfreeOrderId: result.cashfreeOrderId },
+    data: { gatewayTrxId: result.reference },
   })
 
   return {
-    orderId: order.id,
     paymentUrl: result.paymentUrl,
-    paymentSessionId: result.paymentSessionId,
-    cashfreeMode: result.cashfreeMode,
-    expiresAt: result.expiresAt.toISOString(),
   }
 }
 
@@ -117,6 +101,7 @@ export async function handlePayinCallback(payload: { order_id: string; amount: n
   //     when PaymentOrder.id itself (a hyphenated UUID) was sent as-is.
   // Safe to trim down once nothing pre-dating gatewayOrderId is in flight.
   const order =
+    (await prisma.paymentOrder.findFirst({ where: { gatewayTrxId: payload.order_id } })) ??
     (await prisma.paymentOrder.findUnique({ where: { gatewayOrderId: payload.order_id } })) ??
     (await prisma.paymentOrder.findUnique({ where: { id: fromStrippedUuid(payload.order_id) } })) ??
     (await prisma.paymentOrder.findUnique({ where: { id: payload.order_id } }))

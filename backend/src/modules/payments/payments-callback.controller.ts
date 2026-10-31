@@ -42,6 +42,29 @@ paymentsCallbackRouter.use(
   })
 )
 
+// Verapay sends HMAC-SHA256(raw JSON) in X-Verapay-Signature. Its reference
+// is our gatewayTrxId; only a verified terminal success reaches wallet credit.
+paymentsCallbackRouter.post("/verapay/callback", async (req, res) => {
+  const raw = (req as RequestWithRawBody).rawBody
+  const signature = req.header("x-verapay-signature") ?? ""
+  const secret = env.VERAPAY_WEBHOOK_SIGNING_SECRET
+  if (!secret || !raw) return res.status(401).json({ received: false })
+  const expected = createHmac("sha256", secret).update(raw).digest("hex")
+  const a = Buffer.from(expected), b = Buffer.from(signature)
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return res.status(401).json({ received: false })
+  const body = req.body as { reference?: string; status?: string; amount?: string | number; type?: string }
+  if (!body.reference || !body.status || body.amount === undefined || body.type !== "payin") {
+    return res.status(400).json({ received: false })
+  }
+  try {
+    await handlePayinCallback({ order_id: body.reference, amount: Number(body.amount), status: body.status })
+    return res.json({ received: true })
+  } catch (err) {
+    logger.error({ err, reference: body.reference }, "Verapay PayIn callback handling failed")
+    return res.status(500).json({ received: false })
+  }
+})
+
 /**
  * Cashfree signs webhooks: base64(HMAC-SHA256(`${timestamp}${rawBody}`,
  * CASHFREE_CLIENT_SECRET)), compared against `x-webhook-signature`

@@ -67,6 +67,10 @@ async function rawRequest(path: string, options: RequestOptions, accessToken: st
   const isFormData = options.body instanceof FormData
   return fetch(buildUrl(path, options.query), {
     method: options.method ?? "GET",
+    // Let React Query manage API caching. Browser ETag revalidation can
+    // return 304 (which has no JSON body and is not `Response.ok`), causing
+    // authenticated screens such as the wallet to show a false load error.
+    cache: "no-store",
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(accessToken && !options.anonymous ? { Authorization: `Bearer ${accessToken}` } : {}),
