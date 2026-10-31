@@ -64,6 +64,12 @@ const envSchema = z.object({
   /** Verifies HousholdBajar's signed callback (X-HousholdBajar-Signature) — a separate secret from the API key above. Must match HousholdBajar's own EXCHLOTUS_CALLBACK_SECRET. */
   EXCHLOTUS_CALLBACK_SECRET: z.string().min(16),
 
+  // Verapay PayIn integration. Credentials are used only by the backend.
+  VERAPAY_BASE_URL: z.string().url().default("https://verapay.sspscloudnex.com"),
+  VERAPAY_CLIENT_KEY: z.string().optional(),
+  VERAPAY_CLIENT_SECRET: z.string().optional(),
+  VERAPAY_WEBHOOK_SIGNING_SECRET: z.string().optional(),
+
   /** This backend's own public origin — used to build absolute URLs (e.g. support ticket image attachments) that admin/frontend, a different domain, can load directly. Unlike PAYMENT_CALLBACK_BASE_URL (the frontend's origin), this is the API's own. */
   PUBLIC_BASE_URL: z.string().url(),
 

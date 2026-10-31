@@ -4,26 +4,11 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { CreditCard, IndianRupee, QrCode } from "lucide-react"
-import { load as loadCashfree } from "@cashfreepayments/cashfree-js"
 import { useCreateDepositOrder } from "@/hooks/useWallet"
 import { ApiError, friendlyErrorMessage } from "@/api/api-error"
 import { ComingSoon } from "@/features/account/ComingSoon"
 import { StepHeading } from "@/features/account/StepHeading"
-import { UpiPaymentPanel, isAndroid, isIOS, buildIOSAppLinks, tryOpenIOSAppsInSequence } from "@/features/account/UpiPaymentPanel"
 import { formatInr } from "@/lib/utils"
-
-/**
- * The PayIn gateway's `paymentUrl` is documented as a hosted checkout page
- * (payment-gateway.interface.ts), but in practice it can come back as a
- * bare `upi://` app-intent link instead — a real browser navigation target
- * for the former, nothing at all for the latter (no page behind it, so
- * `window.location.href` to it silently does nothing on desktop and is
- * unreliable on mobile). Only redirect for an actual web URL; anything else
- * falls back to UpiPaymentPanel's QR code.
- */
-function isWebPaymentUrl(url: string): boolean {
-  return url.startsWith("http://") || url.startsWith("https://")
-}
 
 interface DepositSearch {
   status?: "pending"
@@ -53,7 +38,6 @@ function DepositPage() {
   const { status } = Route.useSearch()
   const deposit = useCreateDepositOrder()
   const [couponMessage, setCouponMessage] = useState<string | null>(null)
-  const [upiOrder, setUpiOrder] = useState<{ paymentUrl: string; amount: number } | null>(null)
 
   const {
     register,
@@ -69,29 +53,8 @@ function DepositPage() {
   async function onSubmit(values: DepositValues) {
     try {
       const order = await deposit.mutateAsync(values.amount)
-      // The wallet only actually credits once the gateway's callback lands
-      // (backend payments.service.ts) — this redirect (or the QR panel
-      // below) just hands the player off to pay, neither is itself a
-      // success signal.
-      if (order.paymentSessionId) {
-        // Cashfree: no ready-made paymentUrl (its server-to-server Order Pay
-        // API needs separate account approval — see cashfree-gateway.client.ts)
-        // — its own checkout SDK reaches the identical hosted page without it.
-        const cashfree = await loadCashfree({ mode: order.cashfreeMode ?? "sandbox" })
-        await cashfree.checkout({ paymentSessionId: order.paymentSessionId, redirectTarget: "_self" })
-      } else if (order.paymentUrl && isWebPaymentUrl(order.paymentUrl)) {
-        window.location.href = order.paymentUrl
-      } else if (order.paymentUrl) {
-        setUpiOrder({ paymentUrl: order.paymentUrl, amount: values.amount })
-        // Fire the app-open attempt here, still inside the submit handler's
-        // task, so it carries the click's user-activation — a useEffect in
-        // the panel below only fires on a later render after this task
-        // ends, which loses that activation and gets silently blocked on
-        // both platforms (Android's intent system, UpiPaymentPanel's isIOS
-        // doc comment for why iOS needs the per-app sequence instead).
-        if (isAndroid()) window.location.href = order.paymentUrl
-        else if (isIOS()) tryOpenIOSAppsInSequence(buildIOSAppLinks(order.paymentUrl))
-      }
+      // Verapay returns a hosted checkout URL. Only the verified backend callback credits the wallet.
+      window.location.href = order.paymentUrl
     } catch {
       // Surfaced via deposit.isError/deposit.error below.
     }
@@ -105,12 +68,9 @@ function DepositPage() {
           className="rounded-[var(--acc-radius-lg)] px-4 py-3 text-sm font-medium"
           style={{ background: "var(--acc-accent-soft)", color: "var(--acc-text-primary)" }}
         >
-          Payment received — your balance updates automatically as soon as it's confirmed, usually within a minute.
+          Payment is pending confirmation. Your wallet updates after Verapay confirms the payment.
         </div>
       )}
-      {upiOrder ? (
-        <UpiPaymentPanel paymentUrl={upiOrder.paymentUrl} amount={upiOrder.amount} onCancel={() => setUpiOrder(null)} />
-      ) : (
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_1fr] lg:items-start">
             <section className="rounded-[var(--acc-radius-lg)] border border-[color:var(--acc-border)] bg-[color:var(--acc-surface)] p-4">
@@ -236,7 +196,6 @@ function DepositPage() {
             </button>
           </section>
         </form>
-      )}
     </div>
   )
 }
